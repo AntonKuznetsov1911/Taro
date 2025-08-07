@@ -34,6 +34,22 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Helper function for URL to base64 conversion
+def url_to_base64(url: str) -> str:
+    """Convert image URL to base64"""
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            # Encode to base64
+            base64_data = base64.b64encode(response.content).decode('utf-8')
+            # Detect content type
+            content_type = response.headers.get('content-type', 'image/jpeg')
+            return f"data:{content_type};base64,{base64_data}"
+        return ""
+    except Exception as e:
+        logging.error(f"Error converting URL to base64: {e}")
+        return ""
+
 # Tarot Cards Data
 MAJOR_ARCANA = [
     {
