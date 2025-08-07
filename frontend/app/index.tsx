@@ -155,7 +155,7 @@ export default function CosmicIndex() {
                 "В бесконечности космоса скрыты ответы на все вопросы души"
               </Text>
               <Text style={styles.quoteAuthor}>— Древняя мудрость</Text>
-            </BlurView>
+            </View>
           </View>
         </ScrollView>
       </LinearGradient>
