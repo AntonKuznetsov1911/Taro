@@ -157,10 +157,10 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
 
   useEffect(() => {
     if (star.type === 'static') {
-      // Мерцание статичных звезд
+      // Мерцание обычных звезд
       opacity.value = withRepeat(
         withSequence(
-          withTiming(star.opacity * 0.3, {
+          withTiming(star.opacity * 0.2, {
             duration: star.animationDuration,
             easing: Easing.inOut(Easing.ease),
           }),
@@ -172,42 +172,132 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
         -1,
         false
       );
+    } else if (star.type === 'constellation') {
+      // Синхронное мерцание созвездий
+      const constellationDelay = (star.constellationId || 0) * 1000; // Задержка между созвездиями
+      
+      setTimeout(() => {
+        opacity.value = withRepeat(
+          withSequence(
+            withTiming(star.opacity * 0.3, {
+              duration: star.animationDuration,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            withTiming(star.opacity, {
+              duration: star.animationDuration,
+              easing: Easing.inOut(Easing.ease),
+            })
+          ),
+          -1,
+          false
+        );
 
-      // Легкое пульсирование размера
-      scale.value = withRepeat(
+        // Легкое пульсирование размера для созвездий
+        scale.value = withRepeat(
+          withSequence(
+            withTiming(1.5, {
+              duration: star.animationDuration * 0.8,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            withTiming(1, {
+              duration: star.animationDuration * 0.8,
+              easing: Easing.inOut(Easing.ease),
+            })
+          ),
+          -1,
+          false
+        );
+      }, constellationDelay);
+    } else if (star.type === 'galaxy') {
+      // Галактические звезды мерцают быстрее
+      opacity.value = withRepeat(
         withSequence(
-          withTiming(1.2, {
-            duration: star.animationDuration * 1.5,
+          withTiming(star.opacity * 0.5, {
+            duration: star.animationDuration * 0.5,
             easing: Easing.inOut(Easing.ease),
           }),
-          withTiming(1, {
-            duration: star.animationDuration * 1.5,
+          withTiming(star.opacity, {
+            duration: star.animationDuration * 0.5,
             easing: Easing.inOut(Easing.ease),
           })
         ),
         -1,
         false
       );
+
+      // Медленное вращение галактики
+      scale.value = withRepeat(
+        withTiming(1.2, {
+          duration: star.animationDuration * 2,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        true
+      );
     } else {
-      // Движение звезд-комет
+      // Движение звезд-комет с разными траекториями
       const moveStars = () => {
-        translateX.value = withTiming(width + 50, {
+        // Определяем конечную точку в зависимости от стартовой позиции
+        let endX, endY;
+        
+        if (star.x <= 0) { // Слева
+          endX = width + 50;
+          endY = Math.random() * height;
+        } else if (star.x >= width) { // Справа
+          endX = -50;
+          endY = Math.random() * height;
+        } else if (star.y <= 0) { // Сверху
+          endX = Math.random() * width;
+          endY = height + 50;
+        } else { // Снизу
+          endX = Math.random() * width;
+          endY = -50;
+        }
+        
+        translateX.value = withTiming(endX, {
           duration: star.animationDuration,
-          easing: Easing.linear,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Более естественная кривая
         }, (finished) => {
           if (finished) {
             runOnJS(() => {
-              // Перезапуск движения
-              translateX.value = -20;
-              translateY.value = Math.random() * height * 0.7;
-              setTimeout(moveStars, Math.random() * 3000 + 1000); // Пауза между пролетами
+              // Перезапуск движения с большей паузой
+              const startSide = Math.floor(Math.random() * 4);
+              let newStartX, newStartY;
+              
+              switch(startSide) {
+                case 0: // слева
+                  newStartX = -20;
+                  newStartY = Math.random() * height;
+                  break;
+                case 1: // сверху
+                  newStartX = Math.random() * width;
+                  newStartY = -20;
+                  break;
+                case 2: // справа
+                  newStartX = width + 20;
+                  newStartY = Math.random() * height;
+                  break;
+                case 3: // снизу
+                  newStartX = Math.random() * width;
+                  newStartY = height + 20;
+                  break;
+              }
+              
+              translateX.value = newStartX;
+              translateY.value = newStartY;
+              setTimeout(moveStars, Math.random() * 15000 + 10000); // Пауза 10-25 секунд
             })();
           }
         });
+
+        translateY.value = withTiming(endY, {
+          duration: star.animationDuration,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        });
       };
       
-      // Запуск движения с задержкой
-      setTimeout(moveStars, Math.random() * 5000);
+      // Запуск движения с большой задержкой
+      setTimeout(moveStars, Math.random() * 20000 + 10000); // 10-30 секунд до первого пролета
     }
   }, []);
 
@@ -220,6 +310,32 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
     ],
   }));
 
+  // Разные стили для разных типов звезд
+  const getStarStyle = () => {
+    switch (star.type) {
+      case 'constellation':
+        return {
+          backgroundColor: '#FFD700', // Золотистый для созвездий
+          boxShadow: '0px 0px 3px rgba(255, 215, 0, 0.8)',
+        };
+      case 'galaxy':
+        return {
+          backgroundColor: '#E6E6FA', // Лавандовый для галактики
+          boxShadow: '0px 0px 2px rgba(230, 230, 250, 0.6)',
+        };
+      case 'moving':
+        return {
+          backgroundColor: '#87CEEB', // Небесно-голубой для движущихся
+          boxShadow: '0px 0px 4px rgba(135, 206, 235, 0.9)',
+        };
+      default:
+        return {
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0px 0px 2px rgba(255, 255, 255, 0.8)',
+        };
+    }
+  };
+
   return (
     <Animated.View
       style={[
@@ -227,6 +343,7 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
         {
           width: star.size,
           height: star.size,
+          ...getStarStyle(),
         },
         animatedStyle,
       ]}
