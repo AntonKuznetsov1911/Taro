@@ -17,7 +17,8 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # OpenAI configuration
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from openai import OpenAI
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
