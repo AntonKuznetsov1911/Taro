@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Протестируй backend API для всех типов раскладов, особенно three_cards и celtic_cross которые не работают корректно"
+user_problem_statement: "Звездное небо --> <div id='stars' class='stars'></div> сможешь реализовать? На главном экране, Анимированное звездное небо • Мерцающие звезды разных размеров • Плавное движение звезд (опционально) • Градиентный космический фон"
 
 backend:
   - task: "Root endpoint GET /api/"
