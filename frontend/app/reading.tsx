@@ -152,19 +152,29 @@ export default function ReadingScreen() {
           </View>
         ) : (
           <View style={styles.cardBack}>
-            {cardBackImage && cardBackImage.startsWith('data:image') ? (
-              <Image
-                source={{ uri: cardBackImage }}
-                style={styles.cardBackImage}
-                resizeMode="cover"
-              />
+            {cardBackImage ? (
+              cardBackImage.startsWith('data:image') ? (
+                <Image
+                  source={{ uri: cardBackImage }}
+                  style={styles.cardBackImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#2C3E50', '#34495E']}
+                  style={styles.cardBackFallback}
+                >
+                  <Text style={styles.cardBackText}>🌙</Text>
+                  <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
+                </LinearGradient>
+              )
             ) : (
               <LinearGradient
                 colors={['#2C3E50', '#34495E']}
                 style={styles.cardBackFallback}
               >
-                <Text style={styles.cardBackText}>🌙</Text>
-                <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
+                <ActivityIndicator size="small" color="#FFD700" />
+                <Text style={styles.loadingText}>Загрузка...</Text>
               </LinearGradient>
             )}
           </View>
