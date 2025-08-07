@@ -83,6 +83,10 @@ class TarotQuestion(BaseModel):
     question: str
     spread_type: str
 
+class CompatibilityRequest(BaseModel):
+    name1: str
+    name2: str
+
 class TarotCard(BaseModel):
     id: int
     name: str
