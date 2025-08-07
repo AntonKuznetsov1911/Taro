@@ -266,7 +266,7 @@ async def get_reading_history(limit: int = 10):
 
 @api_router.get("/")
 async def root():
-    return {"message": "TatoAi API - Таро гадание с ИИ"}
+    return {"message": "TARO API - Древняя мудрость в современном исполнении"}
 
 # Include the router in the main app
 app.include_router(api_router)
