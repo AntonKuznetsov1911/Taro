@@ -51,7 +51,18 @@ export default function ReadingScreen() {
 
   useEffect(() => {
     createReading();
+    loadCardBack();
   }, []);
+
+  const loadCardBack = async () => {
+    try {
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card-back`);
+      const data = await response.json();
+      setCardBackImage(data.card_back);
+    } catch (error) {
+      console.error('Error loading card back:', error);
+    }
+  };
 
   const createReading = async () => {
     try {
