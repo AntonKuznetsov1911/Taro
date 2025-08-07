@@ -104,6 +104,9 @@ export default function CosmicIndex() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
+        {/* Звездное небо как фон */}
+        <StarryBackground />
+        
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Cosmic Header */}
           <View style={styles.header}>
