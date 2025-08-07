@@ -596,6 +596,46 @@ class TatoAiTester:
             self.log_test("Aesthetic images integration", False, f"Exception: {str(e)}")
             return False
 
+    def run_focused_spread_tests(self):
+        """Run focused tests for spread card count issues"""
+        print("🔮 FOCUSED TESTING: Spread Card Count Validation")
+        print("=" * 60)
+        print("Testing specific user-reported issues with three_cards and celtic_cross spreads")
+        print()
+        
+        # Test card counts for each spread type
+        print("📊 Testing Card Counts by Spread Type")
+        print("-" * 40)
+        self.test_spread_card_counts()
+        
+        print("\n🎯 Testing Specific Category/Spread Combinations")
+        print("-" * 50)
+        self.test_specific_spread_combinations()
+        
+        # Summary
+        print("\n" + "=" * 60)
+        print("🔮 FOCUSED TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results if result["success"])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests} ✅")
+        print(f"Failed: {failed_tests} ❌")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ CRITICAL ISSUES FOUND:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['details']}")
+        else:
+            print("\n✅ All spread card count tests PASSED!")
+        
+        return passed_tests, failed_tests, self.test_results
+
     def run_all_tests(self):
         """Run all tests"""
         print("🔮 Starting TatoAi Backend API Tests")
