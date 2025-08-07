@@ -341,11 +341,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
   },
-  quickReadingButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
-  },
   quickButtonGradient: {
     alignItems: 'center',
     paddingVertical: 20,
