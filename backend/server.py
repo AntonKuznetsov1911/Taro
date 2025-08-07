@@ -344,9 +344,6 @@ class TarotReading(BaseModel):
 class ReadingHistory(BaseModel):
     readings: List[TarotReading]
 
-# Tarot card back image
-CARD_BACK_IMAGE = url_to_base64("https://images.unsplash.com/photo-1664252092739-8b4dadb0b7d1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMHBhdHRlcm5zfGVufDB8fHx8MTc1NDU0NjA1M3ww&ixlib=rb-4.1.0&q=85")
-
 async def generate_ai_interpretation(question: str, category: str, spread_type: str, cards: List[TarotCard], positions: List[str]) -> str:
     """Generate AI interpretation using OpenAI"""
     
