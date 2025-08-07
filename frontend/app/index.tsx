@@ -259,9 +259,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: 8,
-    textShadowColor: '#9B59B6',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    textShadow: '0px 0px 20px #9B59B6',
     marginBottom: 10,
   },
   cosmicSubtitle: {
