@@ -335,10 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     elevation: 8,
-    shadowColor: '#9B59B6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    boxShadow: '0px 4px 10px rgba(155, 89, 182, 0.4)',
   },
   categoryGradient: {
     flex: 1,
