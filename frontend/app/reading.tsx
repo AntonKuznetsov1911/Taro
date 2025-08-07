@@ -498,6 +498,12 @@ const styles = StyleSheet.create({
     color: '#B8B8B8',
     textAlign: 'center',
   },
+  loadingText: {
+    fontSize: 12,
+    color: '#FFD700',
+    textAlign: 'center',
+    marginTop: 8,
+  },
   positionText: {
     fontSize: 14,
     color: '#9B59B6',
