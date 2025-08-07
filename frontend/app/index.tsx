@@ -48,6 +48,7 @@ const SPREADS = [
 ];
 
 export default function Index() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
