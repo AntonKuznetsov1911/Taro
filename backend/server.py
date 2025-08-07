@@ -253,6 +253,11 @@ async def create_tarot_reading(question_data: TarotQuestion):
     
     return reading
 
+@api_router.get("/card-back")
+async def get_card_back():
+    """Get card back image"""
+    return {"card_back": CARD_BACK_IMAGE}
+
 @api_router.get("/readings", response_model=List[TarotReading])
 async def get_reading_history(limit: int = 10):
     """Get reading history"""
