@@ -86,8 +86,10 @@ export default function Index() {
 
   const startReading = () => {
     if (selectedCategory && selectedSpread) {
-      // Here we would navigate to question input screen
-      console.log('Starting reading:', { category: selectedCategory, spread: selectedSpread });
+      router.push({
+        pathname: '/question',
+        params: { category: selectedCategory, spread: selectedSpread }
+      });
     }
   };
 
