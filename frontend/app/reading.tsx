@@ -127,12 +127,12 @@ export default function ReadingScreen() {
         {revealed ? (
           <View style={styles.cardContent}>
             <View style={[styles.cardInner, card.is_reversed && styles.cardReversed]}>
-              {/* Always show card image - either from data or fallback */}
-              {card.image && (card.image.startsWith('data:image/svg') || card.image.startsWith('data:image/jpeg') || card.image.startsWith('data:image/png')) ? (
+              {/* Always show the card image - prioritize SVG images */}
+              {card.image ? (
                 <Image
                   source={{ uri: card.image }}
                   style={styles.cardImage}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
               ) : (
                 <LinearGradient
@@ -150,8 +150,8 @@ export default function ReadingScreen() {
                 </LinearGradient>
               )}
               
-              {/* Card info overlay - only show if we have a real image */}
-              {card.image && (card.image.startsWith('data:image/svg') || card.image.startsWith('data:image/jpeg') || card.image.startsWith('data:image/png')) && (
+              {/* Card info overlay - only show card name at bottom */}
+              {card.image && (
                 <View style={styles.cardOverlay}>
                   <Text style={styles.cardNameOverlay}>{card.name}</Text>
                   {card.is_reversed && <Text style={styles.reversedIndicatorOverlay}>⚌ Перевернутая</Text>}
