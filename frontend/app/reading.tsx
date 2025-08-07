@@ -47,6 +47,7 @@ export default function ReadingScreen() {
   const [reading, setReading] = useState<TarotReading | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
+  const [cardBackImage, setCardBackImage] = useState<string>('');
 
   useEffect(() => {
     createReading();
