@@ -371,7 +371,7 @@ async def generate_ai_interpretation(question: str, category: str, spread_type: 
 - Совет и рекомендации"""
 
     try:
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=800,
