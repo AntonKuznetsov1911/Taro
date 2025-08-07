@@ -402,6 +402,19 @@ const styles = StyleSheet.create({
     top: 15,
     right: 15,
   },
+  selectedCategoryIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 15,
+    padding: 4,
+  },
+  diamondIcon: {
+    fontSize: 18,
+    color: '#FFD700',
+    textShadow: '0px 0px 8px rgba(255, 215, 0, 0.8)',
+  },
   compatibilitySection: {
     paddingHorizontal: 20,
     paddingVertical: 20,
