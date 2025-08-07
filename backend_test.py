@@ -481,6 +481,13 @@ class TatoAiTester:
         self.test_create_reading()
         self.test_reading_history()
         
+        # Image-specific tests for aesthetic tarot cards
+        print("\n🎨 Testing Aesthetic Tarot Card Images Integration")
+        print("-" * 50)
+        self.test_card_back_endpoint()
+        self.test_aesthetic_images_integration()
+        self.test_card_images_quality()
+        
         # Advanced tests
         self.test_openai_integration()
         self.test_database_persistence()
