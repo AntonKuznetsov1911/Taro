@@ -11,7 +11,7 @@ from datetime import datetime
 import sys
 
 # Get backend URL from environment
-BACKEND_URL = "https://1ea778e4-270b-4cd1-b1d9-1b0124068876.preview.emergentagent.com/api"
+BACKEND_URL = "https://e4c486eb-3b71-44e3-ab4b-133cac5c013f.preview.emergentagent.com/api"
 
 class TatoAiTester:
     def __init__(self):
