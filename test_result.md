@@ -297,9 +297,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Aesthetic tarot card images integration testing completed successfully"
-  stuck_tasks: []
-  test_all: true
+    - "Create tarot reading POST /api/reading - MongoDB document size limit issue"
+  stuck_tasks:
+    - "Create tarot reading POST /api/reading - MongoDB document size limit exceeded due to large base64 images"
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
