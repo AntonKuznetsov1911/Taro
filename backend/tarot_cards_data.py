@@ -135,97 +135,108 @@ def create_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
     return f"data:image/svg+xml;base64,{svg_base64}"
 
 def create_enhanced_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
-    """Create enhanced SVG card image with more variety"""
-    # Extended color schemes for more variety
-    colors = [
-        ["#8E44AD", "#6C3483"],  # Purple
-        ["#9B59B6", "#8E44AD"],  # Light Purple 
-        ["#3498DB", "#2980B9"],  # Blue
-        ["#E74C3C", "#C0392B"],  # Red
-        ["#F39C12", "#E67E22"],  # Orange
-        ["#27AE60", "#229954"],  # Green
-        ["#34495E", "#2C3E50"],  # Dark
-        ["#E67E22", "#D35400"],  # Dark Orange
-        ["#16A085", "#138D75"],  # Teal
-        ["#8E44AD", "#7D3C98"],  # Deep Purple
-        ["#2E86AB", "#A23B72"],  # Blue to Pink
-        ["#F18F01", "#C73E1D"],  # Orange to Red
-    ]
+    """Create enhanced SVG card image with unique design for each card"""
     
-    # Different symbols for variety
-    symbols = ["✨", "🌙", "⭐", "🔮", "🌟", "💫", "🌠", "✦", "◆", "♦", "♠", "♣"]
+    # Unique card designs for Major Arcana
+    card_designs = {
+        0: {"symbol": "🃏", "colors": ["#FF6B9D", "#FF8E9B"], "element": "Воздух", "mood": "свобода"},  # Дурак
+        1: {"symbol": "🔮", "colors": ["#9B59B6", "#BB6BD9"], "element": "Огонь", "mood": "воля"},    # Маг
+        2: {"symbol": "🌙", "colors": ["#3498DB", "#5DADE2"], "element": "Вода", "mood": "тайна"},    # Верховная Жрица
+        3: {"symbol": "🌺", "colors": ["#27AE60", "#58D68D"], "element": "Земля", "mood": "плодородие"}, # Императрица
+        4: {"symbol": "👑", "colors": ["#E74C3C", "#F1948A"], "element": "Огонь", "mood": "власть"},  # Император
+        5: {"symbol": "⛪", "colors": ["#F39C12", "#F8C471"], "element": "Земля", "mood": "духовность"}, # Иерофант
+        6: {"symbol": "💕", "colors": ["#FF69B4", "#FFB6C1"], "element": "Воздух", "mood": "любовь"}, # Влюбленные
+        7: {"symbol": "🏆", "colors": ["#FFD700", "#FFF68F"], "element": "Огонь", "mood": "победа"},  # Колесница
+        8: {"symbol": "💪", "colors": ["#32CD32", "#90EE90"], "element": "Огонь", "mood": "сила"},    # Сила
+        9: {"symbol": "🕯️", "colors": ["#8E44AD", "#D7DBDD"], "element": "Земля", "mood": "мудрость"}, # Отшельник
+        10: {"symbol": "☸️", "colors": ["#1ABC9C", "#76D7C4"], "element": "Огонь", "mood": "судьба"}, # Колесо Фортуны
+        11: {"symbol": "⚖️", "colors": ["#3498DB", "#85C1E9"], "element": "Воздух", "mood": "справедливость"}, # Справедливость
+        12: {"symbol": "🙃", "colors": ["#95A5A6", "#D5DBDB"], "element": "Вода", "mood": "жертва"},  # Повешенный
+        13: {"symbol": "💀", "colors": ["#2C3E50", "#566573"], "element": "Вода", "mood": "трансформация"}, # Смерть
+        14: {"symbol": "🍷", "colors": ["#E67E22", "#F8C471"], "element": "Огонь", "mood": "умеренность"}, # Умеренность
+        15: {"symbol": "😈", "colors": ["#8B0000", "#CD5C5C"], "element": "Земля", "mood": "искушение"}, # Дьявол
+        16: {"symbol": "⚡", "colors": ["#FF4500", "#FFA07A"], "element": "Огонь", "mood": "разрушение"}, # Башня
+        17: {"symbol": "⭐", "colors": ["#4169E1", "#87CEEB"], "element": "Воздух", "mood": "надежда"}, # Звезда
+        18: {"symbol": "🌝", "colors": ["#483D8B", "#9370DB"], "element": "Вода", "mood": "иллюзия"}, # Луна
+        19: {"symbol": "☀️", "colors": ["#FFD700", "#FFFF99"], "element": "Огонь", "mood": "радость"}, # Солнце
+        20: {"symbol": "📯", "colors": ["#DC143C", "#F08080"], "element": "Огонь", "mood": "возрождение"}, # Суд
+        21: {"symbol": "🌍", "colors": ["#228B22", "#98FB98"], "element": "Земля", "mood": "завершение"}, # Мир
+    }
     
-    color_scheme = colors[card_id % len(colors)]
-    symbol = symbols[card_id % len(symbols)]
-    
-    # Add some randomness based on card_id for pattern variety
-    pattern_size = 15 + (card_id % 10)
-    circle_r = 1 + (card_id % 3)
+    # Get design for this card
+    design = card_designs.get(card_id, {
+        "symbol": "✨", 
+        "colors": ["#9B59B6", "#BB6BD9"], 
+        "element": "Эфир", 
+        "mood": "магия"
+    })
     
     svg_content = f'''
     <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <linearGradient id="grad{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:{color_scheme[0]};stop-opacity:1" />
-                <stop offset="50%" style="stop-color:{color_scheme[1]};stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:{color_scheme[0]};stop-opacity:1" />
+            <linearGradient id="cardGrad{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:{design['colors'][0]};stop-opacity:1" />
+                <stop offset="50%" style="stop-color:{design['colors'][1]};stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:{design['colors'][0]};stop-opacity:0.6" />
             </linearGradient>
-            <pattern id="pattern{card_id}" patternUnits="userSpaceOnUse" width="{pattern_size}" height="{pattern_size}">
-                <circle cx="{pattern_size//2}" cy="{pattern_size//2}" r="{circle_r}" fill="rgba(255,255,255,0.15)"/>
+            <radialGradient id="centerGlow{card_id}" cx="50%" cy="50%" r="40%">
+                <stop offset="0%" style="stop-color:white;stop-opacity:0.3" />
+                <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+            </radialGradient>
+            <pattern id="mysticalPattern{card_id}" patternUnits="userSpaceOnUse" width="30" height="30">
+                <circle cx="15" cy="15" r="1" fill="rgba(255,255,255,0.2)"/>
+                <circle cx="5" cy="25" r="0.5" fill="rgba(255,255,255,0.1)"/>
+                <circle cx="25" cy="5" r="0.5" fill="rgba(255,255,255,0.1)"/>
             </pattern>
-            <filter id="glow{card_id}">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge> 
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-            </filter>
         </defs>
         
         <!-- Card background -->
-        <rect width="200" height="300" fill="url(#grad{card_id})" rx="15"/>
-        <rect width="200" height="300" fill="url(#pattern{card_id})" rx="15"/>
+        <rect width="200" height="300" fill="url(#cardGrad{card_id})" rx="18"/>
+        <rect width="200" height="300" fill="url(#mysticalPattern{card_id})" rx="18"/>
+        <rect width="200" height="300" fill="url(#centerGlow{card_id})" rx="18"/>
         
-        <!-- Multiple decorative borders -->
-        <rect x="8" y="8" width="184" height="284" fill="none" 
-              stroke="rgba(255,255,255,0.4)" stroke-width="1" rx="12"/>
-        <rect x="15" y="15" width="170" height="270" fill="none" 
-              stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="8"/>
+        <!-- Elegant border -->
+        <rect x="5" y="5" width="190" height="290" fill="none" 
+              stroke="rgba(255,255,255,0.6)" stroke-width="2" rx="15"/>
+        <rect x="12" y="12" width="176" height="276" fill="none" 
+              stroke="rgba(255,255,255,0.3)" stroke-width="1" rx="12"/>
               
-        <!-- Card name with glow -->
-        <text x="100" y="45" font-family="serif" font-size="14" font-weight="bold" 
-              fill="white" text-anchor="middle" filter="url(#glow{card_id})">{card_name}</text>
-              
-        <!-- Card type -->
-        <text x="100" y="65" font-family="serif" font-size="9" 
-              fill="rgba(255,255,255,0.9)" text-anchor="middle">
-              {"Старший Аркан" if is_major else "Младший Аркан"}
+        <!-- Top section - Card name -->
+        <rect x="15" y="20" width="170" height="40" fill="rgba(255,255,255,0.1)" rx="8"/>
+        <text x="100" y="35" font-family="serif" font-size="12" font-weight="bold" 
+              fill="white" text-anchor="middle">{card_name}</text>
+        <text x="100" y="50" font-family="serif" font-size="9" 
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">
+              {design['element']} • {design['mood']}
         </text>
         
-        <!-- Enhanced central design -->
-        <circle cx="100" cy="150" r="45" fill="none" 
-                stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
-        <circle cx="100" cy="150" r="30" fill="rgba(255,255,255,0.1)"/>
-        <circle cx="100" cy="150" r="15" fill="none" 
-                stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+        <!-- Central symbol area -->
+        <circle cx="100" cy="150" r="55" fill="rgba(255,255,255,0.1)" 
+                stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+        <circle cx="100" cy="150" r="40" fill="none" 
+                stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
         
-        <!-- Dynamic symbol -->
-        <text x="100" y="160" font-family="serif" font-size="28" 
-              fill="white" text-anchor="middle" filter="url(#glow{card_id})">{symbol}</text>
+        <!-- Main symbol -->
+        <text x="100" y="170" font-family="serif" font-size="48" 
+              fill="white" text-anchor="middle">{design['symbol']}</text>
               
-        <!-- Corner decorations -->
-        <text x="25" y="30" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
-        <text x="175" y="30" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
-        <text x="25" y="280" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
-        <text x="175" y="280" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
+        <!-- Decorative elements -->
+        <text x="100" y="85" font-family="serif" font-size="16" 
+              fill="rgba(255,255,255,0.7)" text-anchor="middle">✦</text>
+        <text x="100" y="235" font-family="serif" font-size="16" 
+              fill="rgba(255,255,255,0.7)" text-anchor="middle">✦</text>
               
-        <!-- Bottom decoration -->
-        <text x="100" y="275" font-family="serif" font-size="11" font-weight="bold"
-              fill="rgba(255,255,255,0.8)" text-anchor="middle">TARO</text>
+        <!-- Side decorations -->
+        <text x="35" y="150" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.5)" text-anchor="middle">✧</text>
+        <text x="165" y="150" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.5)" text-anchor="middle">✧</text>
+        
+        <!-- Bottom section -->
+        <text x="100" y="270" font-family="serif" font-size="11" 
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">СТАРШИЙ АРКАН</text>
+        <text x="100" y="285" font-family="serif" font-size="10" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">№ {card_id}</text>
     </svg>
     '''
     
