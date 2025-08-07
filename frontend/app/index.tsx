@@ -152,22 +152,6 @@ export default function CosmicIndex() {
             </View>
           </View>
 
-          {/* Quick Reading Section */}
-          {selectedCategory && (
-            <View style={styles.quickSection}>
-              <TouchableOpacity style={styles.quickReadingButton} onPress={startQuickReading}>
-                <LinearGradient
-                  colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)', 'rgba(108, 52, 131, 1)']}
-                  style={styles.quickButtonGradient}
-                >
-                  <Ionicons name="flash" size={24} color="#FFF" />
-                  <Text style={styles.quickButtonText}>Быстрое гадание</Text>
-                  <Text style={styles.quickButtonSubtext}>Одна карта • Мгновенный ответ</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-
           {/* Spread Selection */}
           {selectedCategory && (
             <View style={styles.section}>
