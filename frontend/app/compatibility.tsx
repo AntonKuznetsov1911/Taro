@@ -361,14 +361,11 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     overflow: 'hidden',
     elevation: 8,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(231, 76, 60, 0.4)',
   },
   submitButtonDisabled: {
     elevation: 0,
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   submitButtonGradient: {
     flexDirection: 'row',
