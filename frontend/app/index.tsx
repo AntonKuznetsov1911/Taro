@@ -57,6 +57,35 @@ export default function CosmicIndex() {
     </TouchableOpacity>
   );
 
+  const SpreadCard = ({ spread }: { spread: any }) => (
+    <TouchableOpacity
+      style={[styles.spreadCard, selectedSpread === spread.id && styles.selectedSpreadCard]}
+      onPress={() => setSelectedSpread(spread.id)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.spreadContent}>
+        <Text style={[styles.spreadName, selectedSpread === spread.id && styles.selectedSpreadName]}>
+          {spread.name}
+        </Text>
+        <Text style={styles.spreadDescription}>{spread.description}</Text>
+        {selectedSpread === spread.id && (
+          <View style={styles.selectedIndicator}>
+            <Ionicons name="checkmark-circle" size={20} color="#9B59B6" />
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const startReading = () => {
+    if (selectedCategory && selectedSpread) {
+      router.push({
+        pathname: '/question',
+        params: { category: selectedCategory, spread: selectedSpread }
+      });
+    }
+  };
+
   const startQuickReading = () => {
     if (selectedCategory) {
       router.push({
