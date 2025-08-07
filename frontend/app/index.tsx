@@ -25,9 +25,16 @@ const CATEGORIES = [
   { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['#9B59B6', '#BB6BD9', '#6C3483'], description: 'Жизненные вопросы' }
 ];
 
+const SPREADS = [
+  { id: 'one_card', name: 'Одна карта', description: 'Быстрый ответ на конкретный вопрос' },
+  { id: 'three_cards', name: 'Три карты', description: 'Прошлое • Настоящее • Будущее' },
+  { id: 'celtic_cross', name: 'Кельтский крест', description: 'Детальный анализ ситуации' }
+];
+
 export default function CosmicIndex() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
+  const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
   const CategoryCard = ({ category }: { category: any }) => (
     <TouchableOpacity
