@@ -1,0 +1,466 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Text,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+
+const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+interface TarotCard {
+  id: number;
+  name: string;
+  name_en: string;
+  type: string;
+  image: string;
+  keywords: string[];
+  upright_meaning: string;
+  reversed_meaning: string;
+  is_reversed: boolean;
+}
+
+interface TarotReading {
+  id: string;
+  question: string;
+  category: string;
+  spread_type: string;
+  cards: TarotCard[];
+  positions: string[];
+  interpretation: string;
+  created_at: string;
+}
+
+export default function ReadingScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { category, spread, question } = params as { category: string; spread: string; question: string };
+  
+  const [reading, setReading] = useState<TarotReading | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
+
+  useEffect(() => {
+    createReading();
+  }, []);
+
+  const createReading = async () => {
+    try {
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/reading`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: category,
+          spread_type: spread,
+          question: question,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      setReading(data);
+      setCardsRevealed(new Array(data.cards.length).fill(false));
+    } catch (error) {
+      console.error('Error creating reading:', error);
+      Alert.alert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
+      router.back();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const revealCard = (index: number) => {
+    const newRevealed = [...cardsRevealed];
+    newRevealed[index] = true;
+    setCardsRevealed(newRevealed);
+  };
+
+  const revealAllCards = () => {
+    setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
+  };
+
+  const CardComponent = ({ card, position, index, revealed }: {
+    card: TarotCard;
+    position: string;
+    index: number;
+    revealed: boolean;
+  }) => (
+    <TouchableOpacity
+      style={styles.cardContainer}
+      onPress={() => !revealed && revealCard(index)}
+      activeOpacity={revealed ? 1 : 0.8}
+    >
+      <View style={styles.card}>
+        {revealed ? (
+          <LinearGradient
+            colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']}
+            style={styles.cardContent}
+          >
+            <View style={[styles.cardInner, card.is_reversed && styles.cardReversed]}>
+              <Text style={styles.cardName}>{card.name}</Text>
+              <Text style={styles.cardType}>{card.type === 'major' ? 'Старший аркан' : 'Младший аркан'}</Text>
+              {card.is_reversed && <Text style={styles.reversedIndicator}>⚌ Перевернутая</Text>}
+              <View style={styles.keywordsContainer}>
+                {card.keywords.slice(0, 3).map((keyword, i) => (
+                  <Text key={i} style={styles.keyword}>{keyword}</Text>
+                ))}
+              </View>
+            </View>
+          </LinearGradient>
+        ) : (
+          <LinearGradient
+            colors={['#2C3E50', '#34495E']}
+            style={styles.cardBack}
+          >
+            <Text style={styles.cardBackText}>🌙</Text>
+            <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
+          </LinearGradient>
+        )}
+      </View>
+      <Text style={styles.positionText}>{position}</Text>
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#0a0a0a', '#1a1a2e', '#16213e']}
+          style={styles.background}
+        >
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#9B59B6" />
+            <Text style={styles.loadingText}>Карты перемешиваются...</Text>
+            <Text style={styles.loadingSubtext}>Ваше гадание готовится</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
+  if (!reading) {
+    return null;
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#0a0a0a', '#1a1a2e', '#16213e']}
+        style={styles.background}
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Ваше гадание</Text>
+          </View>
+
+          {/* Question */}
+          <View style={styles.questionContainer}>
+            <Text style={styles.questionLabel}>Ваш вопрос:</Text>
+            <Text style={styles.questionText}>"{reading.question}"</Text>
+          </View>
+
+          {/* Cards */}
+          <View style={styles.cardsSection}>
+            <View style={styles.cardsSectionHeader}>
+              <Text style={styles.cardsSectionTitle}>Выпавшие карты</Text>
+              {cardsRevealed.some(revealed => !revealed) && (
+                <TouchableOpacity onPress={revealAllCards} style={styles.revealAllButton}>
+                  <Text style={styles.revealAllText}>Открыть все</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <View style={styles.cardsContainer}>
+              {reading.cards.map((card, index) => (
+                <CardComponent
+                  key={index}
+                  card={card}
+                  position={reading.positions[index]}
+                  index={index}
+                  revealed={cardsRevealed[index]}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Interpretation */}
+          {cardsRevealed.every(revealed => revealed) && (
+            <View style={styles.interpretationContainer}>
+              <Text style={styles.interpretationTitle}>✨ Толкование</Text>
+              <View style={styles.interpretationContent}>
+                <ScrollView style={styles.interpretationScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.interpretationText}>{reading.interpretation}</Text>
+                </ScrollView>
+              </View>
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push('/')}
+            >
+              <LinearGradient
+                colors={['#4ECDC4', '#26A0B4']}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="home" size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>На главную</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push('/history')}
+            >
+              <LinearGradient
+                colors={['#FF6B9D', '#C44569']}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="time" size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>История</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#E8E8E8',
+    marginTop: 20,
+    fontWeight: '600',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#B8B8B8',
+    marginTop: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#E8E8E8',
+  },
+  questionContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#9B59B633',
+  },
+  questionLabel: {
+    fontSize: 14,
+    color: '#9B59B6',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  questionText: {
+    fontSize: 16,
+    color: '#E8E8E8',
+    lineHeight: 24,
+    fontStyle: 'italic',
+  },
+  cardsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  cardsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  cardsSectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E8E8E8',
+  },
+  revealAllButton: {
+    backgroundColor: '#9B59B633',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  revealAllText: {
+    fontSize: 12,
+    color: '#9B59B6',
+    fontWeight: '600',
+  },
+  cardsContainer: {
+    gap: 15,
+  },
+  cardContainer: {
+    alignItems: 'center',
+  },
+  card: {
+    width: 200,
+    height: 300,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  cardContent: {
+    flex: 1,
+    padding: 20,
+  },
+  cardInner: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardReversed: {
+    transform: [{ rotate: '180deg' }],
+  },
+  cardName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  cardType: {
+    fontSize: 12,
+    color: '#E8E8E8',
+    opacity: 0.8,
+    marginBottom: 15,
+  },
+  reversedIndicator: {
+    fontSize: 12,
+    color: '#FFD700',
+    marginBottom: 10,
+    fontWeight: '600',
+  },
+  keywordsContainer: {
+    alignItems: 'center',
+    gap: 5,
+  },
+  keyword: {
+    fontSize: 12,
+    color: '#E8E8E8',
+    backgroundColor: '#FFFFFF33',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  cardBack: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardBackText: {
+    fontSize: 48,
+    marginBottom: 10,
+  },
+  tapToReveal: {
+    fontSize: 12,
+    color: '#B8B8B8',
+    textAlign: 'center',
+  },
+  positionText: {
+    fontSize: 14,
+    color: '#9B59B6',
+    fontWeight: '600',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  interpretationContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  interpretationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  interpretationContent: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 15,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#9B59B633',
+    maxHeight: 400,
+  },
+  interpretationScroll: {
+    maxHeight: 360,
+  },
+  interpretationText: {
+    fontSize: 16,
+    color: '#E8E8E8',
+    lineHeight: 24,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    gap: 15,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+});
