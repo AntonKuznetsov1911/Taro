@@ -16,7 +16,7 @@ const { width, height } = Dimensions.get('window');
 // Конфигурация звезд
 const STAR_COUNT = 120; // Увеличено общее количество звезд
 const SHOOTING_STAR_COUNT = 2; // Уменьшено количество движущихся звезд
-const CONSTELLATION_COUNT = 8; // Количество созвездий
+const CONSTELLATION_COUNT = 4; // Уменьшено количество созвездий с 8 до 4
 const GALAXY_STARS = 30; // Звезды для галактики
 
 interface Star {
