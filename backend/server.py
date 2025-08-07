@@ -111,6 +111,14 @@ class TarotReading(BaseModel):
 class ReadingHistory(BaseModel):
     readings: List[TarotReading]
 
+class CompatibilityResult(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name1: str
+    name2: str
+    compatibility_score: int
+    analysis: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 async def generate_ai_interpretation(question: str, category: str, spread_type: str, cards: List[TarotCard], positions: List[str]) -> str:
     """Generate AI interpretation using OpenAI"""
     
