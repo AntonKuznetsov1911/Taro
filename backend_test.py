@@ -314,6 +314,159 @@ class TatoAiTester:
             self.log_test("Error handling", False, f"Exception: {str(e)}")
             return False
 
+    def test_card_back_endpoint(self):
+        """Test GET /api/card-back - card back image"""
+        try:
+            response = self.session.get(f"{self.base_url}/card-back")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "card_back" in data:
+                    card_back = data["card_back"]
+                    
+                    # Check if it's a valid base64 image
+                    if card_back.startswith("data:image/") and "base64," in card_back:
+                        # Extract base64 part
+                        base64_part = card_back.split("base64,")[1]
+                        
+                        # Check if base64 is not empty and has reasonable length
+                        if len(base64_part) > 100:
+                            self.log_test("Card back endpoint", True, f"Card back image loaded - Format: {card_back.split(';')[0]}, Size: {len(base64_part)} chars")
+                            return True
+                        else:
+                            self.log_test("Card back endpoint", False, f"Card back image too small: {len(base64_part)} chars")
+                            return False
+                    else:
+                        self.log_test("Card back endpoint", False, "Invalid image format - not base64 data URL")
+                        return False
+                else:
+                    self.log_test("Card back endpoint", False, "No card_back field in response", data)
+                    return False
+            else:
+                self.log_test("Card back endpoint", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_test("Card back endpoint", False, f"Exception: {str(e)}")
+            return False
+
+    def test_card_images_quality(self):
+        """Test card images quality and uniqueness"""
+        try:
+            # Create multiple readings to get different cards
+            readings = []
+            for i in range(3):
+                reading = self.test_create_reading("general", "three_cards", f"Тест изображений карт #{i+1}")
+                if reading:
+                    readings.append(reading)
+            
+            if len(readings) < 2:
+                self.log_test("Card images quality", False, "Could not create enough readings for image testing")
+                return False
+            
+            all_images = []
+            valid_images = 0
+            
+            for reading in readings:
+                cards = reading.get("cards", [])
+                for card in cards:
+                    image = card.get("image", "")
+                    
+                    # Check if image is valid base64 data URL
+                    if image.startswith("data:image/") and "base64," in image:
+                        base64_part = image.split("base64,")[1]
+                        
+                        # Check if base64 is substantial (not empty or too small)
+                        if len(base64_part) > 100:
+                            valid_images += 1
+                            all_images.append(base64_part)
+                        else:
+                            self.log_test("Card images quality", False, f"Card {card.get('name', 'Unknown')} has too small image: {len(base64_part)} chars")
+                            return False
+                    else:
+                        self.log_test("Card images quality", False, f"Card {card.get('name', 'Unknown')} has invalid image format")
+                        return False
+            
+            # Check for image uniqueness (at least some should be different)
+            unique_images = len(set(all_images))
+            total_images = len(all_images)
+            
+            if unique_images >= 2:  # At least 2 different images
+                self.log_test("Card images quality", True, f"Images valid - Total: {total_images}, Valid: {valid_images}, Unique: {unique_images}")
+                return True
+            else:
+                self.log_test("Card images quality", False, f"All images are identical - Total: {total_images}, Unique: {unique_images}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Card images quality", False, f"Exception: {str(e)}")
+            return False
+
+    def test_aesthetic_images_integration(self):
+        """Test new aesthetic tarot card images integration"""
+        try:
+            # Test reading creation with focus on image data
+            reading = self.test_create_reading("love", "one_card", "Проверка эстетичных изображений таро-карт")
+            
+            if not reading:
+                self.log_test("Aesthetic images integration", False, "Could not create reading for image testing")
+                return False
+            
+            cards = reading.get("cards", [])
+            if not cards:
+                self.log_test("Aesthetic images integration", False, "No cards in reading response")
+                return False
+            
+            card = cards[0]
+            image = card.get("image", "")
+            
+            # Detailed image validation
+            if not image:
+                self.log_test("Aesthetic images integration", False, "Card has no image field")
+                return False
+            
+            # Check if it's a proper data URL
+            if not image.startswith("data:image/"):
+                self.log_test("Aesthetic images integration", False, "Image is not a data URL")
+                return False
+            
+            # Check for base64 encoding
+            if "base64," not in image:
+                self.log_test("Aesthetic images integration", False, "Image is not base64 encoded")
+                return False
+            
+            # Extract and validate base64 content
+            try:
+                base64_part = image.split("base64,")[1]
+                
+                # Check substantial size (aesthetic images should be larger)
+                if len(base64_part) < 1000:
+                    self.log_test("Aesthetic images integration", False, f"Image too small for aesthetic image: {len(base64_part)} chars")
+                    return False
+                
+                # Try to decode base64 to verify it's valid
+                import base64
+                decoded = base64.b64decode(base64_part)
+                
+                if len(decoded) < 500:
+                    self.log_test("Aesthetic images integration", False, f"Decoded image too small: {len(decoded)} bytes")
+                    return False
+                
+                # Check image format from data URL
+                image_format = image.split(";")[0].replace("data:image/", "")
+                
+                self.log_test("Aesthetic images integration", True, 
+                             f"Aesthetic image loaded - Card: {card.get('name', 'Unknown')}, Format: {image_format}, Base64 size: {len(base64_part)} chars, Decoded size: {len(decoded)} bytes")
+                return True
+                
+            except Exception as decode_error:
+                self.log_test("Aesthetic images integration", False, f"Invalid base64 encoding: {str(decode_error)}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Aesthetic images integration", False, f"Exception: {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all tests"""
         print("🔮 Starting TatoAi Backend API Tests")
