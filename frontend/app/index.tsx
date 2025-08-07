@@ -150,7 +150,7 @@ export default function CosmicIndex() {
 
           {/* Cosmic Quote */}
           <View style={styles.quoteSection}>
-            <BlurView intensity={15} style={styles.quoteContainer}>
+            <View style={styles.quoteContainer}>
               <Text style={styles.quoteText}>
                 "В бесконечности космоса скрыты ответы на все вопросы души"
               </Text>
