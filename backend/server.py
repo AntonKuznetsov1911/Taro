@@ -344,22 +344,6 @@ class TarotReading(BaseModel):
 class ReadingHistory(BaseModel):
     readings: List[TarotReading]
 
-# Helper functions
-def url_to_base64(url: str) -> str:
-    """Convert image URL to base64"""
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            # Encode to base64
-            base64_data = base64.b64encode(response.content).decode('utf-8')
-            # Detect content type
-            content_type = response.headers.get('content-type', 'image/jpeg')
-            return f"data:{content_type};base64,{base64_data}"
-        return ""
-    except Exception as e:
-        logging.error(f"Error converting URL to base64: {e}")
-        return ""
-
 # Tarot card back image
 CARD_BACK_IMAGE = url_to_base64("https://images.unsplash.com/photo-1664252092739-8b4dadb0b7d1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMHBhdHRlcm5zfGVufDB8fHx8MTc1NDU0NjA1M3ww&ixlib=rb-4.1.0&q=85")
 
