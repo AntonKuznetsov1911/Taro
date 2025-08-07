@@ -690,7 +690,9 @@ if __name__ == "__main__":
     print()
     
     tester = TatoAiTester()
-    passed, failed, results = tester.run_all_tests()
+    
+    # Run focused tests for the specific user-reported issue
+    passed, failed, results = tester.run_focused_spread_tests()
     
     # Exit with error code if tests failed
     sys.exit(0 if failed == 0 else 1)
