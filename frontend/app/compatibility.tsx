@@ -410,10 +410,7 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     overflow: 'hidden',
     elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    boxShadow: '0px 5px 10px rgba(0, 0, 0, 0.3)',
   },
   scoreGradient: {
     flex: 1,
