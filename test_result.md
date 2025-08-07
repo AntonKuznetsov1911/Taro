@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Протестируй полную функциональность TatoAi backend API"
+user_problem_statement: "Протестируй backend API для всех типов раскладов, особенно three_cards и celtic_cross которые не работают корректно"
 
 backend:
   - task: "Root endpoint GET /api/"
