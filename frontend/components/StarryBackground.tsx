@@ -38,18 +38,18 @@ const generateConstellations = (): Star[] => {
     // Центр созвездия
     const centerX = Math.random() * (width - 100) + 50;
     const centerY = Math.random() * (height - 100) + 50;
-    const starsInConstellation = Math.random() * 4 + 3; // 3-6 звезд в созвездии
+    const starsInConstellation = Math.random() * 2 + 3; // 3-4 звезды в созвездии (было 3-6)
     
     for (let s = 0; s < starsInConstellation; s++) {
       const angle = (s / starsInConstellation) * Math.PI * 2;
-      const distance = Math.random() * 40 + 20; // Расстояние от центра
+      const distance = Math.random() * 35 + 15; // Немного ближе друг к другу
       
       constellationStars.push({
         id: `constellation-${c}-${s}`,
         x: centerX + Math.cos(angle) * distance,
         y: centerY + Math.sin(angle) * distance,
-        size: Math.random() * 2 + 2, // Размер от 2 до 4
-        opacity: Math.random() * 0.4 + 0.6, // Прозрачность от 0.6 до 1
+        size: Math.random() * 1.5 + 1.5, // Размер от 1.5 до 3 (немного меньше)
+        opacity: Math.random() * 0.3 + 0.7, // Прозрачность от 0.7 до 1
         animationDuration: Math.random() * 2000 + 4000, // 4-6 секунд
         type: 'constellation',
         constellationId: c
