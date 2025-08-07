@@ -10,8 +10,16 @@ def url_to_base64(url: str, max_size_kb: int = 100) -> str:
     try:
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
+            # Check original size - skip if too large to process safely
+            if len(response.content) > 50 * 1024 * 1024:  # Skip if larger than 50MB
+                logging.warning(f"Image too large to process safely: {len(response.content)} bytes")
+                return ""
+                
             # Load image with PIL for compression
             original_image = Image.open(io.BytesIO(response.content))
+            
+            # Limit max image size for security
+            Image.MAX_IMAGE_PIXELS = 200000000  # Increase limit but keep it reasonable
             
             # Convert to RGB if necessary
             if original_image.mode in ('RGBA', 'P'):
