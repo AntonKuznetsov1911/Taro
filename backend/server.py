@@ -119,6 +119,92 @@ class CompatibilityResult(BaseModel):
     analysis: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, str]:
+    """Generate compatibility analysis using AI"""
+    
+    # Calculate numerology-based compatibility score
+    def name_to_number(name: str) -> int:
+        name_clean = ''.join(c.lower() for c in name if c.isalpha())
+        total = sum(ord(c) - ord('а') + 1 for c in name_clean if 'а' <= c <= 'я')
+        total += sum(ord(c) - ord('a') + 1 for c in name_clean if 'a' <= c <= 'z')
+        while total > 9:
+            total = sum(int(d) for d in str(total))
+        return total
+    
+    num1 = name_to_number(name1)
+    num2 = name_to_number(name2)
+    
+    # Base compatibility calculation
+    base_score = abs(9 - abs(num1 - num2)) * 10 + random.randint(5, 25)
+    compatibility_score = min(99, max(15, base_score))
+    
+    prompt = f"""Ты мудрая цыганская гадалка Мария с 30-летним опытом анализа совместимости по именам. Говори как настоящая гадалка - мистично, загадочно, но с теплотой.
+
+Имена для анализа: {name1} и {name2}
+Процент совместимости: {compatibility_score}%
+Нумерологические числа: {name1} = {num1}, {name2} = {num2}
+
+Проведи анализ совместимости в стиле мудрой гадалки:
+1. Начинай с "Вижу энергию ваших имен..." или "Духи шепчут о ваших душах..."
+2. Анализируй энергетику каждого имени
+3. Объясни, как имена взаимодействуют друг с другом
+4. Упоминай нумерологические аспекты мистично
+5. Говори о совместимости характеров, энергий, судеб
+6. Используй фразы: "энергии ваших имен", "вибрации судьбы", "космические связи"
+7. Обращайся тепло: "дорогие мои", "милые", "звездочки мои"
+8. Давай практические советы для отношений
+9. Объясни процент совместимости через мистические образы
+10. Ответ 200-350 слов, не очень длинный, не очень короткий
+
+Стиль настоящей мудрой гадалки с душой!"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=600,
+            temperature=0.8
+        )
+        analysis = response.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error(f"OpenAI API error: {e}")
+        analysis = generate_fallback_compatibility_analysis(name1, name2, compatibility_score)
+    
+    return compatibility_score, analysis
+
+def generate_fallback_compatibility_analysis(name1: str, name2: str, score: int) -> str:
+    """Generate fallback compatibility analysis"""
+    
+    if score >= 80:
+        level = "прекрасной гармонии"
+        advice = "Энергии ваших имен танцуют в унисон, милые мои. Это редкий дар судьбы."
+    elif score >= 60:
+        level = "хорошей совместимости"
+        advice = "Вижу искры между вашими душами, но нужно работать над пониманием."
+    elif score >= 40:
+        level = "умеренной гармонии"
+        advice = "Ваши энергии дополняют друг друга, но требуют терпения и мудрости."
+    else:
+        level = "сложных отношений"
+        advice = "Путь непростой, дорогие, но любовь может преодолеть многое."
+    
+    analysis = f"""🔮 **Вижу энергию ваших имен, дорогие мои...**
+
+Духи шепчут мне о судьбе {name1} и {name2}. Энергии ваших имен показывают {level}.
+
+**Энергия имени {name1}:** Это имя несет особые вибрации, которые влияют на характер и судьбу. Вижу в нем силу и уникальность.
+
+**Энергия имени {name2}:** Второе имя резонирует по-своему, создавая свой энергетический узор в космической ткани.
+
+**Ваша совместимость {score}% говорит о том, что** {advice}
+
+🌟 **Совет мудрой гадалки:**
+Дорогие мои, имена - это лишь одна нить в сложном узоре отношений. Любовь, понимание и взаимное уважение важнее любых предсказаний. Слушайте свои сердца и доверяйте интуиции.
+
+*Пусть звезды освещают ваш путь к счастью!* ⭐"""
+    
+    return analysis
+
 async def generate_ai_interpretation(question: str, category: str, spread_type: str, cards: List[TarotCard], positions: List[str]) -> str:
     """Generate AI interpretation using OpenAI"""
     
