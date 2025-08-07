@@ -180,9 +180,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingTop: 40,
     paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  historyButton: {
+    padding: 8,
   },
   title: {
     fontSize: 42,
