@@ -134,6 +134,106 @@ def create_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
     svg_base64 = base64.b64encode(svg_bytes).decode('utf-8')
     return f"data:image/svg+xml;base64,{svg_base64}"
 
+def create_enhanced_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
+    """Create enhanced SVG card image with more variety"""
+    # Extended color schemes for more variety
+    colors = [
+        ["#8E44AD", "#6C3483"],  # Purple
+        ["#9B59B6", "#8E44AD"],  # Light Purple 
+        ["#3498DB", "#2980B9"],  # Blue
+        ["#E74C3C", "#C0392B"],  # Red
+        ["#F39C12", "#E67E22"],  # Orange
+        ["#27AE60", "#229954"],  # Green
+        ["#34495E", "#2C3E50"],  # Dark
+        ["#E67E22", "#D35400"],  # Dark Orange
+        ["#16A085", "#138D75"],  # Teal
+        ["#8E44AD", "#7D3C98"],  # Deep Purple
+        ["#2E86AB", "#A23B72"],  # Blue to Pink
+        ["#F18F01", "#C73E1D"],  # Orange to Red
+    ]
+    
+    # Different symbols for variety
+    symbols = ["✨", "🌙", "⭐", "🔮", "🌟", "💫", "🌠", "✦", "◆", "♦", "♠", "♣"]
+    
+    color_scheme = colors[card_id % len(colors)]
+    symbol = symbols[card_id % len(symbols)]
+    
+    # Add some randomness based on card_id for pattern variety
+    pattern_size = 15 + (card_id % 10)
+    circle_r = 1 + (card_id % 3)
+    
+    svg_content = f'''
+    <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="grad{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:{color_scheme[0]};stop-opacity:1" />
+                <stop offset="50%" style="stop-color:{color_scheme[1]};stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:{color_scheme[0]};stop-opacity:1" />
+            </linearGradient>
+            <pattern id="pattern{card_id}" patternUnits="userSpaceOnUse" width="{pattern_size}" height="{pattern_size}">
+                <circle cx="{pattern_size//2}" cy="{pattern_size//2}" r="{circle_r}" fill="rgba(255,255,255,0.15)"/>
+            </pattern>
+            <filter id="glow{card_id}">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge> 
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        
+        <!-- Card background -->
+        <rect width="200" height="300" fill="url(#grad{card_id})" rx="15"/>
+        <rect width="200" height="300" fill="url(#pattern{card_id})" rx="15"/>
+        
+        <!-- Multiple decorative borders -->
+        <rect x="8" y="8" width="184" height="284" fill="none" 
+              stroke="rgba(255,255,255,0.4)" stroke-width="1" rx="12"/>
+        <rect x="15" y="15" width="170" height="270" fill="none" 
+              stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="8"/>
+              
+        <!-- Card name with glow -->
+        <text x="100" y="45" font-family="serif" font-size="14" font-weight="bold" 
+              fill="white" text-anchor="middle" filter="url(#glow{card_id})">{card_name}</text>
+              
+        <!-- Card type -->
+        <text x="100" y="65" font-family="serif" font-size="9" 
+              fill="rgba(255,255,255,0.9)" text-anchor="middle">
+              {"Старший Аркан" if is_major else "Младший Аркан"}
+        </text>
+        
+        <!-- Enhanced central design -->
+        <circle cx="100" cy="150" r="45" fill="none" 
+                stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+        <circle cx="100" cy="150" r="30" fill="rgba(255,255,255,0.1)"/>
+        <circle cx="100" cy="150" r="15" fill="none" 
+                stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+        
+        <!-- Dynamic symbol -->
+        <text x="100" y="160" font-family="serif" font-size="28" 
+              fill="white" text-anchor="middle" filter="url(#glow{card_id})">{symbol}</text>
+              
+        <!-- Corner decorations -->
+        <text x="25" y="30" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
+        <text x="175" y="30" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
+        <text x="25" y="280" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
+        <text x="175" y="280" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✦</text>
+              
+        <!-- Bottom decoration -->
+        <text x="100" y="275" font-family="serif" font-size="11" font-weight="bold"
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">TARO</text>
+    </svg>
+    '''
+    
+    # Convert SVG to base64
+    svg_bytes = svg_content.encode('utf-8')
+    svg_base64 = base64.b64encode(svg_bytes).decode('utf-8')
+    return f"data:image/svg+xml;base64,{svg_base64}"
+
 # Optimized card back image
 CARD_BACK_SVG = '''
 <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
