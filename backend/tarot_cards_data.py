@@ -234,48 +234,78 @@ def create_enhanced_card_svg(card_name: str, card_id: int, is_major: bool = True
     svg_base64 = base64.b64encode(svg_bytes).decode('utf-8')
     return f"data:image/svg+xml;base64,{svg_base64}"
 
-# Optimized card back image
+# Beautiful mystical card back image
 CARD_BACK_SVG = '''
 <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
     <defs>
-        <linearGradient id="backGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#2C3E50;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#34495E;stop-opacity:1" />
-        </linearGradient>
-        <pattern id="stars" patternUnits="userSpaceOnUse" width="40" height="40">
-            <circle cx="20" cy="20" r="1" fill="gold" opacity="0.6"/>
-            <circle cx="10" cy="10" r="0.5" fill="gold" opacity="0.4"/>
-            <circle cx="30" cy="10" r="0.5" fill="gold" opacity="0.4"/>
+        <radialGradient id="cosmicGrad" cx="50%" cy="50%" r="70%">
+            <stop offset="0%" style="stop-color:#1a0040;stop-opacity:1" />
+            <stop offset="30%" style="stop-color:#2d1b69;stop-opacity:1" />
+            <stop offset="70%" style="stop-color:#0f0f23;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#000011;stop-opacity:1" />
+        </radialGradient>
+        <pattern id="constellation" patternUnits="userSpaceOnUse" width="50" height="50">
+            <circle cx="25" cy="25" r="1.5" fill="#FFD700" opacity="0.8"/>
+            <circle cx="10" cy="15" r="0.8" fill="#E6E6FA" opacity="0.6"/>
+            <circle cx="40" cy="10" r="1" fill="#87CEEB" opacity="0.7"/>
+            <circle cx="15" cy="40" r="0.5" fill="#FFD700" opacity="0.5"/>
+            <circle cx="35" cy="35" r="0.7" fill="#E6E6FA" opacity="0.6"/>
         </pattern>
+        <linearGradient id="mysticBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.9" />
+            <stop offset="50%" style="stop-color:#9B59B6;stop-opacity:0.8" />
+            <stop offset="100%" style="stop-color:#FF6B9D;stop-opacity:0.9" />
+        </linearGradient>
     </defs>
     
-    <!-- Background -->
-    <rect width="200" height="300" fill="url(#backGrad)" rx="15"/>
-    <rect width="200" height="300" fill="url(#stars)" rx="15"/>
+    <!-- Cosmic background -->
+    <rect width="200" height="300" fill="url(#cosmicGrad)" rx="18"/>
+    <rect width="200" height="300" fill="url(#constellation)" rx="18" opacity="0.7"/>
     
-    <!-- Decorative border -->
+    <!-- Mystical outer border -->
+    <rect x="4" y="4" width="192" height="292" fill="none" 
+          stroke="url(#mysticBorder)" stroke-width="2" rx="15" opacity="0.8"/>
     <rect x="8" y="8" width="184" height="284" fill="none" 
-          stroke="gold" stroke-width="1" rx="12" opacity="0.6"/>
-    <rect x="15" y="15" width="170" height="270" fill="none" 
-          stroke="gold" stroke-width="1" rx="8" opacity="0.3"/>
+          stroke="url(#mysticBorder)" stroke-width="1" rx="12" opacity="0.6"/>
     
-    <!-- Central mystical symbol -->
-    <circle cx="100" cy="150" r="50" fill="none" stroke="gold" stroke-width="2" opacity="0.8"/>
-    <circle cx="100" cy="150" r="35" fill="none" stroke="gold" stroke-width="1" opacity="0.6"/>
-    <circle cx="100" cy="150" r="20" fill="none" stroke="gold" stroke-width="1" opacity="0.4"/>
+    <!-- Central mystical mandala -->
+    <g transform="translate(100,150)">
+        <!-- Outer mystical circle -->
+        <circle r="65" fill="none" stroke="#FFD700" stroke-width="2" opacity="0.3"/>
+        <circle r="55" fill="none" stroke="#9B59B6" stroke-width="1" opacity="0.4"/>
+        <circle r="45" fill="none" stroke="#FF6B9D" stroke-width="1" opacity="0.3"/>
+        
+        <!-- Inner sacred geometry -->
+        <circle r="35" fill="rgba(155, 89, 182, 0.1)" stroke="#9B59B6" stroke-width="2"/>
+        <circle r="25" fill="none" stroke="#FFD700" stroke-width="1" opacity="0.6"/>
+        
+        <!-- Sacred symbols -->
+        <text x="0" y="10" font-family="serif" font-size="28" fill="#FFD700" text-anchor="middle">🔮</text>
+        <text x="0" y="-45" font-family="serif" font-size="16" fill="#87CEEB" text-anchor="middle">✦</text>
+        <text x="45" y="5" font-family="serif" font-size="14" fill="#E6E6FA" text-anchor="middle">⭐</text>
+        <text x="-45" y="5" font-family="serif" font-size="14" fill="#E6E6FA" text-anchor="middle">✨</text>
+        <text x="0" y="50" font-family="serif" font-size="16" fill="#FFD700" text-anchor="middle">🌙</text>
+        
+        <!-- Corner mystical elements -->
+        <text x="30" y="-30" font-family="serif" font-size="12" fill="#9B59B6" text-anchor="middle">☆</text>
+        <text x="-30" y="-30" font-family="serif" font-size="12" fill="#FF6B9D" text-anchor="middle">✧</text>
+        <text x="30" y="35" font-family="serif" font-size="12" fill="#87CEEB" text-anchor="middle">✦</text>
+        <text x="-30" y="35" font-family="serif" font-size="12" fill="#E6E6FA" text-anchor="middle">☆</text>
+    </g>
     
-    <!-- Moon symbol -->
-    <text x="100" y="160" font-family="serif" font-size="32" fill="gold" text-anchor="middle">🌙</text>
+    <!-- Mystical corner decorations -->
+    <g opacity="0.7">
+        <text x="30" y="45" font-family="serif" font-size="18" fill="#FFD700">💫</text>
+        <text x="170" y="45" font-family="serif" font-size="18" fill="#9B59B6">✨</text>
+        <text x="30" y="270" font-family="serif" font-size="18" fill="#FF6B9D">⭐</text>
+        <text x="170" y="270" font-family="serif" font-size="18" fill="#87CEEB">🌟</text>
+    </g>
     
-    <!-- Corner decorations -->
-    <text x="25" y="35" font-family="serif" font-size="16" fill="gold" opacity="0.7">✨</text>
-    <text x="175" y="35" font-family="serif" font-size="16" fill="gold" opacity="0.7">✨</text>
-    <text x="25" y="275" font-family="serif" font-size="16" fill="gold" opacity="0.7">✨</text>
-    <text x="175" y="275" font-family="serif" font-size="16" fill="gold" opacity="0.7">✨</text>
-    
-    <!-- TARO text -->
-    <text x="100" y="280" font-family="serif" font-size="14" font-weight="bold"
-          fill="gold" text-anchor="middle" opacity="0.8">TARO</text>
+    <!-- Elegant TARO branding -->
+    <text x="100" y="35" font-family="serif" font-size="16" font-weight="bold"
+          fill="#FFD700" text-anchor="middle" opacity="0.8">✧ T A R O ✧</text>
+    <text x="100" y="280" font-family="serif" font-size="12"
+          fill="#E6E6FA" text-anchor="middle" opacity="0.7">Древняя мудрость</text>
 </svg>
 '''
 
