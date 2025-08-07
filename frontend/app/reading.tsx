@@ -105,21 +105,37 @@ export default function ReadingScreen() {
     >
       <View style={styles.card}>
         {revealed ? (
-          <LinearGradient
-            colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']}
-            style={styles.cardContent}
-          >
+          <View style={styles.cardContent}>
             <View style={[styles.cardInner, card.is_reversed && styles.cardReversed]}>
-              <Text style={styles.cardName}>{card.name}</Text>
-              <Text style={styles.cardType}>{card.type === 'major' ? 'Старший аркан' : 'Младший аркан'}</Text>
-              {card.is_reversed && <Text style={styles.reversedIndicator}>⚌ Перевернутая</Text>}
-              <View style={styles.keywordsContainer}>
-                {card.keywords.slice(0, 3).map((keyword, i) => (
-                  <Text key={i} style={styles.keyword}>{keyword}</Text>
-                ))}
+              {card.image && card.image.startsWith('data:image') ? (
+                <Image
+                  source={{ uri: card.image }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']}
+                  style={styles.cardImageFallback}
+                >
+                  <Text style={styles.cardName}>{card.name}</Text>
+                  <Text style={styles.cardType}>{card.type === 'major' ? 'Старший аркан' : 'Младший аркан'}</Text>
+                  {card.is_reversed && <Text style={styles.reversedIndicator}>⚌ Перевернутая</Text>}
+                  <View style={styles.keywordsContainer}>
+                    {card.keywords.slice(0, 3).map((keyword, i) => (
+                      <Text key={i} style={styles.keyword}>{keyword}</Text>
+                    ))}
+                  </View>
+                </LinearGradient>
+              )}
+              
+              {/* Card info overlay */}
+              <View style={styles.cardOverlay}>
+                <Text style={styles.cardNameOverlay}>{card.name}</Text>
+                {card.is_reversed && <Text style={styles.reversedIndicatorOverlay}>⚌ Перевернутая</Text>}
               </View>
             </View>
-          </LinearGradient>
+          </View>
         ) : (
           <LinearGradient
             colors={['#2C3E50', '#34495E']}
