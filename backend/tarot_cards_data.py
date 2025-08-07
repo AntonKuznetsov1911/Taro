@@ -2,17 +2,43 @@
 import base64
 import requests
 import logging
+from PIL import Image
+import io
 
-def url_to_base64(url: str) -> str:
-    """Convert image URL to base64"""
+def url_to_base64(url: str, max_size_kb: int = 100) -> str:
+    """Convert image URL to compressed base64"""
     try:
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
+            # Load image with PIL for compression
+            original_image = Image.open(io.BytesIO(response.content))
+            
+            # Convert to RGB if necessary
+            if original_image.mode in ('RGBA', 'P'):
+                original_image = original_image.convert('RGB')
+            
+            # Resize to reasonable dimensions while maintaining aspect ratio
+            max_dimension = 400  # Max width or height
+            original_image.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+            
+            # Compress to target size
+            quality = 85
+            while quality > 20:
+                buffer = io.BytesIO()
+                original_image.save(buffer, format='JPEG', quality=quality, optimize=True)
+                compressed_data = buffer.getvalue()
+                
+                # Check if size is acceptable (target: under max_size_kb KB)
+                if len(compressed_data) <= max_size_kb * 1024:
+                    break
+                    
+                quality -= 10
+            
             # Encode to base64
-            base64_data = base64.b64encode(response.content).decode('utf-8')
-            # Detect content type
-            content_type = response.headers.get('content-type', 'image/jpeg')
-            return f"data:{content_type};base64,{base64_data}"
+            base64_data = base64.b64encode(compressed_data).decode('utf-8')
+            logging.info(f"Image compressed: {len(response.content)} bytes -> {len(compressed_data)} bytes (quality: {quality})")
+            
+            return f"data:image/jpeg;base64,{base64_data}"
         return ""
     except Exception as e:
         logging.error(f"Error converting URL to base64: {e}")
