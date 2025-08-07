@@ -356,6 +356,26 @@ async def get_card_back():
     """Get card back image"""
     return {"card_back": CARD_BACK_IMAGE}
 
+@api_router.post("/compatibility", response_model=CompatibilityResult)
+async def analyze_compatibility(request: CompatibilityRequest):
+    """Analyze name compatibility"""
+    
+    # Generate compatibility analysis
+    score, analysis = await generate_compatibility_analysis(request.name1, request.name2)
+    
+    # Create compatibility result
+    result = CompatibilityResult(
+        name1=request.name1,
+        name2=request.name2,
+        compatibility_score=score,
+        analysis=analysis
+    )
+    
+    # Save to database
+    await db.compatibility_results.insert_one(result.dict())
+    
+    return result
+
 @api_router.get("/readings", response_model=List[TarotReading])
 async def get_reading_history(limit: int = 10):
     """Get reading history"""
