@@ -106,8 +106,16 @@ export default function Index() {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>TatoAi</Text>
-            <Text style={styles.subtitle}>Таро гадание с искусственным интеллектом</Text>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>TatoAi</Text>
+              <Text style={styles.subtitle}>Таро гадание с искусственным интеллектом</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.historyButton} 
+              onPress={() => router.push('/history')}
+            >
+              <Ionicons name="time-outline" size={24} color="#9B59B6" />
+            </TouchableOpacity>
           </View>
 
           {/* Mystical decoration */}
