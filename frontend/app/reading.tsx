@@ -149,13 +149,23 @@ export default function ReadingScreen() {
             </View>
           </View>
         ) : (
-          <LinearGradient
-            colors={['#2C3E50', '#34495E']}
-            style={styles.cardBack}
-          >
-            <Text style={styles.cardBackText}>🌙</Text>
-            <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
-          </LinearGradient>
+          <View style={styles.cardBack}>
+            {cardBackImage && cardBackImage.startsWith('data:image') ? (
+              <Image
+                source={{ uri: cardBackImage }}
+                style={styles.cardBackImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={['#2C3E50', '#34495E']}
+                style={styles.cardBackFallback}
+              >
+                <Text style={styles.cardBackText}>🌙</Text>
+                <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
+              </LinearGradient>
+            )}
+          </View>
         )}
       </View>
       <Text style={styles.positionText}>{position}</Text>
