@@ -143,15 +143,18 @@ backend:
 
   - task: "Create tarot reading POST /api/reading"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
         - working: true
           agent: "testing"
           comment: "✅ Reading creation working perfectly - tested all category/spread combinations, proper card selection, Russian interpretations generated"
+        - working: false
+          agent: "testing"
+          comment: "❌ CRITICAL ISSUE FOUND: MongoDB document size limit exceeded. Card images are too large (some >27MB each). Celtic_cross (10 cards) and some three_cards combinations fail with 500 errors due to BSON document size limit (16MB). Root cause: Large base64 images from external URLs causing documents to exceed MongoDB's 16MB limit. Specific failures: ALL celtic_cross spreads (500 error), some three_cards with large images (finance category fails). Card count logic is correct - issue is database storage limitation."
 
   - task: "Reading history GET /api/readings"
     implemented: true
