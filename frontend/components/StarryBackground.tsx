@@ -374,9 +374,7 @@ const styles = StyleSheet.create({
   },
   star: {
     position: 'absolute',
-    backgroundColor: '#FFFFFF',
     borderRadius: 50,
-    boxShadow: '0px 0px 2px rgba(255, 255, 255, 0.8)',
     elevation: 2,
   },
 });
