@@ -177,7 +177,7 @@ def get_aesthetic_image(card_id: int) -> str:
         # Assign specific aesthetic images to first few cards
         if card_id < len(AESTHETIC_TAROT_IMAGES):
             url = AESTHETIC_TAROT_IMAGES[card_id]
-            image_data = url_to_base64(url)
+            image_data = url_to_base64(url, max_size_kb=80)  # Limit to 80KB per image
             if image_data and len(image_data) > 1000:  # Valid image
                 return image_data
     except Exception as e:
