@@ -264,6 +264,135 @@ class TatoAiTester:
             self.log_test("Database persistence", False, f"Exception: {str(e)}")
             return False
 
+    def test_spread_card_counts(self):
+        """Test that each spread type returns the correct number of cards"""
+        spread_tests = [
+            ("one_card", 1, "love", "Найду ли я любовь?"),
+            ("three_cards", 3, "finance", "Как дела с финансами?"),
+            ("celtic_cross", 10, "career", "Что с карьерой?")
+        ]
+        
+        all_passed = True
+        
+        for spread_type, expected_count, category, question in spread_tests:
+            try:
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cards = data.get("cards", [])
+                    positions = data.get("positions", [])
+                    actual_count = len(cards)
+                    positions_count = len(positions)
+                    
+                    if actual_count == expected_count and positions_count == expected_count:
+                        self.log_test(f"Card count for {spread_type}", True, 
+                                    f"✅ Correct count - Expected: {expected_count}, Got: {actual_count} cards, {positions_count} positions")
+                    else:
+                        self.log_test(f"Card count for {spread_type}", False, 
+                                    f"❌ Wrong count - Expected: {expected_count}, Got: {actual_count} cards, {positions_count} positions")
+                        all_passed = False
+                        
+                        # Log detailed card information for debugging
+                        print(f"   🔍 DEBUG INFO for {spread_type}:")
+                        print(f"      Cards received: {actual_count}")
+                        print(f"      Positions received: {positions_count}")
+                        if cards:
+                            print(f"      First card: {cards[0].get('name', 'Unknown')}")
+                        if len(cards) > 1:
+                            print(f"      Last card: {cards[-1].get('name', 'Unknown')}")
+                        print(f"      Positions: {positions}")
+                else:
+                    self.log_test(f"Card count for {spread_type}", False, 
+                                f"HTTP error - Status: {response.status_code}")
+                    all_passed = False
+                    
+            except Exception as e:
+                self.log_test(f"Card count for {spread_type}", False, f"Exception: {str(e)}")
+                all_passed = False
+        
+        return all_passed
+
+    def test_specific_spread_combinations(self):
+        """Test specific category/spread combinations as requested by user"""
+        test_combinations = [
+            ("love", "three_cards", "Что ждет меня в любовных отношениях?", 3),
+            ("finance", "celtic_cross", "Какие финансовые перспективы меня ждут?", 10),
+            ("general", "three_cards", "Что важно знать о моем будущем?", 3),
+            ("career", "celtic_cross", "Как развивается моя карьера?", 10),
+            ("love", "one_card", "Найду ли я любовь?", 1)
+        ]
+        
+        all_passed = True
+        
+        for category, spread_type, question, expected_cards in test_combinations:
+            try:
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cards = data.get("cards", [])
+                    positions = data.get("positions", [])
+                    actual_cards = len(cards)
+                    actual_positions = len(positions)
+                    
+                    test_name = f"{category} + {spread_type}"
+                    
+                    if actual_cards == expected_cards and actual_positions == expected_cards:
+                        self.log_test(test_name, True, 
+                                    f"✅ Perfect - {actual_cards} cards, {actual_positions} positions")
+                        
+                        # Validate card structure
+                        for i, card in enumerate(cards):
+                            if not all(field in card for field in ["id", "name", "image", "is_reversed"]):
+                                self.log_test(f"{test_name} - Card {i+1} structure", False, 
+                                            f"Missing required fields in card {i+1}")
+                                all_passed = False
+                                break
+                    else:
+                        self.log_test(test_name, False, 
+                                    f"❌ Expected {expected_cards}, got {actual_cards} cards, {actual_positions} positions")
+                        all_passed = False
+                        
+                        # Detailed debugging
+                        print(f"   🔍 DETAILED DEBUG for {test_name}:")
+                        print(f"      Request: {payload}")
+                        print(f"      Response cards count: {actual_cards}")
+                        print(f"      Response positions count: {actual_positions}")
+                        print(f"      Expected: {expected_cards}")
+                        if positions:
+                            print(f"      Positions received: {positions}")
+                else:
+                    self.log_test(f"{category} + {spread_type}", False, 
+                                f"HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+                    
+            except Exception as e:
+                self.log_test(f"{category} + {spread_type}", False, f"Exception: {str(e)}")
+                all_passed = False
+        
+        return all_passed
+
     def test_different_combinations(self):
         """Test different category and spread combinations"""
         combinations = [
