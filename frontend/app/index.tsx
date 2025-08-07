@@ -76,7 +76,7 @@ export default function CosmicIndex() {
         <Text style={styles.spreadDescription}>{spread.description}</Text>
         {selectedSpread === spread.id && (
           <View style={styles.selectedIndicator}>
-            <Ionicons name="checkmark-circle" size={20} color="#9B59B6" />
+            <Text style={styles.diamondIcon}>💎</Text>
           </View>
         )}
       </View>
