@@ -174,10 +174,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#FFFFFF',
     borderRadius: 50,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
+    boxShadow: '0px 0px 2px rgba(255, 255, 255, 0.8)',
     elevation: 2,
   },
 });
