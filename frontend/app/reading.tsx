@@ -68,6 +68,7 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
+      console.log('Creating reading with params:', { category, spread, question });
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/reading`, {
         method: 'POST',
         headers: {
@@ -80,11 +81,16 @@ export default function ReadingScreen() {
         }),
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
 
       const data = await response.json();
+      console.log('Reading data received:', data);
+      console.log('First card image:', data.cards[0]?.image?.substring(0, 100));
+      
       setReading(data);
       setCardsRevealed(new Array(data.cards.length).fill(false));
     } catch (error) {
