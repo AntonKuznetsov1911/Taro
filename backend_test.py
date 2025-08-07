@@ -1452,8 +1452,8 @@ if __name__ == "__main__":
     
     tester = TatoAiTester()
     
-    # Run focused tests for the specific user-reported issue
-    passed, failed, results = tester.run_focused_spread_tests()
+    # Run enhanced interpretation system tests as requested by user
+    passed, failed, results = tester.run_enhanced_interpretation_tests()
     
     # Exit with error code if tests failed
     sys.exit(0 if failed == 0 else 1)
