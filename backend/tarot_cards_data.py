@@ -180,18 +180,8 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get aesthetic image for card, with fallback to SVG"""
-    try:
-        # Assign specific aesthetic images to first few cards
-        if card_id < len(AESTHETIC_TAROT_IMAGES):
-            url = AESTHETIC_TAROT_IMAGES[card_id]
-            image_data = url_to_base64(url, max_size_kb=80)  # Limit to 80KB per image
-            if image_data and len(image_data) > 1000:  # Valid image
-                return image_data
-    except Exception as e:
-        logging.error(f"Error loading aesthetic image for card {card_id}: {e}")
-    
-    # Fallback to beautiful SVG
+    """Get aesthetic image for card - using optimized SVG for stability"""
+    # Always use SVG to ensure documents stay under MongoDB 16MB limit
     return create_card_svg(f"Card {card_id}", card_id)
 
 # All 22 Major Arcana cards with aesthetic images where possible
