@@ -87,15 +87,6 @@ export default function CosmicIndex() {
     }
   };
 
-  const startQuickReading = () => {
-    if (selectedCategory) {
-      router.push({
-        pathname: '/question',
-        params: { category: selectedCategory, spread: 'one_card' }
-      });
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
