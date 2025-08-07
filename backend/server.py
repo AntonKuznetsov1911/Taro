@@ -382,15 +382,33 @@ async def generate_ai_interpretation(question: str, category: str, spread_type: 
         return generate_fallback_interpretation(cards, positions)
 
 def generate_fallback_interpretation(cards: List[TarotCard], positions: List[str]) -> str:
-    """Generate fallback interpretation without AI"""
-    interpretation = "🔮 **Толкование вашего расклада:**\n\n"
+    """Generate fallback interpretation in fortune teller style"""
+    interpretation = "🔮 **Вижу... Карты говорят мне о Вашей судьбе!**\n\n"
+    interpretation += "Дорогая моя, духи предков шепчут мне через древние карты. Вот что показывают мне силы Вселенной:\n\n"
+    
+    mystical_phrases = [
+        "Энергия этой карты говорит мне",
+        "Духи показывают через эту карту",
+        "Вижу в магическом свечении карты",
+        "Космические силы раскрывают",
+        "Древняя мудрость карты шепчет"
+    ]
     
     for i, card in enumerate(cards):
         position = positions[i] if i < len(positions) else f"Карта {i+1}"
         meaning = card.reversed_meaning if card.is_reversed else card.upright_meaning
-        interpretation += f"**{position}** - *{card.name}*{'(перевернутая)' if card.is_reversed else ''}\n{meaning}\n\n"
+        mystical_intro = mystical_phrases[i % len(mystical_phrases)]
+        
+        interpretation += f"✨ **{position}** - *{card.name}*"
+        if card.is_reversed:
+            interpretation += " *(перевернутая - энергия обращена вспять)*"
+        interpretation += f"\n\n{mystical_intro}, что {meaning.lower()}\n\n"
     
-    interpretation += "Помните, что карты Таро - это инструмент для самопознания и размышления. Доверяйте своей интуиции при интерпретации этого расклада."
+    interpretation += "🌟 **Совет старой гадалки:**\n"
+    interpretation += "Милая моя, карты не лгут - они лишь отражают энергии, что окружают Вас. "
+    interpretation += "Прислушайтесь к своему сердцу, доверьтесь интуиции. Судьба в Ваших руках, "
+    interpretation += "а карты лишь освещают путь во тьме неизвестности.\n\n"
+    interpretation += "*Пусть звезды направляют Вас, дитя мое!* ⭐"
     
     return interpretation
 
