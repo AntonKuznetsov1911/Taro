@@ -145,14 +145,29 @@ CARD_BACK_SVG = '''
 
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
-# All 22 Major Arcana cards with optimized local SVG images
+def get_aesthetic_image(card_id: int) -> str:
+    """Get aesthetic image for card, with fallback to SVG"""
+    try:
+        # Assign specific aesthetic images to first few cards
+        if card_id < len(AESTHETIC_TAROT_IMAGES):
+            url = AESTHETIC_TAROT_IMAGES[card_id]
+            image_data = url_to_base64(url)
+            if image_data and len(image_data) > 1000:  # Valid image
+                return image_data
+    except Exception as e:
+        logging.error(f"Error loading aesthetic image for card {card_id}: {e}")
+    
+    # Fallback to beautiful SVG
+    return create_card_svg(f"Card {card_id}", card_id)
+
+# All 22 Major Arcana cards with aesthetic images where possible
 MAJOR_ARCANA = [
     {
         "id": 0,
         "name": "Дурак",
         "name_en": "The Fool",
         "type": "major",
-        "image": create_card_svg("Дурак", 0),
+        "image": get_aesthetic_image(0),
         "keywords": ["новые начинания", "невинность", "спонтанность", "свобода"],
         "upright_meaning": "Новые возможности, начало пути, невинность, спонтанность, свобода духа",
         "reversed_meaning": "Безрассудство, необдуманные поступки, наивность, отсутствие направления"
@@ -162,7 +177,7 @@ MAJOR_ARCANA = [
         "name": "Маг",
         "name_en": "The Magician",
         "type": "major",
-        "image": create_card_svg("Маг", 1),
+        "image": get_aesthetic_image(1),
         "keywords": ["воля", "мастерство", "концентрация", "сила"],
         "upright_meaning": "Сила воли, мастерство, концентрация, способность к действию",
         "reversed_meaning": "Манипуляции, злоупотребление силой, недостаток концентрации"
@@ -172,7 +187,7 @@ MAJOR_ARCANA = [
         "name": "Верховная Жрица",
         "name_en": "The High Priestess",
         "type": "major",
-        "image": create_card_svg("Верховная Жрица", 2),
+        "image": get_aesthetic_image(2),
         "keywords": ["интуиция", "тайны", "подсознание", "мудрость"],
         "upright_meaning": "Интуиция, внутренняя мудрость, тайные знания, мистические силы",
         "reversed_meaning": "Скрытность, недостаток внутреннего видения, поверхностность"
@@ -182,7 +197,7 @@ MAJOR_ARCANA = [
         "name": "Императрица",
         "name_en": "The Empress",
         "type": "major",
-        "image": create_card_svg("Императрица", 3),
+        "image": get_aesthetic_image(3),
         "keywords": ["плодородие", "материнство", "изобилие", "природа"],
         "upright_meaning": "Плодородие, материнство, изобилие, творческая энергия",
         "reversed_meaning": "Бесплодие, чрезмерная опека, творческий блок"
@@ -192,7 +207,7 @@ MAJOR_ARCANA = [
         "name": "Император",
         "name_en": "The Emperor",
         "type": "major",
-        "image": create_card_svg("Император", 4),
+        "image": get_aesthetic_image(4),
         "keywords": ["власть", "стабильность", "контроль", "лидерство"],
         "upright_meaning": "Власть, авторитет, стабильность, контроль, лидерство",
         "reversed_meaning": "Тирания, потеря контроля, слабость, безответственность"
@@ -202,7 +217,7 @@ MAJOR_ARCANA = [
         "name": "Иерофант",
         "name_en": "The Hierophant",
         "type": "major",
-        "image": create_card_svg("Иерофант", 5),
+        "image": get_aesthetic_image(5),
         "keywords": ["традиции", "духовность", "учение", "конформизм"],
         "upright_meaning": "Традиции, духовное учение, конформизм, поиск смысла",
         "reversed_meaning": "Нетрадиционность, бунт против норм, духовный кризис"
@@ -212,7 +227,7 @@ MAJOR_ARCANA = [
         "name": "Влюблённые",
         "name_en": "The Lovers",
         "type": "major",
-        "image": create_card_svg("Влюблённые", 6),
+        "image": get_aesthetic_image(6),
         "keywords": ["любовь", "выбор", "гармония", "отношения"],
         "upright_meaning": "Любовь, гармоничные отношения, важный выбор, единство",
         "reversed_meaning": "Дисгармония в отношениях, неправильный выбор, разлука"
@@ -222,7 +237,7 @@ MAJOR_ARCANA = [
         "name": "Колесница",
         "name_en": "The Chariot",
         "type": "major",
-        "image": create_card_svg("Колесница", 7),
+        "image": get_aesthetic_image(7),
         "keywords": ["победа", "контроль", "решительность", "движение"],
         "upright_meaning": "Победа, триумф, самоконтроль, решительность",
         "reversed_meaning": "Поражение, потеря контроля, отсутствие направления"
@@ -232,7 +247,7 @@ MAJOR_ARCANA = [
         "name": "Сила",
         "name_en": "Strength",
         "type": "major",
-        "image": create_card_svg("Сила", 8),
+        "image": get_aesthetic_image(8),
         "keywords": ["сила", "мужество", "терпение", "сострадание"],
         "upright_meaning": "Внутренняя сила, мужество, терпение, сострадание",
         "reversed_meaning": "Слабость, трусость, недостаток самообладания"
@@ -242,7 +257,7 @@ MAJOR_ARCANA = [
         "name": "Отшельник",
         "name_en": "The Hermit",
         "type": "major",
-        "image": create_card_svg("Отшельник", 9),
+        "image": get_aesthetic_image(9),
         "keywords": ["поиск", "одиночество", "мудрость", "самопознание"],
         "upright_meaning": "Поиск истины, самопознание, внутренняя мудрость, одиночество",
         "reversed_meaning": "Изоляция, отказ от помощи, потеря направления"
