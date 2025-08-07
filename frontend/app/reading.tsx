@@ -50,8 +50,8 @@ export default function ReadingScreen() {
   const [cardBackImage, setCardBackImage] = useState<string>('');
 
   useEffect(() => {
-    createReading();
     loadCardBack();
+    createReading();
   }, []);
 
   const loadCardBack = async () => {
@@ -61,6 +61,8 @@ export default function ReadingScreen() {
       setCardBackImage(data.card_back);
     } catch (error) {
       console.error('Error loading card back:', error);
+      // Fallback card back
+      setCardBackImage("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmFja0dyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMkMzRTUwO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMzNDQ5NUU7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzAwIiBmaWxsPSJ1cmwoI2JhY2tHcmFkKSIgcng9IjE1Ii8+CiAgICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSIxNTAiIHI9IjQwIiBmaWxsPSJub25lIiBzdHJva2U9ImdvbGQiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iMC44Ii8+CiAgICA8dGV4dCB4PSIxMDAiIHk9IjE2MCIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjMyIiBmaWxsPSJnb2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn4yZPC90ZXh0PgogICAgPHRleHQgeD0iMTAwIiB5PSIyODAiIGZvbnQtZmFtaWx5PSJzZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9ImdvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIG9wYWNpdHk9IjAuOCI+VEFSTZQV0ZXh0Pgo8L3N2Zz4=");
     }
   };
 
