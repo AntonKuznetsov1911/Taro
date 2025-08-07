@@ -350,6 +350,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
+  compatibilityButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  compatibilityButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 30,
+  },
+  compatibilityIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  compatibilityButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
   bottomDecoration: {
     alignItems: 'center',
     paddingVertical: 30,
