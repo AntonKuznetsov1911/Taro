@@ -312,18 +312,8 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get beautiful tarot card image with smart selection"""
-    try:
-        # Use different images for variety - cycle through our collection
-        if card_id < len(BEAUTIFUL_TAROT_IMAGES):
-            url = BEAUTIFUL_TAROT_IMAGES[card_id % len(BEAUTIFUL_TAROT_IMAGES)]
-            image_data = url_to_base64(url, max_size_kb=90)  # Slightly larger for better quality
-            if image_data and len(image_data) > 1000:
-                return image_data
-    except Exception as e:
-        logging.error(f"Error loading beautiful image for card {card_id}: {e}")
-    
-    # Enhanced SVG fallback with more variety
+    """Get beautiful tarot card image - using enhanced SVG for reliability"""
+    # Always use enhanced SVG to ensure consistent quality and fast loading
     return create_enhanced_card_svg(f"Card {card_id}", card_id)
 
 # All 22 Major Arcana cards with aesthetic images where possible
