@@ -1,7 +1,36 @@
-# Tarot Cards Data with optimized local images
+# Tarot Cards Data with aesthetic images from curated collection
 import base64
 import requests
 import logging
+
+def url_to_base64(url: str) -> str:
+    """Convert image URL to base64"""
+    try:
+        response = requests.get(url, timeout=15)
+        if response.status_code == 200:
+            # Encode to base64
+            base64_data = base64.b64encode(response.content).decode('utf-8')
+            # Detect content type
+            content_type = response.headers.get('content-type', 'image/jpeg')
+            return f"data:{content_type};base64,{base64_data}"
+        return ""
+    except Exception as e:
+        logging.error(f"Error converting URL to base64: {e}")
+        return ""
+
+# Aesthetic tarot card images from curated collection
+AESTHETIC_TAROT_IMAGES = [
+    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU0ODk3NXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU0ODk3NXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1623230951203-1f8fa5298426?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU0ODk3NXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1637757935037-a7837f36807d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU0ODk3NXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxhcnRpc3RpYyUyMHRhcm90fGVufDB8fHx8MTc1NDU0ODk4MXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1698369234162-13a4bb1d1f56?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxhcnRpc3RpYyUyMHRhcm90fGVufDB8fHx8MTc1NDU0ODk4MXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1568821137008-6a947a8decfc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHw0fHxhcnRpc3RpYyUyMHRhcm90fGVufDB8fHx8MTc1NDU0ODk4MXww&ixlib=rb-4.1.0&q=85",
+    "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
+    "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
+    "https://images.pexels.com/photos/6766453/pexels-photo-6766453.jpeg"
+]
 
 # Optimized SVG images for all tarot cards
 def create_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
