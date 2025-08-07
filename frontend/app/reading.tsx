@@ -465,6 +465,15 @@ const styles = StyleSheet.create({
   },
   cardBack: {
     flex: 1,
+    position: 'relative',
+  },
+  cardBackImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
+  },
+  cardBackFallback: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
