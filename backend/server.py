@@ -185,7 +185,7 @@ def generate_fallback_interpretation(cards: List[TarotCard], positions: List[str
             interpretation += " *(перевернутая - энергия обращена вспять)*"
         interpretation += f"\n\n{mystical_intro}, что {meaning.lower()}\n\n"
     
-    interpretation += "🌟 **Совет старой гадалки:**\n"
+    interpretation += "🌟 **Совет мудрой гадалки:**\n"
     interpretation += "Милая моя, карты не лгут - они лишь отражают энергии, что окружают Вас. "
     interpretation += "Прислушайтесь к своему сердцу, доверьтесь интуиции. Судьба в Ваших руках, "
     interpretation += "а карты лишь освещают путь во тьме неизвестности.\n\n"
