@@ -53,6 +53,11 @@ export default function CosmicIndex() {
             <Text style={styles.categoryIcon}>{category.icon}</Text>
             <Text style={styles.categoryName}>{category.name}</Text>
             <Text style={styles.categoryDescription}>{category.description}</Text>
+            {selectedCategory === category.id && (
+              <View style={styles.selectedCategoryIndicator}>
+                <Text style={styles.diamondIcon}>💎</Text>
+              </View>
+            )}
           </View>
       </LinearGradient>
     </TouchableOpacity>
