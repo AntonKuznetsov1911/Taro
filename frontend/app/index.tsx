@@ -107,8 +107,8 @@ export default function Index() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>TatoAi</Text>
-              <Text style={styles.subtitle}>Таро гадание с искусственным интеллектом</Text>
+              <Text style={styles.title}>TARO</Text>
+              <Text style={styles.subtitle}>Древняя мудрость в современном исполнении</Text>
             </View>
             <TouchableOpacity 
               style={styles.historyButton} 
