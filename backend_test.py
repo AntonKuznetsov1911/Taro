@@ -596,26 +596,224 @@ class TatoAiTester:
             self.log_test("Aesthetic images integration", False, f"Exception: {str(e)}")
             return False
 
+    def test_image_optimization_validation(self):
+        """Test that images are properly optimized and under size limits"""
+        try:
+            # Test different spread types to validate image sizes
+            test_cases = [
+                ("one_card", "love", "Проверка оптимизации изображений для одной карты"),
+                ("three_cards", "finance", "Проверка оптимизации изображений для трех карт"),
+                ("celtic_cross", "career", "Проверка оптимизации изображений для кельтского креста")
+            ]
+            
+            all_passed = True
+            total_image_size = 0
+            
+            for spread_type, category, question in test_cases:
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cards = data.get("cards", [])
+                    
+                    # Calculate total image size for this reading
+                    reading_image_size = 0
+                    for card in cards:
+                        image = card.get("image", "")
+                        if "base64," in image:
+                            base64_part = image.split("base64,")[1]
+                            # Estimate actual size (base64 is ~33% larger than binary)
+                            estimated_size = len(base64_part) * 0.75
+                            reading_image_size += estimated_size
+                    
+                    total_image_size += reading_image_size
+                    
+                    # Check if reading size is reasonable (should be well under 16MB)
+                    max_safe_size = 1024 * 1024  # 1MB per reading should be safe
+                    
+                    if reading_image_size < max_safe_size:
+                        self.log_test(f"Image optimization - {spread_type}", True, 
+                                    f"✅ Images optimized - Total size: {reading_image_size/1024:.1f}KB for {len(cards)} cards")
+                    else:
+                        self.log_test(f"Image optimization - {spread_type}", False, 
+                                    f"❌ Images too large - Total size: {reading_image_size/1024:.1f}KB for {len(cards)} cards")
+                        all_passed = False
+                else:
+                    self.log_test(f"Image optimization - {spread_type}", False, 
+                                f"❌ HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+            
+            # Overall validation
+            if all_passed:
+                self.log_test("Overall image optimization", True, 
+                            f"✅ All images properly optimized - Total tested size: {total_image_size/1024:.1f}KB")
+            else:
+                self.log_test("Overall image optimization", False, 
+                            "❌ Image optimization issues detected")
+            
+            return all_passed
+            
+        except Exception as e:
+            self.log_test("Image optimization validation", False, f"Exception: {str(e)}")
+            return False
+
+    def test_mongodb_document_size_compliance(self):
+        """Test that all readings comply with MongoDB 16MB document size limit"""
+        try:
+            # Test the most demanding scenario - celtic_cross with 10 cards
+            test_cases = [
+                ("celtic_cross", "love", "Детальный анализ любовной ситуации"),
+                ("celtic_cross", "finance", "Полный финансовый прогноз"),
+                ("celtic_cross", "career", "Глубокий анализ карьерных перспектив"),
+                ("celtic_cross", "general", "Комплексный жизненный расклад")
+            ]
+            
+            all_passed = True
+            
+            for spread_type, category, question in test_cases:
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Estimate document size
+                    import json
+                    json_str = json.dumps(data)
+                    document_size = len(json_str.encode('utf-8'))
+                    
+                    # MongoDB limit is 16MB
+                    mongodb_limit = 16 * 1024 * 1024
+                    
+                    if document_size < mongodb_limit:
+                        self.log_test(f"MongoDB size compliance - {category}/{spread_type}", True, 
+                                    f"✅ Document size OK - {document_size/1024/1024:.2f}MB (limit: 16MB)")
+                    else:
+                        self.log_test(f"MongoDB size compliance - {category}/{spread_type}", False, 
+                                    f"❌ Document too large - {document_size/1024/1024:.2f}MB exceeds 16MB limit")
+                        all_passed = False
+                else:
+                    self.log_test(f"MongoDB size compliance - {category}/{spread_type}", False, 
+                                f"❌ HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+            
+            return all_passed
+            
+        except Exception as e:
+            self.log_test("MongoDB document size compliance", False, f"Exception: {str(e)}")
+            return False
+
+    def test_critical_spread_combinations(self):
+        """Test the specific combinations mentioned in the user request"""
+        critical_tests = [
+            ("love", "three_cards", "Что ждет меня в любовных отношениях?", 3),
+            ("finance", "celtic_cross", "Какие финансовые перспективы меня ждут?", 10),
+            ("career", "one_card", "Как развивается моя карьера?", 1),
+            ("general", "celtic_cross", "Что важно знать о моем будущем?", 10)
+        ]
+        
+        all_passed = True
+        
+        print("🎯 CRITICAL TEST - Testing all spread types after image optimization")
+        print("-" * 70)
+        
+        for category, spread_type, question, expected_cards in critical_tests:
+            try:
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                test_name = f"CRITICAL: {category} + {spread_type}"
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cards = data.get("cards", [])
+                    positions = data.get("positions", [])
+                    
+                    # Validate card count
+                    if len(cards) == expected_cards and len(positions) == expected_cards:
+                        # Validate all cards have images
+                        all_have_images = all(card.get("image", "").startswith("data:image/") for card in cards)
+                        
+                        if all_have_images:
+                            self.log_test(test_name, True, 
+                                        f"✅ PERFECT - {len(cards)} cards, all with images (SVG base64)")
+                        else:
+                            self.log_test(test_name, False, 
+                                        f"❌ Some cards missing images")
+                            all_passed = False
+                    else:
+                        self.log_test(test_name, False, 
+                                    f"❌ Wrong card count - Expected: {expected_cards}, Got: {len(cards)}")
+                        all_passed = False
+                else:
+                    # This is the critical test - 500 errors were the main issue
+                    self.log_test(test_name, False, 
+                                f"❌ CRITICAL FAILURE - HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+                    
+            except Exception as e:
+                self.log_test(f"CRITICAL: {category} + {spread_type}", False, f"Exception: {str(e)}")
+                all_passed = False
+        
+        return all_passed
+
     def run_focused_spread_tests(self):
-        """Run focused tests for spread card count issues"""
-        print("🔮 FOCUSED TESTING: Spread Card Count Validation")
-        print("=" * 60)
-        print("Testing specific user-reported issues with three_cards and celtic_cross spreads")
+        """Run focused tests for image optimization and spread fixes"""
+        print("🔮 FOCUSED TESTING: Image Optimization & Spread Fixes")
+        print("=" * 70)
+        print("Testing fixed layouts after image optimization (Pillow + SVG)")
+        print("Context: MongoDB 16MB limit issue was fixed with image compression")
         print()
         
-        # Test card counts for each spread type
-        print("📊 Testing Card Counts by Spread Type")
+        # Test critical spread combinations first
+        print("🚨 CRITICAL TESTS - All spread types must work without 500 errors")
+        print("-" * 70)
+        critical_passed = self.test_critical_spread_combinations()
+        
+        print("\n📊 IMAGE OPTIMIZATION VALIDATION")
         print("-" * 40)
+        optimization_passed = self.test_image_optimization_validation()
+        
+        print("\n💾 MONGODB DOCUMENT SIZE COMPLIANCE")
+        print("-" * 40)
+        size_compliance_passed = self.test_mongodb_document_size_compliance()
+        
+        print("\n🎯 STANDARD SPREAD TESTS")
+        print("-" * 30)
         self.test_spread_card_counts()
         
-        print("\n🎯 Testing Specific Category/Spread Combinations")
-        print("-" * 50)
-        self.test_specific_spread_combinations()
-        
         # Summary
-        print("\n" + "=" * 60)
-        print("🔮 FOCUSED TEST SUMMARY")
-        print("=" * 60)
+        print("\n" + "=" * 70)
+        print("🔮 IMAGE OPTIMIZATION TEST SUMMARY")
+        print("=" * 70)
         
         total_tests = len(self.test_results)
         passed_tests = sum(1 for result in self.test_results if result["success"])
@@ -626,13 +824,24 @@ class TatoAiTester:
         print(f"Failed: {failed_tests} ❌")
         print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
         
+        # Critical status
+        critical_status = "✅ FIXED" if critical_passed else "❌ STILL BROKEN"
+        optimization_status = "✅ WORKING" if optimization_passed else "❌ ISSUES"
+        size_status = "✅ COMPLIANT" if size_compliance_passed else "❌ EXCEEDS LIMIT"
+        
+        print(f"\n🚨 CRITICAL SPREADS: {critical_status}")
+        print(f"🖼️  IMAGE OPTIMIZATION: {optimization_status}")
+        print(f"💾 MONGODB SIZE LIMIT: {size_status}")
+        
         if failed_tests > 0:
-            print("\n❌ CRITICAL ISSUES FOUND:")
+            print("\n❌ ISSUES FOUND:")
             for result in self.test_results:
                 if not result["success"]:
                     print(f"  - {result['test']}: {result['details']}")
         else:
-            print("\n✅ All spread card count tests PASSED!")
+            print("\n✅ ALL TESTS PASSED - Image optimization successful!")
+            print("✅ All spread types working without 500 errors!")
+            print("✅ Documents stay under MongoDB 16MB limit!")
         
         return passed_tests, failed_tests, self.test_results
 
