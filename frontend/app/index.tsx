@@ -388,6 +388,46 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  mainReadingButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 10,
+  },
+  spreadCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    position: 'relative',
+  },
+  selectedSpreadCard: {
+    borderColor: '#9B59B6',
+    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+  },
+  spreadContent: {
+    flex: 1,
+  },
+  spreadName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  selectedSpreadName: {
+    color: '#BB6BD9',
+  },
+  spreadDescription: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 18,
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+  },
   compatibilitySection: {
     paddingHorizontal: 20,
     paddingVertical: 20,
