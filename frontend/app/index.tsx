@@ -160,6 +160,25 @@ export default function Index() {
             </View>
           )}
 
+          {/* Compatibility Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Гадание на совместимость</Text>
+            <TouchableOpacity 
+              style={styles.compatibilityButton} 
+              onPress={() => router.push('/compatibility')}
+            >
+              <LinearGradient
+                colors={['#E74C3C', '#C0392B', '#A93226']}
+                style={styles.compatibilityButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.compatibilityIcon}>💕</Text>
+                <Text style={styles.compatibilityButtonText}>Узнать совместимость по именам</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
           {/* Bottom decoration */}
           <View style={styles.bottomDecoration}>
             <Text style={styles.bottomText}>
