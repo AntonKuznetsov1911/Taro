@@ -5,57 +5,37 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   StatusBar,
-  Dimensions
+  Dimensions,
+  ImageBackground
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
 
+// ВАРИАНТ 1: КОСМИЧЕСКИЙ МИСТИЦИЗМ
+// Элегантный дизайн с акцентом на космические элементы, звезды, туманности
+
 const CATEGORIES = [
-  { id: 'love', name: 'Любовь', icon: '❤️', color: '#FF6B9D', gradient: ['#FF6B9D', '#C44569'] },
-  { id: 'career', name: 'Карьера', icon: '💼', color: '#4ECDC4', gradient: ['#4ECDC4', '#26A0B4'] },
-  { id: 'finance', name: 'Финансы', icon: '💰', color: '#45B7D1', gradient: ['#45B7D1', '#2E86AB'] },
-  { id: 'general', name: 'Общие', icon: '🔮', color: '#9B59B6', gradient: ['#9B59B6', '#6C3483'] }
+  { id: 'love', name: 'Любовь', icon: '💫', color: '#FF6B9D', gradient: ['#FF6B9D', '#FF8E9B', '#C44569'], description: 'Вопросы сердца' },
+  { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['#4ECDC4', '#45B7D1', '#26A0B4'], description: 'Профессиональный путь' },
+  { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['#45B7D1', '#5DADE2', '#2E86AB'], description: 'Денежная энергия' },
+  { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['#9B59B6', '#BB6BD9', '#6C3483'], description: 'Жизненные вопросы' }
 ];
 
-const SPREADS = [
-  {
-    id: 'one_card',
-    name: 'Одна карта',
-    description: 'Быстрый ответ на вопрос',
-    icon: '🎴',
-    cards: 1
-  },
-  {
-    id: 'three_cards',
-    name: 'Три карты',
-    description: 'Прошлое • Настоящее • Будущее',
-    icon: '🃏',
-    cards: 3
-  },
-  {
-    id: 'celtic_cross',
-    name: 'Кельтский крест',
-    description: 'Подробный анализ ситуации',
-    icon: '✨',
-    cards: 10
-  }
-];
-
-export default function Index() {
+export default function CosmicIndex() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
-  const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
   const CategoryCard = ({ category }: { category: any }) => (
     <TouchableOpacity
       style={styles.categoryCard}
       onPress={() => setSelectedCategory(category.id)}
+      activeOpacity={0.8}
     >
       <LinearGradient
         colors={category.gradient}
@@ -63,127 +43,121 @@ export default function Index() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <Text style={styles.categoryIcon}>{category.icon}</Text>
-        <Text style={styles.categoryName}>{category.name}</Text>
+        <BlurView intensity={20} style={styles.categoryBlur}>
+          <Text style={styles.categoryIcon}>{category.icon}</Text>
+          <Text style={styles.categoryName}>{category.name}</Text>
+          <Text style={styles.categoryDescription}>{category.description}</Text>
+        </BlurView>
       </LinearGradient>
     </TouchableOpacity>
   );
 
-  const SpreadCard = ({ spread }: { spread: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.spreadCard,
-        selectedSpread === spread.id && styles.selectedSpreadCard
-      ]}
-      onPress={() => setSelectedSpread(spread.id)}
-    >
-      <View style={styles.spreadHeader}>
-        <Text style={styles.spreadIcon}>{spread.icon}</Text>
-        <Text style={styles.spreadName}>{spread.name}</Text>
-        <Text style={styles.spreadCards}>{spread.cards} карт</Text>
-      </View>
-      <Text style={styles.spreadDescription}>{spread.description}</Text>
-    </TouchableOpacity>
-  );
-
-  const startReading = () => {
-    if (selectedCategory && selectedSpread) {
+  const startQuickReading = () => {
+    if (selectedCategory) {
       router.push({
         pathname: '/question',
-        params: { category: selectedCategory, spread: selectedSpread }
+        params: { category: selectedCategory, spread: 'one_card' }
       });
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+      <StatusBar barStyle="light-content" backgroundColor="#000011" />
       
       <LinearGradient
-        colors={['#0a0a0a', '#1a1a2e', '#16213e']}
+        colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header */}
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+          {/* Cosmic Header */}
           <View style={styles.header}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>TARO</Text>
-              <Text style={styles.subtitle}>Древняя мудрость в современном исполнении</Text>
+            <View style={styles.cosmicTitleContainer}>
+              <Text style={styles.mainTitle}>ТARO</Text>
+              <View style={styles.cosmicSubtitle}>
+                <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
+              </View>
             </View>
+            
             <TouchableOpacity 
-              style={styles.historyButton} 
+              style={styles.floatingHistoryButton} 
               onPress={() => router.push('/history')}
             >
-              <Ionicons name="time-outline" size={24} color="#9B59B6" />
+              <LinearGradient
+                colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']}
+                style={styles.historyButtonGradient}
+              >
+                <Ionicons name="time-outline" size={22} color="#E8E8E8" />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
-          {/* Mystical decoration */}
-          <View style={styles.mysticalDecoration}>
-            <Text style={styles.mysticalText}>✨ 🌙 ⭐ 🔮 ⭐ 🌙 ✨</Text>
+          {/* Floating cosmic particles */}
+          <View style={styles.particlesContainer}>
+            <Text style={[styles.particle, { top: 120, left: 50 }]}>✦</Text>
+            <Text style={[styles.particle, { top: 200, right: 80 }]}>⭐</Text>
+            <Text style={[styles.particle, { top: 300, left: 30 }]}>✨</Text>
+            <Text style={[styles.particle, { top: 150, right: 40 }]}>💫</Text>
           </View>
 
           {/* Category Selection */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Выберите категорию вопроса</Text>
-            <View style={styles.categoriesContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Выберите область гадания</Text>
+              <Text style={styles.sectionSubtitle}>Звезды подскажут путь к ответам</Text>
+            </View>
+            
+            <View style={styles.categoriesGrid}>
               {CATEGORIES.map((category) => (
                 <CategoryCard key={category.id} category={category} />
               ))}
             </View>
           </View>
 
-          {/* Spread Selection */}
+          {/* Quick Reading Section */}
           {selectedCategory && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Выберите тип расклада</Text>
-              {SPREADS.map((spread) => (
-                <SpreadCard key={spread.id} spread={spread} />
-              ))}
-            </View>
-          )}
-
-          {/* Start Button */}
-          {selectedCategory && selectedSpread && (
-            <View style={styles.section}>
-              <TouchableOpacity style={styles.startButton} onPress={startReading}>
+            <View style={styles.quickSection}>
+              <TouchableOpacity style={styles.quickReadingButton} onPress={startQuickReading}>
                 <LinearGradient
-                  colors={['#9B59B6', '#8E44AD', '#6C3483']}
-                  style={styles.startButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)', 'rgba(108, 52, 131, 1)']}
+                  style={styles.quickButtonGradient}
                 >
-                  <Ionicons name="sparkles" size={24} color="#FFF" style={styles.startButtonIcon} />
-                  <Text style={styles.startButtonText}>Начать гадание</Text>
+                  <Ionicons name="flash" size={24} color="#FFF" />
+                  <Text style={styles.quickButtonText}>Быстрое гадание</Text>
+                  <Text style={styles.quickButtonSubtext}>Одна карта • Мгновенный ответ</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Compatibility Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Гадание на совместимость</Text>
+          {/* Cosmic Compatibility */}
+          <View style={styles.compatibilitySection}>
+            <Text style={styles.compatibilityTitle}>Космическая совместимость</Text>
             <TouchableOpacity 
               style={styles.compatibilityButton} 
               onPress={() => router.push('/compatibility')}
             >
               <LinearGradient
-                colors={['#E74C3C', '#C0392B', '#A93226']}
-                style={styles.compatibilityButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)', 'rgba(169, 50, 38, 1)']}
+                style={styles.compatibilityGradient}
               >
                 <Text style={styles.compatibilityIcon}>💕</Text>
-                <Text style={styles.compatibilityButtonText}>Узнать совместимость по именам</Text>
+                <View>
+                  <Text style={styles.compatibilityText}>Гармония имен</Text>
+                  <Text style={styles.compatibilitySubtext}>Звездная совместимость по именам</Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
-          {/* Bottom decoration */}
-          <View style={styles.bottomDecoration}>
-            <Text style={styles.bottomText}>
-              "Карты не лгут, они лишь отражают истину вашего сердца"
-            </Text>
+          {/* Cosmic Quote */}
+          <View style={styles.quoteSection}>
+            <BlurView intensity={15} style={styles.quoteContainer}>
+              <Text style={styles.quoteText}>
+                "В бесконечности космоса скрыты ответы на все вопросы души"
+              </Text>
+              <Text style={styles.quoteAuthor}>— Древняя мудрость</Text>
+            </BlurView>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -198,86 +172,119 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: 40,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  titleContainer: {
+  scrollView: {
     flex: 1,
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    position: 'relative',
+  },
+  cosmicTitleContainer: {
     alignItems: 'center',
   },
-  historyButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 48,
+  mainTitle: {
+    fontSize: 56,
     fontWeight: 'bold',
-    color: '#E8E8E8',
+    color: '#FFFFFF',
     textAlign: 'center',
-    letterSpacing: 4,
+    letterSpacing: 8,
     textShadowColor: '#9B59B6',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+    marginBottom: 10,
+  },
+  cosmicSubtitle: {
+    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   subtitle: {
     fontSize: 14,
-    color: '#C8A2C8',
+    color: '#E8E8E8',
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 20,
-    fontStyle: 'italic',
     fontWeight: '300',
-    letterSpacing: 1,
   },
-  mysticalDecoration: {
+  floatingHistoryButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  historyButtonGradient: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
-    paddingVertical: 20,
+    justifyContent: 'center',
   },
-  mysticalText: {
-    fontSize: 20,
-    color: '#9B59B6',
-    opacity: 0.7,
+  particlesContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: 400,
+    zIndex: 1,
+  },
+  particle: {
+    position: 'absolute',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.3)',
   },
   section: {
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 20,
+    zIndex: 2,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
     color: '#E8E8E8',
-    marginBottom: 15,
     textAlign: 'center',
+    marginBottom: 8,
   },
-  categoriesContainer: {
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#B8B8B8',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 15,
   },
   categoryCard: {
-    width: (width - 60) / 2,
-    height: 120,
-    marginBottom: 15,
-    borderRadius: 15,
+    width: (width - 55) / 2,
+    height: 140,
+    borderRadius: 20,
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
+    elevation: 8,
+    shadowColor: '#9B59B6',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   categoryGradient: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  categoryBlur: {
+    flex: 1,
     alignItems: 'center',
-    padding: 15,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   categoryIcon: {
-    fontSize: 30,
+    fontSize: 32,
     marginBottom: 8,
   },
   categoryName: {
@@ -285,106 +292,96 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
     textAlign: 'center',
+    marginBottom: 4,
   },
-  spreadCard: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: '#333',
+  categoryDescription: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
   },
-  selectedSpreadCard: {
-    borderColor: '#9B59B6',
-    backgroundColor: '#2a1b3d',
+  quickSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
-  spreadHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  spreadIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  spreadName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    flex: 1,
-  },
-  spreadCards: {
-    fontSize: 12,
-    color: '#9B59B6',
-    backgroundColor: '#9B59B633',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  spreadDescription: {
-    fontSize: 14,
-    color: '#B8B8B8',
-    lineHeight: 20,
-  },
-  startButton: {
+  quickReadingButton: {
     borderRadius: 25,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#9B59B6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    elevation: 10,
   },
-  startButtonGradient: {
-    flexDirection: 'row',
+  quickButtonGradient: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 30,
   },
-  startButtonIcon: {
-    marginRight: 10,
-  },
-  startButtonText: {
+  quickButtonText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFF',
+    marginTop: 5,
+  },
+  quickButtonSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  compatibilitySection: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  compatibilityTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    textAlign: 'center',
+    marginBottom: 15,
   },
   compatibilityButton: {
-    borderRadius: 25,
+    borderRadius: 20,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    elevation: 6,
   },
-  compatibilityButtonGradient: {
+  compatibilityGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 18,
-    paddingHorizontal: 30,
+    paddingHorizontal: 25,
   },
   compatibilityIcon: {
-    fontSize: 20,
-    marginRight: 10,
+    fontSize: 24,
+    marginRight: 15,
   },
-  compatibilityButtonText: {
+  compatibilityText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
   },
-  bottomDecoration: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    paddingHorizontal: 20,
+  compatibilitySubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
-  bottomText: {
+  quoteSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  quoteContainer: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  quoteText: {
     fontSize: 14,
-    color: '#888',
+    color: '#E8E8E8',
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 20,
+    marginBottom: 10,
+  },
+  quoteAuthor: {
+    fontSize: 12,
+    color: '#9B59B6',
+    textAlign: 'center',
   },
 });
