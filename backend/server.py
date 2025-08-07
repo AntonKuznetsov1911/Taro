@@ -50,14 +50,14 @@ def url_to_base64(url: str) -> str:
         logging.error(f"Error converting URL to base64: {e}")
         return ""
 
-# Tarot Cards Data
+# Tarot Cards Data with real images
 MAJOR_ARCANA = [
     {
         "id": 0,
         "name": "Дурак",
         "name_en": "The Fool",
         "type": "major",
-        "image": "fool.jpg",
+        "image": url_to_base64("https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU0NjAxMHww&ixlib=rb-4.1.0&q=85") or "",
         "keywords": ["новые начинания", "невинность", "спонтанность", "свобода"],
         "upright_meaning": "Новые возможности, начало пути, невинность, спонтанность, свобода духа",
         "reversed_meaning": "Безрассудство, необдуманные поступки, наивность, отсутствие направления"
@@ -67,7 +67,7 @@ MAJOR_ARCANA = [
         "name": "Маг",
         "name_en": "The Magician",
         "type": "major",
-        "image": "magician.jpg",
+        "image": url_to_base64("https://images.unsplash.com/photo-1637757949726-0a4038f2bd6a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwzfHxyaWRlciUyMHdhaXRlfGVufDB8fHx8MTc1NDU0NjAxNnww&ixlib=rb-4.1.0&q=85") or "",
         "keywords": ["воля", "мастерство", "концентрация", "сила"],
         "upright_meaning": "Сила воли, мастерство, концентрация, способность к действию",
         "reversed_meaning": "Манипуляции, злоупотребление силой, недостаток концентрации"
