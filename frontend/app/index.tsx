@@ -164,6 +164,36 @@ export default function CosmicIndex() {
             </View>
           )}
 
+          {/* Spread Selection */}
+          {selectedCategory && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Выберите расклад</Text>
+                <Text style={styles.sectionSubtitle}>Различные способы получить ответы</Text>
+              </View>
+              
+              {SPREADS.map((spread) => (
+                <SpreadCard key={spread.id} spread={spread} />
+              ))}
+            </View>
+          )}
+
+          {/* Main Reading Button */}
+          {selectedCategory && selectedSpread && (
+            <View style={styles.quickSection}>
+              <TouchableOpacity style={styles.mainReadingButton} onPress={startReading}>
+                <LinearGradient
+                  colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)', 'rgba(41, 128, 185, 1)']}
+                  style={styles.quickButtonGradient}
+                >
+                  <Ionicons name="sparkles" size={24} color="#FFF" />
+                  <Text style={styles.quickButtonText}>Начать гадание</Text>
+                  <Text style={styles.quickButtonSubtext}>Получить полное толкование</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Cosmic Compatibility */}
           <View style={styles.compatibilitySection}>
             <Text style={styles.compatibilityTitle}>Космическая совместимость</Text>
