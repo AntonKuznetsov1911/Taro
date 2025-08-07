@@ -41,11 +41,11 @@ export default function CosmicIndex() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <BlurView intensity={20} style={styles.categoryBlur}>
-          <Text style={styles.categoryIcon}>{category.icon}</Text>
-          <Text style={styles.categoryName}>{category.name}</Text>
-          <Text style={styles.categoryDescription}>{category.description}</Text>
-        </BlurView>
+          <View style={styles.categoryBlur}>
+            <Text style={styles.categoryIcon}>{category.icon}</Text>
+            <Text style={styles.categoryName}>{category.name}</Text>
+            <Text style={styles.categoryDescription}>{category.description}</Text>
+          </View>
       </LinearGradient>
     </TouchableOpacity>
   );
