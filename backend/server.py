@@ -1028,14 +1028,14 @@ async def get_horoscope_history(limit: int = 10):
 async def get_reading_history(limit: int = 10):
     """Get unified reading history including tarot, palmistry, and horoscopes"""
     
-    # Get tarot readings
-    tarot_readings = await db.tarot_readings.find().sort("created_at", -1).limit(limit).to_list(limit)
+    # Get tarot readings (exclude _id field)
+    tarot_readings = await db.tarot_readings.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     
-    # Get palmistry readings  
-    palmistry_readings = await db.palmistry_results.find().sort("created_at", -1).limit(limit).to_list(limit)
+    # Get palmistry readings (exclude _id field)
+    palmistry_readings = await db.palmistry_results.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     
-    # Get horoscopes
-    horoscope_readings = await db.horoscopes.find().sort("created_at", -1).limit(limit).to_list(limit)
+    # Get horoscopes (exclude _id field)
+    horoscope_readings = await db.horoscopes.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     
     # Convert all to unified format
     unified_history = []
