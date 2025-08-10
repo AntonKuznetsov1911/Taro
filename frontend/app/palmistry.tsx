@@ -283,32 +283,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(155, 89, 182, 0.5)',
   },
-  palmLinesSvg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
-  },
-  toggleLinesButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginTop: 20,
-    elevation: 5,
-  },
-  toggleButtonGradient: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  toggleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-    marginLeft: 8,
-  },
   legendContainer: {
     marginHorizontal: 20,
     marginBottom: 20,
