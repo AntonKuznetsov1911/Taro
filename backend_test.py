@@ -1884,16 +1884,534 @@ class TatoAiTester:
         
         return passed_tests, failed_tests, self.test_results
 
+    def test_profile_creation(self):
+        """Test POST /api/profile - create user profile"""
+        try:
+            # Test profile creation with birth date that should be Рыбы (Pisces)
+            profile_data = {
+                "name": "Анна Петрова",
+                "birth_date": "1990-03-15",  # Should be Рыбы
+                "birth_time": "14:30",
+                "birth_place": "Москва",
+                "gender": "женский"
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/profile",
+                json=profile_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "name", "birth_date", "zodiac_sign", "created_at", "updated_at"]
+                
+                if all(field in data for field in required_fields):
+                    # Verify zodiac sign calculation
+                    expected_zodiac = "Рыбы"  # March 15 should be Pisces
+                    actual_zodiac = data.get("zodiac_sign")
+                    
+                    if actual_zodiac == expected_zodiac:
+                        self.log_test("Profile creation", True, 
+                                    f"Profile created successfully - Name: {data['name']}, Zodiac: {actual_zodiac}, Birth date: {data['birth_date']}")
+                        return data
+                    else:
+                        self.log_test("Profile creation", False, 
+                                    f"Incorrect zodiac calculation - Expected: {expected_zodiac}, Got: {actual_zodiac}")
+                        return None
+                else:
+                    missing_fields = [field for field in required_fields if field not in data]
+                    self.log_test("Profile creation", False, f"Missing fields: {missing_fields}", data)
+                    return None
+            else:
+                self.log_test("Profile creation", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Profile creation", False, f"Exception: {str(e)}")
+            return None
+
+    def test_profile_retrieval(self):
+        """Test GET /api/profile - retrieve user profile"""
+        try:
+            response = self.session.get(f"{self.base_url}/profile")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "name", "birth_date", "zodiac_sign"]
+                
+                if all(field in data for field in required_fields):
+                    self.log_test("Profile retrieval", True, 
+                                f"Profile retrieved - Name: {data['name']}, Zodiac: {data['zodiac_sign']}")
+                    return data
+                else:
+                    missing_fields = [field for field in required_fields if field not in data]
+                    self.log_test("Profile retrieval", False, f"Missing fields: {missing_fields}", data)
+                    return None
+            elif response.status_code == 404:
+                self.log_test("Profile retrieval", True, "No profile found (404) - expected when no profile exists")
+                return None
+            else:
+                self.log_test("Profile retrieval", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Profile retrieval", False, f"Exception: {str(e)}")
+            return None
+
+    def test_zodiac_sign_calculation(self):
+        """Test zodiac sign calculation for various birth dates"""
+        try:
+            test_dates = [
+                ("1990-03-15", "Рыбы"),      # Pisces
+                ("1985-07-20", "Рак"),       # Cancer  
+                ("1992-01-10", "Козерог"),   # Capricorn
+                ("1988-05-25", "Близнецы"),  # Gemini
+                ("1995-09-15", "Дева"),      # Virgo
+                ("1987-12-25", "Козерог"),   # Capricorn
+                ("1991-06-21", "Рак"),       # Cancer (boundary date)
+                ("1989-03-21", "Овен"),      # Aries (boundary date)
+            ]
+            
+            all_passed = True
+            
+            for birth_date, expected_zodiac in test_dates:
+                profile_data = {
+                    "name": f"Тест {birth_date}",
+                    "birth_date": birth_date
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/profile",
+                    json=profile_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    actual_zodiac = data.get("zodiac_sign")
+                    
+                    if actual_zodiac == expected_zodiac:
+                        self.log_test(f"Zodiac calculation - {birth_date}", True, 
+                                    f"✅ Correct - {birth_date} → {actual_zodiac}")
+                    else:
+                        self.log_test(f"Zodiac calculation - {birth_date}", False, 
+                                    f"❌ Wrong - {birth_date} → Expected: {expected_zodiac}, Got: {actual_zodiac}")
+                        all_passed = False
+                else:
+                    self.log_test(f"Zodiac calculation - {birth_date}", False, 
+                                f"HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+            
+            return all_passed
+            
+        except Exception as e:
+            self.log_test("Zodiac sign calculation", False, f"Exception: {str(e)}")
+            return False
+
+    def test_horoscope_generation(self):
+        """Test GET /api/horoscope - generate horoscope"""
+        try:
+            # First ensure we have a profile
+            profile = self.test_profile_creation()
+            if not profile:
+                self.log_test("Horoscope generation", False, "No profile available for horoscope test")
+                return None
+            
+            # Test horoscope generation for today
+            response = self.session.get(f"{self.base_url}/horoscope")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "user_profile_id", "date", "zodiac_sign", "horoscope_text", 
+                                 "mood_rating", "love_forecast", "career_forecast", "health_forecast", 
+                                 "lucky_numbers", "lucky_color", "created_at"]
+                
+                if all(field in data for field in required_fields):
+                    # Verify personalization
+                    horoscope_text = data.get("horoscope_text", "")
+                    profile_name = profile.get("name", "")
+                    zodiac_sign = data.get("zodiac_sign")
+                    
+                    # Check if horoscope contains user's name
+                    has_name = profile_name.split()[0] in horoscope_text if profile_name else False
+                    
+                    # Check if horoscope is substantial
+                    word_count = len(horoscope_text.split())
+                    is_substantial = word_count >= 100
+                    
+                    # Check lucky numbers format
+                    lucky_numbers = data.get("lucky_numbers", [])
+                    valid_numbers = isinstance(lucky_numbers, list) and len(lucky_numbers) > 0
+                    
+                    # Check mood rating
+                    mood_rating = data.get("mood_rating", 0)
+                    valid_mood = 1 <= mood_rating <= 10
+                    
+                    if is_substantial and valid_numbers and valid_mood:
+                        details = f"Horoscope generated - Zodiac: {zodiac_sign}, Words: {word_count}, Lucky numbers: {len(lucky_numbers)}, Mood: {mood_rating}/10, Personalized: {has_name}"
+                        self.log_test("Horoscope generation", True, details)
+                        return data
+                    else:
+                        details = f"Quality issues - Words: {word_count}, Numbers: {valid_numbers}, Mood: {valid_mood}, Personalized: {has_name}"
+                        self.log_test("Horoscope generation", False, details)
+                        return None
+                else:
+                    missing_fields = [field for field in required_fields if field not in data]
+                    self.log_test("Horoscope generation", False, f"Missing fields: {missing_fields}", data)
+                    return None
+            elif response.status_code == 404:
+                self.log_test("Horoscope generation", False, "Profile not found - need to create profile first")
+                return None
+            else:
+                self.log_test("Horoscope generation", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Horoscope generation", False, f"Exception: {str(e)}")
+            return None
+
+    def test_horoscope_with_specific_date(self):
+        """Test horoscope generation with specific date"""
+        try:
+            # Test with specific date
+            test_date = "2024-12-20"
+            response = self.session.get(f"{self.base_url}/horoscope?date={test_date}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                returned_date = data.get("date")
+                
+                if returned_date == test_date:
+                    self.log_test("Horoscope with specific date", True, 
+                                f"Horoscope generated for specific date: {test_date}")
+                    return data
+                else:
+                    self.log_test("Horoscope with specific date", False, 
+                                f"Date mismatch - Requested: {test_date}, Got: {returned_date}")
+                    return None
+            else:
+                self.log_test("Horoscope with specific date", False, 
+                            f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Horoscope with specific date", False, f"Exception: {str(e)}")
+            return None
+
+    def test_horoscope_caching(self):
+        """Test horoscope caching - same date should return existing horoscope"""
+        try:
+            # Generate horoscope for today
+            first_response = self.session.get(f"{self.base_url}/horoscope")
+            
+            if first_response.status_code != 200:
+                self.log_test("Horoscope caching", False, "Could not generate first horoscope")
+                return False
+            
+            first_data = first_response.json()
+            first_id = first_data.get("id")
+            
+            # Request same date again
+            second_response = self.session.get(f"{self.base_url}/horoscope")
+            
+            if second_response.status_code == 200:
+                second_data = second_response.json()
+                second_id = second_data.get("id")
+                
+                # Should return the same horoscope (same ID)
+                if first_id == second_id:
+                    self.log_test("Horoscope caching", True, 
+                                f"Caching works - Same horoscope returned (ID: {first_id})")
+                    return True
+                else:
+                    self.log_test("Horoscope caching", False, 
+                                f"Caching failed - Different IDs: {first_id} vs {second_id}")
+                    return False
+            else:
+                self.log_test("Horoscope caching", False, 
+                            f"Second request failed - Status: {second_response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Horoscope caching", False, f"Exception: {str(e)}")
+            return False
+
+    def test_unified_history_with_horoscopes(self):
+        """Test GET /api/readings - unified history including horoscopes"""
+        try:
+            # Generate some content first
+            self.test_profile_creation()
+            self.test_horoscope_generation()
+            
+            response = self.session.get(f"{self.base_url}/readings")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if isinstance(data, list):
+                    # Look for different types of readings
+                    tarot_readings = [r for r in data if r.get("type") == "tarot"]
+                    palmistry_readings = [r for r in data if r.get("type") == "palmistry"]
+                    horoscope_readings = [r for r in data if r.get("type") == "horoscope"]
+                    
+                    # Check horoscope format
+                    horoscope_valid = True
+                    for horoscope in horoscope_readings:
+                        required_fields = ["id", "question", "category", "spread_type", "interpretation", "created_at", "zodiac_sign"]
+                        if not all(field in horoscope for field in required_fields):
+                            horoscope_valid = False
+                            break
+                        
+                        # Check horoscope-specific fields
+                        if (horoscope.get("category") != "horoscope" or 
+                            horoscope.get("spread_type") != "daily_horoscope" or
+                            not horoscope.get("zodiac_sign")):
+                            horoscope_valid = False
+                            break
+                    
+                    if horoscope_valid:
+                        details = f"Unified history retrieved - Total: {len(data)}, Tarot: {len(tarot_readings)}, Palmistry: {len(palmistry_readings)}, Horoscopes: {len(horoscope_readings)}"
+                        self.log_test("Unified history with horoscopes", True, details)
+                        return data
+                    else:
+                        self.log_test("Unified history with horoscopes", False, "Invalid horoscope format in unified history")
+                        return None
+                else:
+                    self.log_test("Unified history with horoscopes", False, "Response is not a list", data)
+                    return None
+            else:
+                self.log_test("Unified history with horoscopes", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Unified history with horoscopes", False, f"Exception: {str(e)}")
+            return None
+
+    def test_horoscope_personalization(self):
+        """Test horoscope personalization with user data"""
+        try:
+            # Create profile with specific data
+            profile_data = {
+                "name": "Мария Иванова",
+                "birth_date": "1985-07-20",  # Cancer
+                "birth_time": "10:15",
+                "birth_place": "Санкт-Петербург",
+                "gender": "женский"
+            }
+            
+            profile_response = self.session.post(
+                f"{self.base_url}/profile",
+                json=profile_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if profile_response.status_code != 200:
+                self.log_test("Horoscope personalization", False, "Could not create profile for personalization test")
+                return False
+            
+            # Generate horoscope
+            horoscope_response = self.session.get(f"{self.base_url}/horoscope")
+            
+            if horoscope_response.status_code == 200:
+                data = horoscope_response.json()
+                horoscope_text = data.get("horoscope_text", "")
+                zodiac_sign = data.get("zodiac_sign")
+                
+                # Check personalization elements
+                has_name = "Мария" in horoscope_text
+                has_zodiac = zodiac_sign == "Рак"
+                has_personal_address = any(addr in horoscope_text for addr in ["Вы", "Ваш", "Вас"])
+                
+                # Check for astrological content
+                astro_keywords = ["планет", "звезд", "космическ", "энерги", "вибрац"]
+                has_astro_content = any(keyword in horoscope_text.lower() for keyword in astro_keywords)
+                
+                # Check structure (should have different forecast sections)
+                forecasts = [data.get("love_forecast"), data.get("career_forecast"), data.get("health_forecast")]
+                has_forecasts = all(forecast and len(forecast) > 10 for forecast in forecasts)
+                
+                if has_zodiac and has_personal_address and has_astro_content and has_forecasts:
+                    details = f"Personalization successful - Name: {has_name}, Zodiac: {zodiac_sign}, Astro content: {has_astro_content}, Forecasts: {has_forecasts}"
+                    self.log_test("Horoscope personalization", True, details)
+                    return True
+                else:
+                    details = f"Personalization issues - Name: {has_name}, Zodiac: {has_zodiac}, Astro: {has_astro_content}, Forecasts: {has_forecasts}"
+                    self.log_test("Horoscope personalization", False, details)
+                    return False
+            else:
+                self.log_test("Horoscope personalization", False, f"Horoscope generation failed - Status: {horoscope_response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Horoscope personalization", False, f"Exception: {str(e)}")
+            return False
+
+    def test_profile_data_persistence(self):
+        """Test profile and horoscope data persistence in MongoDB"""
+        try:
+            # Create profile
+            profile_data = {
+                "name": "Тест Персистенс",
+                "birth_date": "1990-12-01",
+                "birth_time": "15:30"
+            }
+            
+            profile_response = self.session.post(
+                f"{self.base_url}/profile",
+                json=profile_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if profile_response.status_code != 200:
+                self.log_test("Profile data persistence", False, "Could not create profile")
+                return False
+            
+            profile = profile_response.json()
+            
+            # Generate horoscope
+            horoscope_response = self.session.get(f"{self.base_url}/horoscope")
+            
+            if horoscope_response.status_code != 200:
+                self.log_test("Profile data persistence", False, "Could not generate horoscope")
+                return False
+            
+            horoscope = horoscope_response.json()
+            
+            # Retrieve profile again to verify persistence
+            retrieve_response = self.session.get(f"{self.base_url}/profile")
+            
+            if retrieve_response.status_code == 200:
+                retrieved_profile = retrieve_response.json()
+                
+                # Check if profile data matches
+                if (retrieved_profile.get("name") == profile_data["name"] and
+                    retrieved_profile.get("birth_date") == profile_data["birth_date"]):
+                    
+                    # Check unified history for horoscope
+                    history_response = self.session.get(f"{self.base_url}/readings")
+                    
+                    if history_response.status_code == 200:
+                        history = history_response.json()
+                        horoscope_in_history = any(r.get("type") == "horoscope" for r in history)
+                        
+                        if horoscope_in_history:
+                            self.log_test("Profile data persistence", True, 
+                                        "Profile and horoscope data persisted correctly in MongoDB")
+                            return True
+                        else:
+                            self.log_test("Profile data persistence", False, 
+                                        "Horoscope not found in unified history")
+                            return False
+                    else:
+                        self.log_test("Profile data persistence", False, 
+                                    "Could not retrieve unified history")
+                        return False
+                else:
+                    self.log_test("Profile data persistence", False, 
+                                "Retrieved profile data doesn't match created profile")
+                    return False
+            else:
+                self.log_test("Profile data persistence", False, 
+                            f"Could not retrieve profile - Status: {retrieve_response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Profile data persistence", False, f"Exception: {str(e)}")
+            return False
+
+    def run_profile_horoscope_tests(self):
+        """Run comprehensive tests for profile and horoscope functionality"""
+        print("🌟 PROFILE AND HOROSCOPE FUNCTIONALITY TESTING")
+        print("=" * 60)
+        print("Testing new profile management and horoscope generation features")
+        print()
+        
+        # Profile Management Tests
+        print("👤 PROFILE MANAGEMENT TESTS")
+        print("-" * 30)
+        profile_tests = [
+            ("Profile creation", self.test_profile_creation),
+            ("Profile retrieval", self.test_profile_retrieval),
+            ("Zodiac sign calculation", self.test_zodiac_sign_calculation)
+        ]
+        
+        profile_passed = 0
+        for test_name, test_func in profile_tests:
+            print(f"🔍 Testing: {test_name}")
+            if test_func():
+                profile_passed += 1
+            print()
+        
+        print(f"✅ Profile tests: {profile_passed}/{len(profile_tests)} passed\n")
+        
+        # Horoscope Generation Tests
+        print("🔮 HOROSCOPE GENERATION TESTS")
+        print("-" * 35)
+        horoscope_tests = [
+            ("Horoscope generation", self.test_horoscope_generation),
+            ("Horoscope with specific date", self.test_horoscope_with_specific_date),
+            ("Horoscope caching", self.test_horoscope_caching),
+            ("Horoscope personalization", self.test_horoscope_personalization)
+        ]
+        
+        horoscope_passed = 0
+        for test_name, test_func in horoscope_tests:
+            print(f"🔍 Testing: {test_name}")
+            if test_func():
+                horoscope_passed += 1
+            print()
+        
+        print(f"✅ Horoscope tests: {horoscope_passed}/{len(horoscope_tests)} passed\n")
+        
+        # Integration Tests
+        print("🔗 INTEGRATION TESTS")
+        print("-" * 20)
+        integration_tests = [
+            ("Unified history with horoscopes", self.test_unified_history_with_horoscopes),
+            ("Profile data persistence", self.test_profile_data_persistence)
+        ]
+        
+        integration_passed = 0
+        for test_name, test_func in integration_tests:
+            print(f"🔍 Testing: {test_name}")
+            if test_func():
+                integration_passed += 1
+            print()
+        
+        print(f"✅ Integration tests: {integration_passed}/{len(integration_tests)} passed\n")
+        
+        # Calculate results
+        total_tests = len(profile_tests) + len(horoscope_tests) + len(integration_tests)
+        total_passed = profile_passed + horoscope_passed + integration_passed
+        
+        print("=" * 60)
+        print("🏆 PROFILE & HOROSCOPE TEST RESULTS")
+        print("=" * 60)
+        print(f"Total tests: {total_tests}")
+        print(f"Passed: {total_passed}")
+        print(f"Failed: {total_tests - total_passed}")
+        print(f"Success rate: {(total_passed/total_tests)*100:.1f}%")
+        
+        if total_passed == total_tests:
+            print("\n🎉 ALL PROFILE & HOROSCOPE TESTS PASSED! 🎉")
+        elif total_passed >= total_tests * 0.8:
+            print(f"\n✅ Most tests passed ({(total_passed/total_tests)*100:.1f}%). Functionality is largely working.")
+        else:
+            print(f"\n⚠️ Some tests failed ({(total_passed/total_tests)*100:.1f}% success). Review failed tests.")
+        
+        return total_passed == total_tests
+
 if __name__ == "__main__":
     print(f"Testing TatoAi Backend API at: {BACKEND_URL}")
     print()
     
     tester = TatoAiTester()
     
-    # Run palmistry tests as requested by user
-    print("🤲 RUNNING PALMISTRY FUNCTIONALITY TESTS")
-    print("=" * 60)
-    palmistry_success = tester.run_palmistry_tests()
+    # Run profile and horoscope tests as requested by user
+    print("🌟 RUNNING PROFILE & HOROSCOPE FUNCTIONALITY TESTS")
+    print("=" * 70)
+    profile_horoscope_success = tester.run_profile_horoscope_tests()
     
     # Exit with error code if tests failed
-    sys.exit(0 if palmistry_success else 1)
+    sys.exit(0 if profile_horoscope_success else 1)
