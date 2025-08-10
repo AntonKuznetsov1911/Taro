@@ -724,6 +724,26 @@ async def analyze_compatibility(request: CompatibilityRequest):
     
     return result
 
+@api_router.post("/palmistry", response_model=PalmistryResult)
+async def analyze_palmistry(request: PalmistryRequest):
+    """Analyze palmistry from palm image"""
+    
+    # Generate palmistry analysis
+    lines, interpretation = await generate_palmistry_analysis(request.image_base64, request.question)
+    
+    # Create palmistry result
+    result = PalmistryResult(
+        question=request.question,
+        image_base64=request.image_base64,
+        lines=lines,
+        interpretation=interpretation
+    )
+    
+    # Save to database
+    await db.palmistry_results.insert_one(result.dict())
+    
+    return result
+
 @api_router.get("/readings", response_model=List[TarotReading])
 async def get_reading_history(limit: int = 10):
     """Get reading history"""
