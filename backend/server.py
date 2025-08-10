@@ -1022,7 +1022,7 @@ async def get_horoscope(date: Optional[str] = None):
 async def get_horoscope_history(limit: int = 10):
     """Get horoscope history"""
     
-    horoscopes = await db.horoscopes.find().sort("created_at", -1).limit(limit).to_list(limit)
+    horoscopes = await db.horoscopes.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return [HoroscopeResult(**horoscope) for horoscope in horoscopes]
 @api_router.get("/readings")
 async def get_reading_history(limit: int = 10):
