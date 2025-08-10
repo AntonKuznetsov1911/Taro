@@ -441,21 +441,24 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.3)',
     elevation: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  tarotIndicatorImage: {
+  crystalGradient: {
     width: '100%',
     height: '100%',
+    borderRadius: 5,
   },
-  glassOverlay: {
+  crystalReflection: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 6,
+    top: 1,
+    left: 1,
+    width: 8,
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 4,
   },
   compatibilitySection: {
     paddingHorizontal: 20,
