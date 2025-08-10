@@ -137,6 +137,34 @@ class PalmistryResult(BaseModel):
     interpretation: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class UserProfile(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    birth_date: str  # YYYY-MM-DD format
+    birth_time: Optional[str] = None  # HH:MM format
+    birth_place: Optional[str] = None
+    zodiac_sign: str
+    gender: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class HoroscopeRequest(BaseModel):
+    date: Optional[str] = None  # YYYY-MM-DD format, defaults to today
+
+class HoroscopeResult(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_profile_id: str
+    date: str
+    zodiac_sign: str
+    horoscope_text: str
+    mood_rating: int  # 1-10
+    love_forecast: str
+    career_forecast: str
+    health_forecast: str
+    lucky_numbers: List[int]
+    lucky_color: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, str]:
     """Generate compatibility analysis using AI"""
     
