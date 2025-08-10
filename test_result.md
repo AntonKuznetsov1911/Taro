@@ -432,11 +432,12 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Enhanced detailed interpretations (800-1200 words)"
-    - "Enhanced fallback interpretation system"
-    - "Category-specific interpretation differences"
-    - "Different spread structure implementations"
-    - "Interpretation quality and mystical style"
+    - "Palmistry analysis endpoint POST /api/palmistry"
+    - "Palm line generation and AI analysis"
+    - "Unified history for tarot and palmistry"
+    - "Palmistry camera screen implementation"
+    - "Palmistry result screen with colored lines"
+    - "Main screen palmistry button integration"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
