@@ -344,6 +344,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     elevation: 8,
     boxShadow: '0px 4px 10px rgba(155, 89, 182, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   categoryGradient: {
     flex: 1,
