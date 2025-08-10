@@ -213,16 +213,39 @@ export default function CosmicIndex() {
               style={styles.compatibilityButton} 
               onPress={() => router.push('/compatibility')}
             >
-              <LinearGradient
-                colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)', 'rgba(169, 50, 38, 1)']}
-                style={styles.compatibilityGradient}
-              >
-                <Text style={styles.compatibilityIcon}>💕</Text>
-                <View>
-                  <Text style={styles.compatibilityText}>Гармония имен</Text>
-                  <Text style={styles.compatibilitySubtext}>Звездная совместимость по именам</Text>
+              <View style={styles.diamondGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(231, 76, 60, 0.2)'
+                  ]}
+                  style={styles.diamondGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>💎</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Гармония имен</Text>
+                    <Text style={styles.compatibilitySubtext}>Звездная совместимость по именам</Text>
+                  </View>
+                </LinearGradient>
+                
+                {/* Алмазные грани - reflections */}
+                <View style={styles.diamondFacet1} />
+                <View style={styles.diamondFacet2} />
+                <View style={styles.diamondFacet3} />
+                <View style={styles.diamondFacet4} />
+                
+                {/* Центральный бриллиантовый блик */}
+                <View style={styles.diamondSparkle}>
+                  <LinearGradient
+                    colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.3)']}
+                    style={styles.sparkleGradient}
+                  />
                 </View>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
 
