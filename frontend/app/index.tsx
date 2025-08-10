@@ -208,7 +208,9 @@ export default function CosmicIndex() {
 
           {/* Cosmic Compatibility */}
           <View style={styles.compatibilitySection}>
-            <Text style={styles.compatibilityTitle}>Космическая совместимость</Text>
+            <Text style={styles.compatibilityTitle}>Мистические практики</Text>
+            
+            {/* Name Harmony Button */}
             <TouchableOpacity 
               style={styles.compatibilityButton} 
               onPress={() => router.push('/compatibility')}
@@ -243,6 +245,46 @@ export default function CosmicIndex() {
                   <LinearGradient
                     colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.3)']}
                     style={styles.sparkleGradient}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Palmistry Button */}
+            <TouchableOpacity 
+              style={[styles.compatibilityButton, styles.palmistryButton]} 
+              onPress={() => router.push('/camera')}
+            >
+              <View style={styles.palmistryGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(69, 183, 209, 0.2)'
+                  ]}
+                  style={styles.palmistryGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>🤲</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Хиромантия</Text>
+                    <Text style={styles.compatibilitySubtext}>Гадание по линиям ладони</Text>
+                  </View>
+                </LinearGradient>
+                
+                {/* Мистические линии как у ладони */}
+                <View style={styles.palmLine1} />
+                <View style={styles.palmLine2} />
+                <View style={styles.palmLine3} />
+                <View style={styles.palmLine4} />
+                
+                {/* Центральный мистический символ */}
+                <View style={styles.palmSymbol}>
+                  <LinearGradient
+                    colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 0.6)']}
+                    style={styles.palmSymbolGradient}
                   />
                 </View>
               </View>
