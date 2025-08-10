@@ -8,11 +8,15 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StarryBackground } from '../components/StarryBackground';
+
+// Base64 изображения таро The Lovers
+const TAROT_LOVERS_BASE64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKRwqFyI0NDMrKy8vLzBAMD8/Pz8/QEA=';
 
 const { width } = Dimensions.get('window');
 
