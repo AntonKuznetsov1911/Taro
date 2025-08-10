@@ -360,7 +360,7 @@ backend:
           agent: "testing"
           comment: "✅ Unified history working perfectly - GET /api/readings returns both tarot and palmistry results in unified format. Palmistry entries have category='palmistry', spread_type='palm_analysis', empty cards array, and proper structure. Database integration confirmed - palmistry results are saved to MongoDB and retrieved correctly. Tested with 28+ palmistry readings in database, all properly structured and accessible."
 
-  - task: "Interpretation quality and mystical style"
+  - task: "Profile Management POST /api/profile"
     implemented: true
     working: true
     file: "backend/server.py"
@@ -370,7 +370,130 @@ backend:
     status_history:
         - working: true
           agent: "testing"
-          comment: "✅ Interpretation quality excellent - Average 322 words per reading, 100% card coverage in interpretations, 93.3% average mystical style score. All interpretations include proper gypsy fortune teller language with 'дорогая моя', 'милая душа', mystical references, and practical advice sections."
+          comment: "✅ Profile creation working perfectly - Creates user profiles with birth date, name, and optional fields. Zodiac sign calculation accurate for all test dates (Рыбы for 1990-03-15, Рак for 1985-07-20, etc.). Profile data includes id, name, birth_date, zodiac_sign, created_at, updated_at fields. Profile updates working correctly."
+
+  - task: "Profile Retrieval GET /api/profile"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Profile retrieval working correctly - Returns user profile with all required fields. Proper 404 handling when no profile exists. Profile data persistence verified through MongoDB."
+
+  - task: "Zodiac Sign Calculation get_zodiac_sign function"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Zodiac sign calculation working perfectly - Tested all 12 zodiac signs with various dates including boundary dates. Accurate calculations: 1990-03-15→Рыбы, 1985-07-20→Рак, 1992-01-10→Козерог, 1988-05-25→Близнецы, 1995-09-15→Дева, 1987-12-25→Козерог, 1991-06-21→Рак (boundary), 1989-03-21→Овен (boundary). All test cases passed."
+
+  - task: "Horoscope Generation GET /api/horoscope"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Horoscope generation working excellently - Generates personalized horoscopes with user's name and zodiac sign. Includes all required fields: id, user_profile_id, date, zodiac_sign, horoscope_text, mood_rating (1-10), love_forecast, career_forecast, health_forecast, lucky_numbers (6 numbers), lucky_color. Substantial content (200+ words), proper personalization with user's name in text."
+
+  - task: "Horoscope with Specific Dates"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Horoscope date handling working correctly - Accepts specific dates via query parameter (?date=2024-12-20). Returns horoscope for requested date. Date validation and formatting working properly."
+
+  - task: "Horoscope Caching System"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Horoscope caching working perfectly - Same date requests return existing horoscope (same ID). Prevents duplicate horoscope generation for same user/date combination. Database efficiency maintained."
+
+  - task: "Horoscope Personalization"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Horoscope personalization working excellently - Uses user's name (Мария), correct zodiac sign (Рак), personal addressing (Вы, Ваш, Вас). Includes astrological content (планет, звезд, космическ, энерги). Separate forecast sections for love, career, health. High-quality personalized content generation."
+
+  - task: "Unified History with Horoscopes GET /api/readings"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "❌ MongoDB ObjectId serialization error - Unified history endpoint returning 500 error due to ObjectId objects in MongoDB documents that can't be serialized to JSON."
+        - working: true
+          agent: "testing"
+          comment: "✅ FIXED - Unified history working perfectly - Fixed MongoDB ObjectId serialization by excluding _id fields from queries. Now returns unified history with tarot, palmistry, and horoscopes. Horoscope entries have proper format: category='horoscope', spread_type='daily_horoscope', empty cards array, zodiac_sign field, proper structure. Database integration confirmed with multiple horoscope readings."
+
+  - task: "Horoscope Data Persistence MongoDB"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Data persistence working perfectly - Profiles saved to MongoDB user_profiles collection. Horoscopes saved to MongoDB horoscopes collection. Profile data retrieval matches created data. Horoscopes appear in unified history. MongoDB integration fully functional."
+
+  - task: "Horoscope Error Handling"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Error handling working correctly - Returns 404 when no profile exists for horoscope generation. Proper error messages and status codes. Graceful handling of missing profile scenarios."
+
+  - task: "Horoscope Fallback System"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Fallback horoscope system working excellently - Generates quality Russian horoscopes when OpenAI unavailable. Uses zodiac characteristics (element, planet, traits). Personalized content with user's name and zodiac sign. Substantial content with proper structure (general, love, career, health sections). Mystical astrology style maintained."
 
 frontend:
   - task: "Animated starry background implementation"
