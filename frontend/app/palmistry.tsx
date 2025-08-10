@@ -41,7 +41,6 @@ export default function PalmistryScreen() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [result, setResult] = useState<PalmistryResult | null>(null);
-  const [showLines, setShowLines] = useState(false);
 
   useEffect(() => {
     analyzePalm();
