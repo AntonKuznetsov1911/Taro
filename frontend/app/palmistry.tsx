@@ -87,9 +87,6 @@ export default function PalmistryScreen() {
 
       const palmResult = await palmResponse.json();
       setResult(palmResult);
-      
-      // Show lines after a short delay for dramatic effect
-      setTimeout(() => setShowLines(true), 1000);
     } catch (error) {
       console.error('Error analyzing palm:', error);
       Alert.alert('Ошибка', 'Не удалось проанализировать изображение. Попробуйте еще раз.');
