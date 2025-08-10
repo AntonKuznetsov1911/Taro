@@ -380,7 +380,180 @@ def generate_fallback_palmistry_interpretation(question: str) -> str:
 
 *Пусть звезды освещают Ваш путь к счастью!* ⭐🤲"""
     
-    return interpretation
+def get_zodiac_sign(birth_date: str) -> str:
+    """Determine zodiac sign based on birth date"""
+    from datetime import datetime
+    
+    try:
+        date_obj = datetime.strptime(birth_date, '%Y-%m-%d')
+        month = date_obj.month
+        day = date_obj.day
+        
+        if (month == 3 and day >= 21) or (month == 4 and day <= 19):
+            return "Овен"
+        elif (month == 4 and day >= 20) or (month == 5 and day <= 20):
+            return "Телец"
+        elif (month == 5 and day >= 21) or (month == 6 and day <= 20):
+            return "Близнецы"
+        elif (month == 6 and day >= 21) or (month == 7 and day <= 22):
+            return "Рак"
+        elif (month == 7 and day >= 23) or (month == 8 and day <= 22):
+            return "Лев"
+        elif (month == 8 and day >= 23) or (month == 9 and day <= 22):
+            return "Дева"
+        elif (month == 9 and day >= 23) or (month == 10 and day <= 22):
+            return "Весы"
+        elif (month == 10 and day >= 23) or (month == 11 and day <= 21):
+            return "Скорпион"
+        elif (month == 11 and day >= 22) or (month == 12 and day <= 21):
+            return "Стрелец"
+        elif (month == 12 and day >= 22) or (month == 1 and day <= 19):
+            return "Козерог"
+        elif (month == 1 and day >= 20) or (month == 2 and day <= 18):
+            return "Водолей"
+        elif (month == 2 and day >= 19) or (month == 3 and day <= 20):
+            return "Рыбы"
+        else:
+            return "Неизвестно"
+    except:
+        return "Неизвестно"
+
+async def generate_horoscope(user_profile: UserProfile, target_date: str) -> HoroscopeResult:
+    """Generate personalized horoscope for user"""
+    
+    # Generate lucky numbers and color
+    import random
+    lucky_numbers = random.sample(range(1, 50), 6)
+    colors = ["золотой", "серебряный", "красный", "синий", "зеленый", "фиолетовый", "белый", "черный"]
+    lucky_color = random.choice(colors)
+    mood_rating = random.randint(6, 9)
+    
+    prompt = f"""Ты мудрая астролог и предсказательница судеб с 30-летним опытом составления гороскопов. Создай персонализированный гороскоп для человека.
+
+ДАННЫЕ ЧЕЛОВЕКА:
+Имя: {user_profile.name}
+Дата рождения: {user_profile.birth_date}
+Знак зодиака: {user_profile.zodiac_sign}
+Время рождения: {user_profile.birth_time or "не указано"}
+Место рождения: {user_profile.birth_place or "не указано"}
+Пол: {user_profile.gender or "не указан"}
+
+ДАТА ПРОГНОЗА: {target_date}
+СЧАСТЛИВЫЕ ЧИСЛА: {', '.join(map(str, lucky_numbers))}
+СЧАСТЛИВЫЙ ЦВЕТ: {lucky_color}
+НАСТРОЕНИЕ (1-10): {mood_rating}
+
+ИНСТРУКЦИИ ДЛЯ ГОРОСКОПА:
+
+1. СТИЛЬ И ТОН:
+   - Обращайся на "Вы", используй имя человека
+   - Мистический, но теплый тон как у мудрой астролог
+   - "Звезды говорят...", "Космические энергии...", "Планеты шепчут..."
+
+2. СТРУКТУРА ГОРОСКОПА:
+   - Общий прогноз на день (150-200 слов)
+   - Любовь и отношения (80-100 слов)
+   - Карьера и финансы (80-100 слов)
+   - Здоровье и энергия (60-80 слов)
+
+3. ПЕРСОНАЛИЗАЦИЯ:
+   - Учитывай особенности знака зодиака {user_profile.zodiac_sign}
+   - Упоминай имя {user_profile.name} в тексте
+   - Используй информацию о дате рождения для более точных прогнозов
+   - Если указано время и место рождения, добавь астрологические детали
+
+4. МИСТИЧЕСКИЕ ЭЛЕМЕНТЫ:
+   - Упоминай планеты, влияющие на знак
+   - Говори о энергиях, вибрациях, космических потоках
+   - Используй астрологическую терминологию
+
+5. ПРАКТИЧЕСКИЕ СОВЕТЫ:
+   - Что делать сегодня для успеха
+   - На что обратить внимание
+   - Как использовать энергию дня
+
+6. ОБЪЕМ: 400-600 слов общего текста
+
+Создай вдохновляющий и точный гороскоп, который поможет человеку лучше понять энергии дня!"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.8
+        )
+        full_horoscope = response.choices[0].message.content.strip()
+        
+        # Extract sections for different forecasts
+        love_forecast = "Звезды благоволят романтическим встречам и глубоким разговорам с любимыми."
+        career_forecast = "Планеты поддерживают ваши профессиональные начинания и новые проекты."
+        health_forecast = "Космические энергии способствуют восстановлению сил и внутренней гармонии."
+        
+    except Exception as e:
+        logging.error(f"OpenAI API error: {e}")
+        full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
+    
+    return HoroscopeResult(
+        user_profile_id=user_profile.id,
+        date=target_date,
+        zodiac_sign=user_profile.zodiac_sign,
+        horoscope_text=full_horoscope,
+        mood_rating=mood_rating,
+        love_forecast=love_forecast,
+        career_forecast=career_forecast,
+        health_forecast=health_forecast,
+        lucky_numbers=lucky_numbers,
+        lucky_color=lucky_color
+    )
+
+def generate_fallback_horoscope(user_profile: UserProfile, target_date: str, mood_rating: int) -> tuple[str, str, str, str]:
+    """Generate fallback horoscope when OpenAI is unavailable"""
+    
+    # Zodiac characteristics
+    zodiac_traits = {
+        "Овен": {"element": "огонь", "planet": "Марс", "traits": "энергия, решительность, лидерство"},
+        "Телец": {"element": "земля", "planet": "Венера", "traits": "стабильность, упорство, красота"},
+        "Близнецы": {"element": "воздух", "planet": "Меркурий", "traits": "общительность, любознательность, гибкость"},
+        "Рак": {"element": "вода", "planet": "Луна", "traits": "интуиция, забота, эмоциональность"},
+        "Лев": {"element": "огонь", "planet": "Солнце", "traits": "творчество, великодушие, яркость"},
+        "Дева": {"element": "земля", "planet": "Меркурий", "traits": "аналитичность, практичность, совершенство"},
+        "Весы": {"element": "воздух", "planet": "Венера", "traits": "гармония, справедливость, дипломатия"},
+        "Скорпион": {"element": "вода", "planet": "Плутон", "traits": "страстность, проницательность, трансформация"},
+        "Стрелец": {"element": "огонь", "planet": "Юпитер", "traits": "оптимизм, стремление к познанию, свобода"},
+        "Козерог": {"element": "земля", "planet": "Сатурн", "traits": "целеустремленность, дисциплина, мудрость"},
+        "Водолей": {"element": "воздух", "planet": "Уран", "traits": "оригинальность, гуманность, независимость"},
+        "Рыбы": {"element": "вода", "planet": "Нептун", "traits": "чувствительность, интуиция, сострадание"}
+    }
+    
+    sign_info = zodiac_traits.get(user_profile.zodiac_sign, {"element": "космос", "planet": "звезды", "traits": "уникальность"})
+    
+    full_horoscope = f"""🌟 **Персональный гороскоп для {user_profile.name}** 🌟
+*{user_profile.zodiac_sign} • {target_date}*
+
+Дорогая {user_profile.name}, звезды сегодня особенно благосклонны к вам! Ваш знак {user_profile.zodiac_sign}, управляемый планетой {sign_info['planet']}, находится под мощным влиянием космических энергий.
+
+**✨ Общий прогноз:**
+Сегодняшний день принесет вам множество возможностей для самовыражения и достижения целей. Элемент {sign_info['element']}, которому принадлежит ваш знак, активизирует такие качества как {sign_info['traits']}. Энергия дня настроена на {mood_rating}/10, что говорит о благоприятном периоде для важных решений.
+
+Космические вибрации указывают на то, что интуиция будет особенно обострена. Доверяйте своему внутреннему голосу и не бойтесь делать смелые шаги. Планеты выстроились таким образом, что поддерживают ваши начинания.
+
+**💝 Любовь и отношения:**
+В сфере сердечных дел звезды предвещают гармонию и понимание. Если вы в отношениях, то сегодня - прекрасный день для откровенных разговоров и проявления нежности. Одиноким {user_profile.zodiac_sign} космос может послать знаковую встречу.
+
+**💼 Карьера и финансы:**
+Планета {sign_info['planet']} благоволит вашим профессиональным устремлениям. Это удачное время для презентаций, переговоров и новых проектов. Финансовые вопросы решаются в вашу пользу, особенно если вы проявите присущие вашему знаку качества.
+
+**🌿 Здоровье и энергия:**
+Энергетический баланс стабилен. Элемент {sign_info['element']} дает вам силы для активных действий, но не забывайте о отдыхе. Медитация или прогулка на свежем воздухе помогут гармонизировать внутреннее состояние.
+
+*Пусть звезды освещают ваш путь, дорогая {user_profile.name}!* ⭐"""
+
+    love_forecast = f"Звезды благоволят романтическим встречам. {user_profile.zodiac_sign} сегодня особенно привлекателен для противоположного пола."
+    career_forecast = f"Планета {sign_info['planet']} поддерживает ваши карьерные амбиции. Время для смелых профессиональных решений."
+    health_forecast = f"Элемент {sign_info['element']} дает вам энергию и жизненные силы. Прислушивайтесь к потребностям организма."
+    
+    return full_horoscope, love_forecast, career_forecast, health_forecast
 
 def generate_fallback_compatibility_analysis(name1: str, name2: str, score: int) -> str:
     """Generate fallback compatibility analysis"""
