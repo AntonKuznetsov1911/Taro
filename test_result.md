@@ -441,9 +441,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Palmistry analysis endpoint POST /api/palmistry"
-    - "Palm line generation and AI analysis"
-    - "Unified history for tarot and palmistry"
     - "Palmistry camera screen implementation"
     - "Palmistry result screen with colored lines"
     - "Main screen palmistry button integration"
