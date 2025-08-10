@@ -350,6 +350,8 @@ backend:
         - working: "unknown"
           agent: "main"
           comment: "Updated reading history endpoint to include both tarot and palmistry results in unified format sorted by date."
+
+  - task: "Interpretation quality and mystical style"
     implemented: true
     working: true
     file: "backend/server.py"
