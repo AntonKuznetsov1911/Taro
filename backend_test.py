@@ -1584,16 +1584,14 @@ class TatoAiTester:
     def test_palmistry_database_integration(self):
         """Test that palmistry results are saved to MongoDB"""
         try:
-            # Get initial reading count
-            initial_history = self.test_unified_reading_history()
-            initial_palmistry_count = 0
-            if initial_history:
-                initial_palmistry_count = sum(1 for reading in initial_history if reading.get("category") == "palmistry")
+            # Create a unique test question with timestamp
+            import time
+            unique_id = str(int(time.time() * 1000))  # Millisecond timestamp
+            test_question = f"UNIQUE_TEST_PALMISTRY_{unique_id}"
             
-            # Create a new palmistry reading
+            # Create a new palmistry reading with unique question
             import base64
             test_image_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77zgAAAABJRU5ErkJggg=="
-            test_question = f"Тестовый вопрос хиромантии для проверки базы данных - {datetime.now().isoformat()}"
             
             payload = {
                 "image_base64": test_image_base64,
@@ -1607,27 +1605,30 @@ class TatoAiTester:
             )
             
             if response.status_code == 200:
-                # Get updated history
-                updated_history = self.test_unified_reading_history()
-                updated_palmistry_count = 0
-                if updated_history:
-                    updated_palmistry_count = sum(1 for reading in updated_history if reading.get("category") == "palmistry")
+                created_reading = response.json()
+                created_id = created_reading.get("id")
                 
-                # Check if palmistry count increased
-                if updated_palmistry_count > initial_palmistry_count:
-                    # Check if our reading is in the history
-                    found_reading = any(reading.get("question") == test_question for reading in updated_history if reading.get("category") == "palmistry")
+                # Get history with higher limit to find our reading
+                history_response = self.session.get(f"{self.base_url}/readings?limit=100")
+                
+                if history_response.status_code == 200:
+                    history_data = history_response.json()
                     
-                    if found_reading:
+                    # Look for our specific reading by question or ID
+                    found_by_question = any(reading.get("question") == test_question for reading in history_data)
+                    found_by_id = any(reading.get("id") == created_id for reading in history_data)
+                    
+                    if found_by_question or found_by_id:
+                        palmistry_count = sum(1 for reading in history_data if reading.get("category") == "palmistry")
                         self.log_test("Palmistry database integration", True, 
-                                    f"✅ Palmistry saved to database - Count: {initial_palmistry_count} -> {updated_palmistry_count}")
+                                    f"✅ Palmistry saved to database - Found unique reading (ID: {created_id[:8]}...), Total palmistry: {palmistry_count}")
                         return True
                     else:
-                        self.log_test("Palmistry database integration", False, "Palmistry reading not found in unified history")
+                        self.log_test("Palmistry database integration", False, 
+                                    f"Unique palmistry reading not found in history (ID: {created_id}, Question: {test_question[:50]}...)")
                         return False
                 else:
-                    self.log_test("Palmistry database integration", False, 
-                                f"Palmistry count did not increase: {initial_palmistry_count} -> {updated_palmistry_count}")
+                    self.log_test("Palmistry database integration", False, f"Failed to get history: HTTP {history_response.status_code}")
                     return False
             else:
                 self.log_test("Palmistry database integration", False, f"Failed to create palmistry reading: HTTP {response.status_code}")
