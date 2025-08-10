@@ -24,10 +24,10 @@ const { width } = Dimensions.get('window');
 // Элегантный дизайн с акцентом на космические элементы, звезды, туманности
 
 const CATEGORIES = [
-  { id: 'love', name: 'Любовь', icon: '💫', color: '#FF6B9D', gradient: ['#FF6B9D', '#FF8E9B', '#C44569'], description: 'Вопросы сердца' },
-  { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['#4ECDC4', '#45B7D1', '#26A0B4'], description: 'Профессиональный путь' },
-  { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['#45B7D1', '#5DADE2', '#2E86AB'], description: 'Денежная энергия' },
-  { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['#9B59B6', '#BB6BD9', '#6C3483'], description: 'Жизненные вопросы' }
+  { id: 'love', name: 'Любовь', icon: '💫', color: '#FF6B9D', gradient: ['rgba(255, 107, 157, 0.4)', 'rgba(255, 142, 155, 0.5)', 'rgba(196, 69, 105, 0.6)'], description: 'Вопросы сердца' },
+  { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['rgba(78, 205, 196, 0.4)', 'rgba(69, 183, 209, 0.5)', 'rgba(38, 160, 180, 0.6)'], description: 'Профессиональный путь' },
+  { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['rgba(69, 183, 209, 0.4)', 'rgba(93, 173, 226, 0.5)', 'rgba(46, 134, 171, 0.6)'], description: 'Денежная энергия' },
+  { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['rgba(155, 89, 182, 0.4)', 'rgba(187, 107, 217, 0.5)', 'rgba(108, 52, 131, 0.6)'], description: 'Жизненные вопросы' }
 ];
 
 const SPREADS = [
