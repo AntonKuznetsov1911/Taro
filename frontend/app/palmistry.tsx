@@ -101,78 +101,12 @@ export default function PalmistryScreen() {
     }
   };
 
-  const renderPalmLines = () => {
-    if (!result || !showLines) return null;
-
-    return (
-      <Svg
-        width={280}
-        height={350}
-        style={styles.palmLinesSvg}
-        viewBox="0 0 280 350"
-      >
-        {result.lines.map((line, index) => {
-          if (!line.points || line.points.length < 2) return null;
-
-          // Create smooth path from points
-          let pathData = `M ${line.points[0][0]} ${line.points[0][1]}`;
-          
-          for (let i = 1; i < line.points.length; i++) {
-            const [x, y] = line.points[i];
-            pathData += ` L ${x} ${y}`;
-          }
-
-          return (
-            <React.Fragment key={index}>
-              {/* Main line with glow effect */}
-              <Path
-                d={pathData}
-                stroke={line.color}
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={0.9}
-                style={{
-                  filter: 'drop-shadow(0px 0px 8px {line.color})'
-                }}
-              />
-              
-              {/* Subtle glow overlay */}
-              <Path
-                d={pathData}
-                stroke={line.color}
-                strokeWidth="8"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={0.3}
-              />
-
-              {/* Add small sparkles along the line */}
-              {line.points.map((point, pointIndex) => (
-                <Circle
-                  key={pointIndex}
-                  cx={point[0]}
-                  cy={point[1]}
-                  r="2"
-                  fill={line.color}
-                  opacity={0.8}
-                />
-              ))}
-            </React.Fragment>
-          );
-        })}
-      </Svg>
-    );
-  };
-
   const renderLineLegend = () => {
     if (!result) return null;
 
     return (
       <View style={styles.legendContainer}>
-        <Text style={styles.legendTitle}>Линии ладони:</Text>
+        <Text style={styles.legendTitle}>Анализируемые линии:</Text>
         {result.lines.map((line, index) => (
           <View key={index} style={styles.legendItem}>
             <View style={[styles.colorIndicator, { backgroundColor: line.color }]} />
