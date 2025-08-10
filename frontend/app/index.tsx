@@ -93,23 +93,17 @@ export default function CosmicIndex() {
         {selectedSpread === spread.id && (
           <View style={styles.selectedIndicator}>
             <View style={styles.crystalGlassIndicator}>
-              <Image
-                source={{ 
-                  uri: `data:image/jpeg;base64,${TAROT_LOVERS_BASE64}` 
-                }}
-                style={styles.tarotIndicatorImage}
-                resizeMode="cover"
-              />
               <LinearGradient
                 colors={[
+                  'rgba(255, 255, 255, 0.6)',
+                  'rgba(255, 255, 255, 0.2)',
                   'rgba(255, 255, 255, 0.4)',
-                  'rgba(255, 255, 255, 0.1)',
-                  'rgba(255, 255, 255, 0.3)',
                 ]}
-                style={styles.glassOverlay}
+                style={styles.crystalGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
+              <View style={styles.crystalReflection} />
             </View>
           </View>
         )}
