@@ -198,13 +198,37 @@ export default function CosmicIndex() {
             </TouchableOpacity>
           </View>
 
-          {/* Cosmic Quote */}
-          <View style={styles.quoteSection}>
-            <View style={styles.quoteContainer}>
-              <Text style={styles.quoteText}>
-                "В бесконечности космоса скрыты ответы на все вопросы души"
-              </Text>
-              <Text style={styles.quoteAuthor}>— Древняя мудрость</Text>
+          {/* Crystal Glass Effect */}
+          <View style={styles.crystalSection}>
+            <View style={styles.crystalContainer}>
+              <LinearGradient
+                colors={[
+                  'rgba(255, 255, 255, 0.15)',
+                  'rgba(255, 255, 255, 0.05)',
+                  'rgba(155, 89, 182, 0.1)',
+                  'rgba(255, 255, 255, 0.08)',
+                ]}
+                style={styles.crystalGlass}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.crystalInner}>
+                  {/* Кристаллические грани */}
+                  <View style={styles.crystalFacet1} />
+                  <View style={styles.crystalFacet2} />
+                  <View style={styles.crystalFacet3} />
+                  
+                  {/* Центральный элемент */}
+                  <View style={styles.crystalCore}>
+                    <Text style={styles.crystalText}>✨</Text>
+                    <Text style={styles.crystalSubtext}>МИСТИЧЕСКАЯ ЭНЕРГИЯ</Text>
+                  </View>
+                  
+                  {/* Световые блики */}
+                  <View style={styles.lightReflection1} />
+                  <View style={styles.lightReflection2} />
+                </View>
+              </LinearGradient>
             </View>
           </View>
         </ScrollView>
