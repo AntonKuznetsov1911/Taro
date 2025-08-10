@@ -1024,23 +1024,26 @@ async def get_horoscope_history(limit: int = 10):
     
     horoscopes = await db.horoscopes.find().sort("created_at", -1).limit(limit).to_list(limit)
     return [HoroscopeResult(**horoscope) for horoscope in horoscopes]
+@api_router.get("/readings")
 async def get_reading_history(limit: int = 10):
-    """Get reading history including tarot and palmistry"""
+    """Get unified reading history including tarot, palmistry, and horoscopes"""
     
     # Get tarot readings
     tarot_readings = await db.tarot_readings.find().sort("created_at", -1).limit(limit).to_list(limit)
-    tarot_list = [TarotReading(**reading) for reading in tarot_readings]
     
     # Get palmistry readings  
     palmistry_readings = await db.palmistry_results.find().sort("created_at", -1).limit(limit).to_list(limit)
     
-    # Convert palmistry to tarot-like format for unified history
+    # Get horoscopes
+    horoscope_readings = await db.horoscopes.find().sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Convert all to unified format
     unified_history = []
     
     # Add tarot readings
-    for reading in tarot_list:
+    for reading in tarot_readings:
         unified_history.append({
-            **reading.dict(),
+            **reading,
             "type": "tarot"
         })
     
@@ -1058,6 +1061,24 @@ async def get_reading_history(limit: int = 10):
             "type": "palmistry",
             "image_base64": palm_reading.get("image_base64", ""),
             "lines": palm_reading.get("lines", [])
+        })
+    
+    # Add horoscopes
+    for horoscope in horoscope_readings:
+        unified_history.append({
+            "id": horoscope["id"],
+            "question": f"Гороскоп на {horoscope['date']}",
+            "category": "horoscope",
+            "spread_type": "daily_horoscope",
+            "cards": [],  # Empty for horoscope
+            "positions": [f"Прогноз для знака {horoscope['zodiac_sign']}"],
+            "interpretation": horoscope["horoscope_text"],
+            "created_at": horoscope["created_at"],
+            "type": "horoscope",
+            "zodiac_sign": horoscope["zodiac_sign"],
+            "mood_rating": horoscope.get("mood_rating", 7),
+            "lucky_color": horoscope.get("lucky_color", "золотой"),
+            "lucky_numbers": horoscope.get("lucky_numbers", [])
         })
     
     # Sort all by date and limit
