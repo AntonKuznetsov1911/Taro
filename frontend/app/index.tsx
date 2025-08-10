@@ -55,7 +55,16 @@ export default function CosmicIndex() {
             <Text style={styles.categoryDescription}>{category.description}</Text>
             {selectedCategory === category.id && (
               <View style={styles.selectedCategoryIndicator}>
-                <Text style={styles.diamondIcon}>💎</Text>
+                <View style={styles.crystalGlassIndicator}>
+                  <Image
+                    source={{ 
+                      uri: `data:image/jpeg;base64,${await getCachedTarotImage()}` 
+                    }}
+                    style={styles.tarotIndicatorImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.glassOverlay} />
+                </View>
               </View>
             )}
           </View>
