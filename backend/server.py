@@ -746,9 +746,44 @@ async def analyze_palmistry(request: PalmistryRequest):
 
 @api_router.get("/readings", response_model=List[TarotReading])
 async def get_reading_history(limit: int = 10):
-    """Get reading history"""
-    readings = await db.tarot_readings.find().sort("created_at", -1).limit(limit).to_list(limit)
-    return [TarotReading(**reading) for reading in readings]
+    """Get reading history including tarot and palmistry"""
+    
+    # Get tarot readings
+    tarot_readings = await db.tarot_readings.find().sort("created_at", -1).limit(limit).to_list(limit)
+    tarot_list = [TarotReading(**reading) for reading in tarot_readings]
+    
+    # Get palmistry readings  
+    palmistry_readings = await db.palmistry_results.find().sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Convert palmistry to tarot-like format for unified history
+    unified_history = []
+    
+    # Add tarot readings
+    for reading in tarot_list:
+        unified_history.append({
+            **reading.dict(),
+            "type": "tarot"
+        })
+    
+    # Add palmistry readings 
+    for palm_reading in palmistry_readings:
+        unified_history.append({
+            "id": palm_reading["id"],
+            "question": palm_reading["question"],
+            "category": "palmistry",
+            "spread_type": "palm_analysis",
+            "cards": [],  # Empty for palmistry
+            "positions": ["Анализ ладони"],
+            "interpretation": palm_reading["interpretation"],
+            "created_at": palm_reading["created_at"],
+            "type": "palmistry",
+            "image_base64": palm_reading.get("image_base64", ""),
+            "lines": palm_reading.get("lines", [])
+        })
+    
+    # Sort all by date and limit
+    unified_history.sort(key=lambda x: x["created_at"], reverse=True)
+    return unified_history[:limit]
 
 @api_router.get("/")
 async def root():
