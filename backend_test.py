@@ -1397,6 +1397,420 @@ class TatoAiTester:
         
         return passed_tests, failed_tests, self.test_results
 
+    def test_palmistry_endpoint(self):
+        """Test POST /api/palmistry - palmistry analysis"""
+        try:
+            # Create a sample base64 image (small test image)
+            import base64
+            # Simple 1x1 pixel PNG in base64
+            test_image_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77zgAAAABJRU5ErkJggg=="
+            
+            payload = {
+                "image_base64": test_image_base64,
+                "question": "Расскажите о моей судьбе по линиям руки"
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/palmistry",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "question", "image_base64", "lines", "interpretation", "created_at"]
+                
+                if all(field in data for field in required_fields):
+                    # Validate lines structure
+                    lines = data["lines"]
+                    if isinstance(lines, list) and len(lines) > 0:
+                        line = lines[0]
+                        line_fields = ["name", "description", "color", "points"]
+                        
+                        if all(field in line for field in line_fields):
+                            # Check if interpretation is in Russian and substantial
+                            interpretation = data["interpretation"]
+                            has_russian = any(ord(char) >= 1040 and ord(char) <= 1103 for char in interpretation)
+                            is_substantial = len(interpretation) > 300
+                            
+                            # Check for expected palm lines
+                            expected_lines = ["Линия жизни", "Линия сердца", "Линия ума", "Линия судьбы"]
+                            found_lines = [line["name"] for line in lines]
+                            has_expected_lines = any(expected in found_lines for expected in expected_lines)
+                            
+                            details = f"Palmistry analysis created - Lines: {len(lines)}, Russian interpretation: {has_russian}, Substantial: {is_substantial}, Expected lines: {has_expected_lines}"
+                            self.log_test("Palmistry endpoint", True, details)
+                            return data
+                        else:
+                            self.log_test("Palmistry endpoint", False, "Invalid line structure", line)
+                            return None
+                    else:
+                        self.log_test("Palmistry endpoint", False, "No lines in response", data)
+                        return None
+                else:
+                    missing_fields = [field for field in required_fields if field not in data]
+                    self.log_test("Palmistry endpoint", False, f"Missing fields: {missing_fields}", data)
+                    return None
+            else:
+                self.log_test("Palmistry endpoint", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Palmistry endpoint", False, f"Exception: {str(e)}")
+            return None
+
+    def test_palm_line_generation(self):
+        """Test palm line generation with different colors and coordinates"""
+        try:
+            # Create palmistry analysis
+            palmistry_result = self.test_palmistry_endpoint()
+            
+            if not palmistry_result:
+                self.log_test("Palm line generation", False, "Could not create palmistry analysis for line testing")
+                return False
+            
+            lines = palmistry_result.get("lines", [])
+            
+            if len(lines) < 5:  # Should have at least 5 different lines
+                self.log_test("Palm line generation", False, f"Too few lines generated: {len(lines)}")
+                return False
+            
+            # Check for expected palm lines
+            expected_lines = [
+                "Линия жизни", "Линия сердца", "Линия ума", "Линия судьбы",
+                "Линия Аполлона", "Линия Меркурия", "Браслеты"
+            ]
+            
+            found_line_names = [line["name"] for line in lines]
+            expected_found = sum(1 for expected in expected_lines if any(expected in found for found in found_line_names))
+            
+            # Check for different colors
+            colors = [line["color"] for line in lines]
+            unique_colors = len(set(colors))
+            
+            # Check coordinate structure
+            valid_coordinates = True
+            for line in lines:
+                points = line.get("points", [])
+                if not isinstance(points, list) or len(points) < 2:
+                    valid_coordinates = False
+                    break
+                
+                # Check that each point is [x, y] format
+                for point in points:
+                    if not isinstance(point, list) or len(point) != 2:
+                        valid_coordinates = False
+                        break
+                    if not all(isinstance(coord, (int, float)) for coord in point):
+                        valid_coordinates = False
+                        break
+            
+            if expected_found >= 5 and unique_colors >= 5 and valid_coordinates:
+                self.log_test("Palm line generation", True, 
+                            f"✅ Lines generated correctly - Expected lines: {expected_found}/7, Unique colors: {unique_colors}, Valid coordinates: {valid_coordinates}")
+                return True
+            else:
+                self.log_test("Palm line generation", False, 
+                            f"❌ Line generation issues - Expected lines: {expected_found}/7, Unique colors: {unique_colors}, Valid coordinates: {valid_coordinates}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Palm line generation", False, f"Exception: {str(e)}")
+            return False
+
+    def test_palmistry_ai_analysis(self):
+        """Test AI palmistry analysis quality and style"""
+        try:
+            # Test with different questions
+            test_questions = [
+                "Что говорят линии моей руки о любви?",
+                "Какая карьера мне подходит по линиям руки?",
+                "Что ждет меня в будущем согласно хиромантии?"
+            ]
+            
+            all_passed = True
+            
+            for question in test_questions:
+                import base64
+                test_image_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77zgAAAABJRU5ErkJggg=="
+                
+                payload = {
+                    "image_base64": test_image_base64,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/palmistry",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    interpretation = data.get("interpretation", "")
+                    
+                    # Check for Russian text
+                    has_russian = any(ord(char) >= 1040 and ord(char) <= 1103 for char in interpretation)
+                    
+                    # Check for substantial length (should be detailed)
+                    is_substantial = len(interpretation) > 500
+                    word_count = len(interpretation.split())
+                    
+                    # Check for palmistry-specific content
+                    palmistry_keywords = ["линия", "ладон", "рук", "хиромант", "судьб", "жизн", "сердц", "ум"]
+                    has_palmistry_content = any(keyword in interpretation.lower() for keyword in palmistry_keywords)
+                    
+                    # Check for mystical gypsy style
+                    mystical_phrases = ["дорогая", "милая", "вижу", "духи", "энергия", "мудрая", "гадалка"]
+                    has_mystical_style = any(phrase in interpretation.lower() for phrase in mystical_phrases)
+                    
+                    if has_russian and is_substantial and has_palmistry_content and has_mystical_style:
+                        self.log_test(f"Palmistry AI analysis - {question[:30]}...", True, 
+                                    f"✅ Quality analysis - Words: {word_count}, Russian: {has_russian}, Palmistry content: {has_palmistry_content}, Mystical style: {has_mystical_style}")
+                    else:
+                        details = f"Words: {word_count}, Russian: {has_russian}, Palmistry: {has_palmistry_content}, Mystical: {has_mystical_style}"
+                        self.log_test(f"Palmistry AI analysis - {question[:30]}...", False, f"❌ Quality issues - {details}")
+                        all_passed = False
+                else:
+                    self.log_test(f"Palmistry AI analysis - {question[:30]}...", False, f"HTTP {response.status_code}: {response.text[:200]}")
+                    all_passed = False
+            
+            return all_passed
+            
+        except Exception as e:
+            self.log_test("Palmistry AI analysis", False, f"Exception: {str(e)}")
+            return False
+
+    def test_palmistry_database_integration(self):
+        """Test that palmistry results are saved to MongoDB"""
+        try:
+            # Get initial reading count
+            initial_history = self.test_unified_reading_history()
+            initial_palmistry_count = 0
+            if initial_history:
+                initial_palmistry_count = sum(1 for reading in initial_history if reading.get("type") == "palmistry")
+            
+            # Create a new palmistry reading
+            import base64
+            test_image_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77zgAAAABJRU5ErkJggg=="
+            test_question = f"Тестовый вопрос хиромантии для проверки базы данных - {datetime.now().isoformat()}"
+            
+            payload = {
+                "image_base64": test_image_base64,
+                "question": test_question
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/palmistry",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                # Get updated history
+                updated_history = self.test_unified_reading_history()
+                updated_palmistry_count = 0
+                if updated_history:
+                    updated_palmistry_count = sum(1 for reading in updated_history if reading.get("type") == "palmistry")
+                
+                # Check if palmistry count increased
+                if updated_palmistry_count > initial_palmistry_count:
+                    # Check if our reading is in the history
+                    found_reading = any(reading.get("question") == test_question for reading in updated_history if reading.get("type") == "palmistry")
+                    
+                    if found_reading:
+                        self.log_test("Palmistry database integration", True, 
+                                    f"✅ Palmistry saved to database - Count: {initial_palmistry_count} -> {updated_palmistry_count}")
+                        return True
+                    else:
+                        self.log_test("Palmistry database integration", False, "Palmistry reading not found in unified history")
+                        return False
+                else:
+                    self.log_test("Palmistry database integration", False, 
+                                f"Palmistry count did not increase: {initial_palmistry_count} -> {updated_palmistry_count}")
+                    return False
+            else:
+                self.log_test("Palmistry database integration", False, f"Failed to create palmistry reading: HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Palmistry database integration", False, f"Exception: {str(e)}")
+            return False
+
+    def test_unified_reading_history(self):
+        """Test GET /api/readings - unified history with tarot and palmistry"""
+        try:
+            response = self.session.get(f"{self.base_url}/readings")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    # Check for both tarot and palmistry entries
+                    tarot_count = sum(1 for reading in data if reading.get("type") == "tarot")
+                    palmistry_count = sum(1 for reading in data if reading.get("type") == "palmistry")
+                    
+                    # Validate structure of different types
+                    valid_structure = True
+                    for reading in data:
+                        reading_type = reading.get("type")
+                        if reading_type == "tarot":
+                            # Tarot should have cards
+                            if not isinstance(reading.get("cards", []), list):
+                                valid_structure = False
+                                break
+                        elif reading_type == "palmistry":
+                            # Palmistry should have lines and image
+                            if not isinstance(reading.get("lines", []), list) or not reading.get("image_base64"):
+                                valid_structure = False
+                                break
+                    
+                    if valid_structure:
+                        self.log_test("Unified reading history", True, 
+                                    f"✅ Unified history working - Total: {len(data)}, Tarot: {tarot_count}, Palmistry: {palmistry_count}")
+                        return data
+                    else:
+                        self.log_test("Unified reading history", False, "Invalid structure in unified history")
+                        return None
+                else:
+                    self.log_test("Unified reading history", False, "Response is not a list", data)
+                    return None
+            else:
+                self.log_test("Unified reading history", False, f"Status code: {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_test("Unified reading history", False, f"Exception: {str(e)}")
+            return None
+
+    def test_palmistry_error_handling(self):
+        """Test error handling for palmistry endpoint"""
+        try:
+            # Test with invalid image data
+            invalid_payloads = [
+                {"image_base64": "invalid_base64", "question": "Test question"},
+                {"image_base64": "", "question": "Test question"},
+                {"question": "Test question"},  # Missing image_base64
+                {"image_base64": "data:image/png;base64,invalid"}
+            ]
+            
+            all_passed = True
+            
+            for i, payload in enumerate(invalid_payloads):
+                response = self.session.post(
+                    f"{self.base_url}/palmistry",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                # Should return 400 or 422 for invalid data
+                if response.status_code in [400, 422]:
+                    self.log_test(f"Palmistry error handling - Case {i+1}", True, 
+                                f"✅ Invalid data correctly rejected with {response.status_code}")
+                else:
+                    self.log_test(f"Palmistry error handling - Case {i+1}", False, 
+                                f"❌ Expected 400/422 for invalid data, got {response.status_code}")
+                    all_passed = False
+            
+            return all_passed
+            
+        except Exception as e:
+            self.log_test("Palmistry error handling", False, f"Exception: {str(e)}")
+            return False
+
+    def test_palmistry_fallback_system(self):
+        """Test palmistry fallback interpretation system"""
+        try:
+            # Create palmistry reading (should use fallback due to OpenAI quota)
+            import base64
+            test_image_base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77zgAAAABJRU5ErkJggg=="
+            
+            payload = {
+                "image_base64": test_image_base64,
+                "question": "Проверка системы резервных интерпретаций хиромантии"
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/palmistry",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                interpretation = data.get("interpretation", "")
+                
+                # Check for fallback characteristics
+                fallback_indicators = [
+                    "дорогая моя", "милая душа", "вижу на вашей ладони",
+                    "линии руки", "древние тайны", "мудрая гадалка",
+                    "заключительное", "пророчество"
+                ]
+                
+                found_indicators = [indicator for indicator in fallback_indicators if indicator in interpretation.lower()]
+                indicator_score = len(found_indicators)
+                
+                # Check for specific palm line mentions
+                palm_lines = ["линия жизни", "линия сердца", "линия ума", "линия судьбы"]
+                found_lines = [line for line in palm_lines if line in interpretation.lower()]
+                line_coverage = len(found_lines) / len(palm_lines)
+                
+                # Check for substantial content
+                word_count = len(interpretation.split())
+                is_substantial = word_count > 400
+                
+                if indicator_score >= 3 and line_coverage >= 0.5 and is_substantial:
+                    self.log_test("Palmistry fallback system", True, 
+                                f"✅ Quality fallback - Indicators: {indicator_score}, Line coverage: {line_coverage:.1%}, Words: {word_count}")
+                    return True
+                else:
+                    self.log_test("Palmistry fallback system", False, 
+                                f"❌ Fallback quality issues - Indicators: {indicator_score}, Lines: {line_coverage:.1%}, Words: {word_count}")
+                    return False
+            else:
+                self.log_test("Palmistry fallback system", False, f"HTTP {response.status_code}: {response.text[:200]}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Palmistry fallback system", False, f"Exception: {str(e)}")
+            return False
+
+    def run_palmistry_tests(self):
+        """Run comprehensive palmistry functionality tests"""
+        print("🤲 PALMISTRY FUNCTIONALITY TESTING")
+        print("=" * 50)
+        print("Testing new palmistry features: endpoint, line generation, AI analysis, database integration")
+        print()
+        
+        palmistry_tests = [
+            ("Palmistry endpoint", self.test_palmistry_endpoint),
+            ("Palm line generation", self.test_palm_line_generation),
+            ("Palmistry AI analysis", self.test_palmistry_ai_analysis),
+            ("Palmistry database integration", self.test_palmistry_database_integration),
+            ("Unified reading history", self.test_unified_reading_history),
+            ("Palmistry error handling", self.test_palmistry_error_handling),
+            ("Palmistry fallback system", self.test_palmistry_fallback_system)
+        ]
+        
+        passed_tests = 0
+        
+        for test_name, test_func in palmistry_tests:
+            print(f"🔍 Testing: {test_name}")
+            if test_func():
+                passed_tests += 1
+            print()
+        
+        print("=" * 50)
+        print(f"🤲 PALMISTRY TESTING COMPLETE: {passed_tests}/{len(palmistry_tests)} tests passed ({(passed_tests/len(palmistry_tests))*100:.1f}%)")
+        
+        if passed_tests == len(palmistry_tests):
+            print("✅ ALL PALMISTRY TESTS PASSED! Palmistry functionality is fully working.")
+        else:
+            print(f"❌ {len(palmistry_tests) - passed_tests} palmistry tests failed. Check details above.")
+        
+        print("=" * 50)
+        
+        return passed_tests == len(palmistry_tests)
+
     def run_all_tests(self):
         """Run all tests"""
         print("🔮 Starting TatoAi Backend API Tests")
