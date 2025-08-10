@@ -605,11 +605,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 20,
-    marginBottom: 10,
-  },
-  quoteAuthor: {
-    fontSize: 12,
-    color: '#9B59B6',
-    textAlign: 'center',
   },
 });
