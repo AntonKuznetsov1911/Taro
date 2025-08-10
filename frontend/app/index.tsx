@@ -62,12 +62,21 @@ export default function CosmicIndex() {
                 <View style={styles.crystalGlassIndicator}>
                   <Image
                     source={{ 
-                      uri: `data:image/jpeg;base64,${await getCachedTarotImage()}` 
+                      uri: `data:image/jpeg;base64,${TAROT_LOVERS_BASE64}` 
                     }}
                     style={styles.tarotIndicatorImage}
                     resizeMode="cover"
                   />
-                  <View style={styles.glassOverlay} />
+                  <LinearGradient
+                    colors={[
+                      'rgba(255, 255, 255, 0.4)',
+                      'rgba(255, 255, 255, 0.1)',
+                      'rgba(255, 255, 255, 0.3)',
+                    ]}
+                    style={styles.glassOverlay}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
                 </View>
               </View>
             )}
