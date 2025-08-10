@@ -1866,8 +1866,10 @@ if __name__ == "__main__":
     
     tester = TatoAiTester()
     
-    # Run enhanced interpretation system tests as requested by user
-    passed, failed, results = tester.run_enhanced_interpretation_tests()
+    # Run palmistry tests as requested by user
+    print("🤲 RUNNING PALMISTRY FUNCTIONALITY TESTS")
+    print("=" * 60)
+    palmistry_success = tester.run_palmistry_tests()
     
     # Exit with error code if tests failed
-    sys.exit(0 if failed == 0 else 1)
+    sys.exit(0 if palmistry_success else 1)
