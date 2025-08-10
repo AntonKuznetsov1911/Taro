@@ -945,7 +945,85 @@ async def analyze_palmistry(request: PalmistryRequest):
     
     return result
 
-@api_router.get("/readings", response_model=List[TarotReading])
+@api_router.post("/profile", response_model=UserProfile)
+async def create_or_update_profile(profile_data: dict):
+    """Create or update user profile"""
+    
+    # Calculate zodiac sign from birth date
+    zodiac_sign = get_zodiac_sign(profile_data["birth_date"])
+    
+    profile = UserProfile(
+        name=profile_data["name"],
+        birth_date=profile_data["birth_date"],
+        birth_time=profile_data.get("birth_time"),
+        birth_place=profile_data.get("birth_place"),
+        zodiac_sign=zodiac_sign,
+        gender=profile_data.get("gender"),
+        updated_at=datetime.utcnow()
+    )
+    
+    # Check if profile already exists
+    existing_profile = await db.user_profiles.find_one({})
+    if existing_profile:
+        # Update existing profile
+        await db.user_profiles.replace_one(
+            {"_id": existing_profile["_id"]}, 
+            profile.dict()
+        )
+    else:
+        # Create new profile
+        await db.user_profiles.insert_one(profile.dict())
+    
+    return profile
+
+@api_router.get("/profile", response_model=UserProfile)
+async def get_profile():
+    """Get user profile"""
+    
+    profile_data = await db.user_profiles.find_one({})
+    if not profile_data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return UserProfile(**profile_data)
+
+@api_router.get("/horoscope", response_model=HoroscopeResult)
+async def get_horoscope(date: Optional[str] = None):
+    """Get horoscope for user"""
+    
+    # Get user profile
+    profile_data = await db.user_profiles.find_one({})
+    if not profile_data:
+        raise HTTPException(status_code=404, detail="Profile not found. Please create profile first.")
+    
+    user_profile = UserProfile(**profile_data)
+    
+    # Use today's date if not provided
+    if not date:
+        date = datetime.utcnow().strftime('%Y-%m-%d')
+    
+    # Check if horoscope for this date already exists
+    existing_horoscope = await db.horoscopes.find_one({
+        "user_profile_id": user_profile.id,
+        "date": date
+    })
+    
+    if existing_horoscope:
+        return HoroscopeResult(**existing_horoscope)
+    
+    # Generate new horoscope
+    horoscope = await generate_horoscope(user_profile, date)
+    
+    # Save to database
+    await db.horoscopes.insert_one(horoscope.dict())
+    
+    return horoscope
+
+@api_router.get("/horoscope/history", response_model=List[HoroscopeResult])
+async def get_horoscope_history(limit: int = 10):
+    """Get horoscope history"""
+    
+    horoscopes = await db.horoscopes.find().sort("created_at", -1).limit(limit).to_list(limit)
+    return [HoroscopeResult(**horoscope) for horoscope in horoscopes]
 async def get_reading_history(limit: int = 10):
     """Get reading history including tarot and palmistry"""
     
