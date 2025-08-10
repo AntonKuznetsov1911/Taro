@@ -195,35 +195,15 @@ export default function PalmistryScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Palm Image with Lines */}
+          {/* Palm Image */}
           <View style={styles.palmSection}>
             <View style={styles.palmImageContainer}>
               <Image source={{ uri: imageUri }} style={styles.palmImage} />
-              {renderPalmLines()}
             </View>
-            
-            <TouchableOpacity 
-              style={styles.toggleLinesButton}
-              onPress={() => setShowLines(!showLines)}
-            >
-              <LinearGradient
-                colors={['rgba(155, 89, 182, 0.8)', 'rgba(142, 68, 173, 0.9)']}
-                style={styles.toggleButtonGradient}
-              >
-                <Ionicons 
-                  name={showLines ? "eye-off" : "eye"} 
-                  size={20} 
-                  color="#FFF" 
-                />
-                <Text style={styles.toggleButtonText}>
-                  {showLines ? "Скрыть линии" : "Показать линии"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
 
           {/* Lines Legend */}
-          {showLines && renderLineLegend()}
+          {renderLineLegend()}
 
           {/* Interpretation */}
           <View style={styles.interpretationSection}>
