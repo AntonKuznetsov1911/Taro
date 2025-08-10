@@ -255,7 +255,6 @@ export default function CosmicIndex() {
               <Text style={styles.quoteText}>
                 "В бесконечности космоса скрыты ответы на все вопросы души"
               </Text>
-              <Text style={styles.quoteAuthor}>— Древняя мудрость</Text>
             </View>
           </View>
         </ScrollView>
