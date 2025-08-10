@@ -289,6 +289,47 @@ export default function CosmicIndex() {
                 </View>
               </View>
             </TouchableOpacity>
+
+            {/* Horoscope Button */}
+            <TouchableOpacity 
+              style={[styles.compatibilityButton, styles.horoscopeButton]} 
+              onPress={() => router.push('/horoscope')}
+            >
+              <View style={styles.horoscopeGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(255, 193, 7, 0.2)'
+                  ]}
+                  style={styles.horoscopeGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>🌟</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Гороскоп</Text>
+                    <Text style={styles.compatibilitySubtext}>Персональный прогноз на сегодня</Text>
+                  </View>
+                </LinearGradient>
+                
+                {/* Звездные созвездия */}
+                <View style={styles.star1} />
+                <View style={styles.star2} />
+                <View style={styles.star3} />
+                <View style={styles.star4} />
+                <View style={styles.star5} />
+                
+                {/* Центральная звезда */}
+                <View style={styles.centerStar}>
+                  <LinearGradient
+                    colors={['rgba(255, 193, 7, 0.9)', 'rgba(255, 152, 0, 0.6)']}
+                    style={styles.centerStarGradient}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Cosmic Quote */}
