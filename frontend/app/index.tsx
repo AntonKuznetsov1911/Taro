@@ -131,6 +131,19 @@ export default function CosmicIndex() {
         {/* Звездное небо как фон */}
         <StarryBackground />
         
+        {/* Floating Settings Button - Outside ScrollView */}
+        <TouchableOpacity 
+          style={styles.floatingSettingsButton} 
+          onPress={() => router.push('/settings')}
+        >
+          <LinearGradient
+            colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']}
+            style={styles.settingsButtonGradient}
+          >
+            <Ionicons name="settings-outline" size={22} color="#E8E8E8" />
+          </LinearGradient>
+        </TouchableOpacity>
+        
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Cosmic Header */}
           <View style={styles.header}>
@@ -140,18 +153,6 @@ export default function CosmicIndex() {
                 <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
               </View>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.floatingSettingsButton} 
-              onPress={() => router.push('/settings')}
-            >
-              <LinearGradient
-                colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']}
-                style={styles.settingsButtonGradient}
-              >
-                <Ionicons name="settings-outline" size={22} color="#E8E8E8" />
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
 
           {/* Floating cosmic particles */}
