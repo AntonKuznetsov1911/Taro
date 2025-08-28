@@ -142,14 +142,14 @@ export default function CosmicIndex() {
             </View>
             
             <TouchableOpacity 
-              style={styles.floatingHistoryButton} 
-              onPress={() => router.push('/history')}
+              style={styles.floatingSettingsButton} 
+              onPress={() => router.push('/settings')}
             >
               <LinearGradient
                 colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']}
-                style={styles.historyButtonGradient}
+                style={styles.settingsButtonGradient}
               >
-                <Ionicons name="time-outline" size={22} color="#E8E8E8" />
+                <Ionicons name="settings-outline" size={22} color="#E8E8E8" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
