@@ -389,14 +389,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '300',
   },
-  floatingHistoryButton: {
+  floatingSettingsButton: {
     position: 'absolute',
     top: 20,
     right: 20,
     borderRadius: 25,
     overflow: 'hidden',
   },
-  historyButtonGradient: {
+  settingsButtonGradient: {
     width: 50,
     height: 50,
     borderRadius: 25,
