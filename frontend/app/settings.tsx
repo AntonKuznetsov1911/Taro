@@ -32,7 +32,6 @@ export default function SettingsScreen() {
   const languages = [
     { code: 'russian', name: 'Русский', flag: '🇷🇺' },
     { code: 'english', name: 'English', flag: '🇺🇸' },
-    { code: 'ukrainian', name: 'Українська', flag: '🇺🇦' },
   ];
 
   const toggleSetting = (key: string) => {
