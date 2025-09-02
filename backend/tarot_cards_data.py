@@ -774,3 +774,31 @@ MAJOR_ARCANA = [
         "reversed_meaning": "Незавершенность, недостижение целей, задержки"
     }
 ]
+
+# Full 78-card tarot deck combining Major and Minor Arcana
+FULL_TAROT_DECK = MAJOR_ARCANA + MINOR_ARCANA_WANDS + MINOR_ARCANA_CUPS + MINOR_ARCANA_SWORDS + MINOR_ARCANA_PENTACLES
+
+def get_card_by_id(card_id: int):
+    """Get card data by ID from the full 78-card deck"""
+    for card in FULL_TAROT_DECK:
+        if card['id'] == card_id:
+            # Update image for each card request to get latest image
+            card['image'] = get_aesthetic_image(card_id)
+            return card
+    return None
+
+def get_all_cards():
+    """Get all 78 cards with updated images"""
+    cards = []
+    for card in FULL_TAROT_DECK:
+        # Create a copy and update image
+        updated_card = card.copy()
+        updated_card['image'] = get_aesthetic_image(card['id'])
+        cards.append(updated_card)
+    return cards
+
+def get_random_card():
+    """Get a random card from the full 78-card deck"""
+    import random
+    card_id = random.randint(0, 77)  # 0-77 for all 78 cards
+    return get_card_by_id(card_id)
