@@ -52,10 +52,10 @@ def url_to_base64(url: str, max_size_kb: int = 100) -> str:
         logging.error(f"Error converting URL to base64: {e}")
         return ""
 
-# Expanded comprehensive tarot card images collection - one for each Major Arcana
+# Expanded comprehensive tarot card images collection - multiple options for each card
 TAROT_CARD_IMAGES_BY_ID = {
     # Дурак (0) - новые начинания, путешествие
-    0: "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw0fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOXww&ixlib=rb-4.1.0&q=85",
+    0: "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
     
     # Маг (1) - сила воли, мастерство  
     1: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
@@ -64,7 +64,7 @@ TAROT_CARD_IMAGES_BY_ID = {
     2: "https://images.pexels.com/photos/4790590/pexels-photo-4790590.jpeg",
     
     # Императрица (3) - плодородие, природа
-    3: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOHww&ixlib=rb-4.1.0&q=85",
+    3: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
     
     # Император (4) - власть, стабильность
     4: "https://images.pexels.com/photos/6014324/pexels-photo-6014324.jpeg",
@@ -73,7 +73,7 @@ TAROT_CARD_IMAGES_BY_ID = {
     5: "https://images.pexels.com/photos/2843275/pexels-photo-2843275.jpeg",
     
     # Влюбленные (6) - любовь, выбор
-    6: "https://images.unsplash.com/photo-1671013033034-5ea58e9c5008?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwzfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
+    6: "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
     
     # Колесница (7) - победа, контроль
     7: "https://images.pexels.com/photos/8391594/pexels-photo-8391594.jpeg",
@@ -85,13 +85,13 @@ TAROT_CARD_IMAGES_BY_ID = {
     9: "https://images.pexels.com/photos/4790557/pexels-photo-4790557.jpeg",
     
     # Колесо Фортуны (10) - судьба, циклы
-    10: "https://images.unsplash.com/photo-1607773709367-06b7a91f7e4a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
+    10: "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
     
     # Справедливость (11) - справедливость, весы
-    11: "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg",
+    11: "https://images.unsplash.com/photo-1657210228958-91c7c1896c65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
     
     # Повешенный (12) - жертва, новый взгляд
-    12: "https://images.unsplash.com/photo-1635010546442-fbd908964180?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw2fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOXww&ixlib=rb-4.1.0&q=85",
+    12: "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg",
     
     # Смерть (13) - трансформация
     13: "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg",
@@ -100,26 +100,52 @@ TAROT_CARD_IMAGES_BY_ID = {
     14: "https://images.pexels.com/photos/4790559/pexels-photo-4790559.jpeg",
     
     # Дьявол (15) - искушение
-    15: "https://images.unsplash.com/photo-1671013033219-c5f37fc92a71?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHw0fHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
+    15: "https://images.unsplash.com/photo-1654663477425-acf704a970d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
     
     # Башня (16) - разрушение, внезапные изменения
     16: "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
     
     # Звезда (17) - надежда
-    17: "https://images.unsplash.com/photo-1615829332206-22479388eecc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
+    17: "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
     
     # Луна (18) - иллюзия, подсознание
-    18: "https://images.pexels.com/photos/6512279/pexels-photo-6512279.jpeg",
+    18: "https://images.unsplash.com/photo-1696359050478-2e5a778d4c93?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
     
     # Солнце (19) - радость, успех
-    19: "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOHww&ixlib=rb-4.1.0&q=85",
+    19: "https://images.unsplash.com/photo-1619472097193-987b3789c836?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
     
     # Суд (20) - возрождение
-    20: "https://images.unsplash.com/photo-1627764574958-fb54cd7d7448?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxmb3J0dW5lJTIwdGVsbGVyfGVufDB8fHx8MTc1Njc5OTkyMXww&ixlib=rb-4.1.0&q=85",
+    20: "https://images.pexels.com/photos/33682765/pexels-photo-33682765.jpeg",
     
     # Мир (21) - завершение, целостность
     21: "https://images.pexels.com/photos/33331331/pexels-photo-33331331.jpeg",
 }
+
+# Secondary fallback collection with additional high-quality images
+SECONDARY_TAROT_IMAGES = [
+    "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1696359050478-2e5a778d4c93?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1619472097193-987b3789c836?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1657210228958-91c7c1896c65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1654663477425-acf704a970d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
+    "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
+    "https://images.pexels.com/photos/33682765/pexels-photo-33682765.jpeg",
+    "https://images.pexels.com/photos/33331331/pexels-photo-33331331.jpeg",
+    "https://images.pexels.com/photos/2843275/pexels-photo-2843275.jpeg",
+    "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg",
+    "https://images.pexels.com/photos/4790590/pexels-photo-4790590.jpeg",
+    "https://images.pexels.com/photos/4790559/pexels-photo-4790559.jpeg",
+    "https://images.pexels.com/photos/4790557/pexels-photo-4790557.jpeg",
+    "https://images.pexels.com/photos/6014324/pexels-photo-6014324.jpeg",
+    "https://images.pexels.com/photos/8391594/pexels-photo-8391594.jpeg",
+    "https://images.pexels.com/photos/6512277/pexels-photo-6512277.jpeg",
+    "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg",
+]
 
 # Fallback images from the previous collection for redundancy
 BEAUTIFUL_TAROT_IMAGES = [
