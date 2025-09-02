@@ -11,7 +11,7 @@ from datetime import datetime
 import sys
 
 # Get backend URL from environment
-BACKEND_URL = "https://taro-mystic-1.preview.emergentagent.com/api"
+BACKEND_URL = "https://mystictaro.preview.emergentagent.com/api"
 
 class Full78DeckTester:
     def __init__(self):

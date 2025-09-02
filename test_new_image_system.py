@@ -12,7 +12,7 @@ import sys
 import base64
 
 # Get backend URL from environment
-BACKEND_URL = "https://taro-mystic-1.preview.emergentagent.com/api"
+BACKEND_URL = "https://mystictaro.preview.emergentagent.com/api"
 
 class NewImageSystemTester:
     def __init__(self):
