@@ -1,45 +1,58 @@
-import { Platform, Vibration } from 'react-native';
+import { Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Audio, AVPlaybackSource } from 'expo-av';
 
-// Very small, cross-platform safe sound approach without extra deps:
-// - On native: use vibration only (no audio libs to avoid dependency installs now)
-// - On web preview: play short base64-embedded audio via HTMLAudioElement
+// Web fallback sounds (very small inline) and native data URIs (best-effort)
+const CLICK_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA';
+const FLIP_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA';
 
-const CLICK_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA'; // tiny placeholder
-const FLIP_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA'; // tiny placeholder
-
+let clickSound: Audio.Sound | null = null;
+let flipSound: Audio.Sound | null = null;
 let webClick: HTMLAudioElement | null = null;
 let webFlip: HTMLAudioElement | null = null;
 
-function ensureWebSounds() {
-  if (Platform.OS !== 'web') return;
+async function ensureLoaded() {
   try {
-    if (!webClick) webClick = new Audio(CLICK_MP3);
-    if (!webFlip) webFlip = new Audio(FLIP_MP3);
+    if (Platform.OS === 'web') {
+      if (!webClick) webClick = new Audio(CLICK_MP3);
+      if (!webFlip) webFlip = new Audio(FLIP_MP3);
+      return;
+    }
+    if (!clickSound) {
+      clickSound = new Audio.Sound();
+      await clickSound.loadAsync({ uri: CLICK_MP3 } as AVPlaybackSource, { volume: 0.6 }, false);
+    }
+    if (!flipSound) {
+      flipSound = new Audio.Sound();
+      await flipSound.loadAsync({ uri: FLIP_MP3 } as AVPlaybackSource, { volume: 0.7 }, false);
+    }
   } catch (e) {
-    // ignore
+    // Loading audio is best-effort; haptics will still work
   }
 }
 
 export async function playClick(opts: { soundEnabled: boolean; vibration: boolean }) {
   try {
-    if (opts.vibration) Vibration.vibrate(10);
-    if (opts.soundEnabled) {
-      if (Platform.OS === 'web') {
-        ensureWebSounds();
-        await webClick?.play();
-      }
+    if (opts.vibration) await Haptics.selectionAsync();
+    if (!opts.soundEnabled) return;
+    await ensureLoaded();
+    if (Platform.OS === 'web') {
+      await webClick?.play();
+    } else if (clickSound) {
+      await clickSound.replayAsync();
     }
   } catch {}
 }
 
 export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean }) {
   try {
-    if (opts.vibration) Vibration.vibrate(20);
-    if (opts.soundEnabled) {
-      if (Platform.OS === 'web') {
-        ensureWebSounds();
-        await webFlip?.play();
-      }
+    if (opts.vibration) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!opts.soundEnabled) return;
+    await ensureLoaded();
+    if (Platform.OS === 'web') {
+      await webFlip?.play();
+    } else if (flipSound) {
+      await flipSound.replayAsync();
     }
   } catch {}
 }
