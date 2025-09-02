@@ -166,6 +166,27 @@ class HoroscopeResult(BaseModel):
     lucky_color: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Global flag to disable OpenAI when quota exceeded
+OPENAI_QUOTA_EXCEEDED = False
+
+async def check_openai_quota():
+    """Check if OpenAI quota is exceeded and set global flag"""
+    global OPENAI_QUOTA_EXCEEDED
+    try:
+        # Try a minimal request to check quota
+        response = await openai.chat.completions.create(
+            model="gpt-3.5-turbo", 
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=1
+        )
+        OPENAI_QUOTA_EXCEEDED = False
+        return True
+    except Exception as e:
+        if "insufficient_quota" in str(e) or "429" in str(e):
+            OPENAI_QUOTA_EXCEEDED = True
+            logging.warning("OpenAI quota exceeded - switching to fallback mode")
+        return False
+
 async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, str]:
     """Generate compatibility analysis using AI"""
     
