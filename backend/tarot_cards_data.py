@@ -563,8 +563,8 @@ def get_aesthetic_image(card_id: int) -> str:
     """Get beautiful tarot card image - multi-level fallback system for maximum coverage"""
     
     # Level 1: Try specific card image
-    if card_id in TAROT_CARD_IMAGES_BY_ID:
-        specific_image = url_to_base64(TAROT_CARD_IMAGES_BY_ID[card_id])
+    if card_id in FULL_TAROT_DECK_IMAGES:
+        specific_image = url_to_base64(FULL_TAROT_DECK_IMAGES[card_id])
         if specific_image:  # If specific image was successfully loaded
             return specific_image
     
