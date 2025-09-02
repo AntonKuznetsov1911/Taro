@@ -52,6 +52,97 @@ def url_to_base64(url: str, max_size_kb: int = 100) -> str:
         logging.error(f"Error converting URL to base64: {e}")
         return ""
 
+# Full 78-card tarot deck images - Major + Minor Arcana
+FULL_TAROT_DECK_IMAGES = {
+    # MAJOR ARCANA (0-21) - 22 cards
+    0: "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    1: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
+    2: "https://images.pexels.com/photos/4790590/pexels-photo-4790590.jpeg",
+    3: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
+    4: "https://images.pexels.com/photos/6014324/pexels-photo-6014324.jpeg",
+    5: "https://images.pexels.com/photos/2843275/pexels-photo-2843275.jpeg",
+    6: "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    7: "https://images.pexels.com/photos/8391594/pexels-photo-8391594.jpeg",
+    8: "https://images.pexels.com/photos/6512277/pexels-photo-6512277.jpeg",
+    9: "https://images.pexels.com/photos/4790557/pexels-photo-4790557.jpeg",
+    10: "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
+    11: "https://images.unsplash.com/photo-1657210228958-91c7c1896c65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
+    12: "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg",
+    13: "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg",
+    14: "https://images.pexels.com/photos/4790559/pexels-photo-4790559.jpeg",
+    15: "https://images.unsplash.com/photo-1654663477425-acf704a970d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
+    16: "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
+    17: "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
+    18: "https://images.unsplash.com/photo-1696359050478-2e5a778d4c93?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
+    19: "https://images.unsplash.com/photo-1619472097193-987b3789c836?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
+    20: "https://images.pexels.com/photos/33682765/pexels-photo-33682765.jpeg",
+    21: "https://images.pexels.com/photos/33331331/pexels-photo-33331331.jpeg",
+    
+    # MINOR ARCANA - WANDS (22-35) - 14 cards
+    22: "https://images.unsplash.com/photo-1728241189719-ea4327c16eee?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzN8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHdhbmRzfGVufDB8fHx8MTc1NjgxNTQ1M3ww&ixlib=rb-4.1.0&q=85", # Ace of Wands
+    23: "https://images.unsplash.com/photo-1728241189721-6a46979906fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzN8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMHdhbmRzfGVufDB8fHx8MTc1NjgxNTQ1M3ww&ixlib=rb-4.1.0&q=85", # Two of Wands
+    24: "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg", # Three of Wands
+    25: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Four of Wands 
+    26: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg", # Five of Wands
+    27: "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Six of Wands
+    28: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # Seven of Wands
+    29: "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85", # Eight of Wands
+    30: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Nine of Wands
+    31: "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85", # Ten of Wands
+    32: "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg", # Page of Wands
+    33: "https://images.unsplash.com/photo-1728241189719-ea4327c16eee?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzN8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHdhbmRzfGVufDB8fHx8MTc1NjgxNTQ1M3ww&ixlib=rb-4.1.0&q=85", # Knight of Wands
+    34: "https://images.unsplash.com/photo-1728241189721-6a46979906fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzN8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMHdhbmRzfGVufDB8fHx8MTc1NjgxNTQ1M3ww&ixlib=rb-4.1.0&q=85", # Queen of Wands
+    35: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # King of Wands
+    
+    # MINOR ARCANA - CUPS (36-49) - 14 cards
+    36: "https://images.unsplash.com/photo-1692011662740-29d58251a213?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Ace of Cups
+    37: "https://images.unsplash.com/photo-1600429770067-380e847a6c86?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Two of Cups
+    38: "https://images.pexels.com/photos/32820642/pexels-photo-32820642.jpeg", # Three of Cups
+    39: "https://images.unsplash.com/photo-1692011662740-29d58251a213?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Four of Cups
+    40: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg", # Five of Cups
+    41: "https://images.unsplash.com/photo-1600429770067-380e847a6c86?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Six of Cups
+    42: "https://images.pexels.com/photos/32820642/pexels-photo-32820642.jpeg", # Seven of Cups
+    43: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Eight of Cups
+    44: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # Nine of Cups
+    45: "https://images.unsplash.com/photo-1692011662740-29d58251a213?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Ten of Cups
+    46: "https://images.pexels.com/photos/32820642/pexels-photo-32820642.jpeg", # Page of Cups
+    47: "https://images.unsplash.com/photo-1600429770067-380e847a6c86?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # Knight of Cups
+    48: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Queen of Cups
+    49: "https://images.unsplash.com/photo-1692011662740-29d58251a213?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGN1cHN8ZW58MHx8fHwxNzU2ODE1NDg2fDA&ixlib=rb-4.1.0&q=85", # King of Cups
+    
+    # MINOR ARCANA - SWORDS (50-63) - 14 cards  
+    50: "https://images.unsplash.com/photo-1572900145365-78a95d897e80?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Ace of Swords
+    51: "https://images.unsplash.com/photo-1677017168376-fb24bef87c43?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Two of Swords
+    52: "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg", # Three of Swords
+    53: "https://images.unsplash.com/photo-1572900145365-78a95d897e80?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Four of Swords
+    54: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg", # Five of Swords
+    55: "https://images.unsplash.com/photo-1677017168376-fb24bef87c43?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Six of Swords
+    56: "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg", # Seven of Swords
+    57: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # Eight of Swords
+    58: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Nine of Swords
+    59: "https://images.unsplash.com/photo-1572900145365-78a95d897e80?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Ten of Swords
+    60: "https://images.unsplash.com/photo-1677017168376-fb24bef87c43?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # Page of Swords
+    61: "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg", # Knight of Swords
+    62: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Queen of Swords
+    63: "https://images.unsplash.com/photo-1572900145365-78a95d897e80?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHN3b3Jkc3xlbnwwfHx8fDE3NTY4MTU1MDR8MA&ixlib=rb-4.1.0&q=85", # King of Swords
+    
+    # MINOR ARCANA - PENTACLES (64-77) - 14 cards
+    64: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Ace of Pentacles
+    65: "https://images.unsplash.com/photo-1723211660247-4bce448aa862?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHBlbnRhY2xlc3xlbnwwfHx8fDE3NTY4MTU1MjR8MA&ixlib=rb-4.1.0&q=85", # Two of Pentacles
+    66: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Three of Pentacles
+    67: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Four of Pentacles
+    68: "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg", # Five of Pentacles
+    69: "https://images.unsplash.com/photo-1723211660247-4bce448aa862?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHBlbnRhY2xlc3xlbnwwfHx8fDE3NTY4MTU1MjR8MA&ixlib=rb-4.1.0&q=85", # Six of Pentacles
+    70: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Seven of Pentacles
+    71: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # Eight of Pentacles
+    72: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Nine of Pentacles
+    73: "https://images.unsplash.com/photo-1723211660247-4bce448aa862?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHBlbnRhY2xlc3xlbnwwfHx8fDE3NTY4MTU1MjR8MA&ixlib=rb-4.1.0&q=85", # Ten of Pentacles
+    74: "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg", # Page of Pentacles
+    75: "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg", # Knight of Pentacles
+    76: "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85", # Queen of Pentacles
+    77: "https://images.unsplash.com/photo-1723211660247-4bce448aa862?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMHBlbnRhY2xlc3xlbnwwfHx8fDE3NTY4MTU1MjR8MA&ixlib=rb-4.1.0&q=85", # King of Pentacles
+}
+
 # Expanded comprehensive tarot card images collection - multiple options for each card
 TAROT_CARD_IMAGES_BY_ID = {
     # Дурак (0) - новые начинания, путешествие
