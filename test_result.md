@@ -513,6 +513,19 @@ backend:
           agent: "testing"
           comment: "🎨 ФИНАЛЬНОЕ ТЕСТИРОВАНИЕ СИСТЕМЫ ИЗОБРАЖЕНИЙ КАРТ ЗАВЕРШЕНО УСПЕШНО - Comprehensive final testing of card image system completed with 100% success rate (10/10 tests passed). ✅ ПОЛНОЕ ПОКРЫТИЕ ИЗОБРАЖЕНИЯМИ: All 31 cards tested have valid images - no null or empty images found (100% coverage). ✅ КАЧЕСТВО ИЗОБРАЖЕНИЙ: Perfect mix of JPEG (28 cards, avg 27.7KB) and SVG placeholder (3 cards, avg 1.9KB) images. All images >1000 bytes, proper base64 encoding, excellent quality. ✅ СТАБИЛЬНОСТЬ СИСТЕМЫ: All 7 different spreads (one_card, three_cards, celtic_cross) working perfectly across all categories without crashes. System handles rapid requests stably. ✅ СТАТИСТИКА ИЗОБРАЖЕНИЙ: 90.3% JPEG real photos, 9.7% SVG placeholders, 93.5% card uniqueness, 100% success rate. All expected results achieved: 100% image coverage, quality JPEG+SVG mix, valid display, no system errors. Card image system is production-ready and excellent."
 
+
+  - task: "Tarot deck catalog endpoints (GET /api/deck, GET /api/card/{id}, POST /api/card-interpretation)"
+    implemented: true
+    working: "unknown"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "unknown"
+          agent: "main"
+          comment: "Добавлены новые эндпоинты для каталога колоды: список всех карт (легкий payload), получение карты по id и толкование одной карты (c AI-фолбэком). Нужно протестировать API."
+
   - task: "Comprehensive card image system final validation"
     implemented: true
     working: true
