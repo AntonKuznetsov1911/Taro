@@ -494,9 +494,9 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get beautiful tarot card image - multi-level fallback system for maximum coverage"""
+    """Get beautiful tarot card image - supports full 78-card deck"""
     
-    # Level 1: Try specific card image
+    # Level 1: Try specific card image from full deck
     if card_id in FULL_TAROT_DECK_IMAGES:
         specific_image = url_to_base64(FULL_TAROT_DECK_IMAGES[card_id])
         if specific_image:  # If specific image was successfully loaded
@@ -523,10 +523,27 @@ def get_aesthetic_image(card_id: int) -> str:
     
     # Level 5: Final fallback to our enhanced SVG system
     card_names = [
+        # Major Arcana (0-21)
         "Дурак", "Маг", "Верховная Жрица", "Императрица", "Император", 
         "Иерофант", "Влюблённые", "Колесница", "Сила", "Отшельник",
         "Колесо Фортуны", "Справедливость", "Повешенный", "Смерть", 
-        "Умеренность", "Дьявол", "Башня", "Звезда", "Луна", "Солнце", "Суд", "Мир"
+        "Умеренность", "Дьявол", "Башня", "Звезда", "Луна", "Солнце", "Суд", "Мир",
+        # Minor Arcana - Wands (22-35)
+        "Туз Жезлов", "Двойка Жезлов", "Тройка Жезлов", "Четверка Жезлов", "Пятерка Жезлов",
+        "Шестерка Жезлов", "Семерка Жезлов", "Восьмерка Жезлов", "Девятка Жезлов", "Десятка Жезлов",
+        "Паж Жезлов", "Рыцарь Жезлов", "Королева Жезлов", "Король Жезлов",
+        # Minor Arcana - Cups (36-49)
+        "Туз Кубков", "Двойка Кубков", "Тройка Кубков", "Четверка Кубков", "Пятерка Кубков",
+        "Шестерка Кубков", "Семерка Кубков", "Восьмерка Кубков", "Девятка Кубков", "Десятка Кубков",
+        "Паж Кубков", "Рыцарь Кубков", "Королева Кубков", "Король Кубков",
+        # Minor Arcana - Swords (50-63)
+        "Туз Мечей", "Двойка Мечей", "Тройка Мечей", "Четверка Мечей", "Пятерка Мечей",
+        "Шестерка Мечей", "Семерка Мечей", "Восьмерка Мечей", "Девятка Мечей", "Десятка Мечей",
+        "Паж Мечей", "Рыцарь Мечей", "Королева Мечей", "Король Мечей",
+        # Minor Arcana - Pentacles (64-77)
+        "Туз Пентаклей", "Двойка Пентаклей", "Тройка Пентаклей", "Четверка Пентаклей", "Пятерка Пентаклей",
+        "Шестерка Пентаклей", "Семерка Пентаклей", "Восьмерка Пентаклей", "Девятка Пентаклей", "Десятка Пентаклей",
+        "Паж Пентаклей", "Рыцарь Пентаклей", "Королева Пентаклей", "Король Пентаклей"
     ]
     
     card_name = card_names[card_id] if card_id < len(card_names) else f"Карта {card_id}"
