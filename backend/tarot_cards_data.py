@@ -550,10 +550,10 @@ def get_aesthetic_image(card_id: int) -> str:
         if fallback_image:  # If fallback image was successfully loaded
             return fallback_image
     
-    # Level 4: Try any available image from secondary collection (rotation)
-    if SECONDARY_TAROT_IMAGES:
-        rotation_index = card_id % len(SECONDARY_TAROT_IMAGES)
-        rotation_image = url_to_base64(SECONDARY_TAROT_IMAGES[rotation_index])
+    # Level 4: Try any available image from enhanced fallback collection (rotation)
+    if ENHANCED_FALLBACK_IMAGES:
+        rotation_index = card_id % len(ENHANCED_FALLBACK_IMAGES)
+        rotation_image = url_to_base64(ENHANCED_FALLBACK_IMAGES[rotation_index])
         if rotation_image:
             return rotation_image
     
