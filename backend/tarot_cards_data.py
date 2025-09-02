@@ -414,14 +414,20 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get beautiful tarot card image - hybrid approach with URL images + SVG fallback"""
-    # Try to get an aesthetic image from URL first
-    if card_id < len(BEAUTIFUL_TAROT_IMAGES):
-        url_image = url_to_base64(BEAUTIFUL_TAROT_IMAGES[card_id])
-        if url_image:  # If URL image was successfully loaded
-            return url_image
+    """Get beautiful tarot card image - prioritize specific card images for each Major Arcana"""
+    # First, try to get the specific image for this card ID
+    if card_id in TAROT_CARD_IMAGES_BY_ID:
+        specific_image = url_to_base64(TAROT_CARD_IMAGES_BY_ID[card_id])
+        if specific_image:  # If specific image was successfully loaded
+            return specific_image
     
-    # Fallback to our enhanced SVG system for reliability
+    # Fallback to general collection
+    if card_id < len(BEAUTIFUL_TAROT_IMAGES):
+        fallback_image = url_to_base64(BEAUTIFUL_TAROT_IMAGES[card_id])
+        if fallback_image:  # If fallback image was successfully loaded
+            return fallback_image
+    
+    # Final fallback to our enhanced SVG system for reliability
     card_names = [
         "Дурак", "Маг", "Верховная Жрица", "Императрица", "Император", 
         "Иерофант", "Влюблённые", "Колесница", "Сила", "Отшельник",
