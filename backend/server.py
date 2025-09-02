@@ -190,6 +190,26 @@ async def check_openai_quota():
 async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, str]:
     """Generate compatibility analysis using AI"""
     
+    # Check if OpenAI quota is exceeded
+    global OPENAI_QUOTA_EXCEEDED
+    if OPENAI_QUOTA_EXCEEDED:
+        logging.info("OpenAI quota exceeded - using fallback compatibility analysis")
+        # Calculate numerology-based compatibility score
+        def name_to_number(name: str) -> int:
+            name_clean = ''.join(c.lower() for c in name if c.isalpha())
+            total = sum(ord(c) - ord('а') + 1 for c in name_clean if 'а' <= c <= 'я')
+            total += sum(ord(c) - ord('a') + 1 for c in name_clean if 'a' <= c <= 'z')
+            while total > 9:
+                total = sum(int(d) for d in str(total))
+            return total
+        
+        num1 = name_to_number(name1)
+        num2 = name_to_number(name2)
+        base_score = abs(9 - abs(num1 - num2)) * 10 + random.randint(5, 25)
+        compatibility_score = min(99, max(15, base_score))
+        analysis = generate_fallback_compatibility_analysis(name1, name2, compatibility_score)
+        return compatibility_score, analysis
+    
     # Calculate numerology-based compatibility score
     def name_to_number(name: str) -> int:
         name_clean = ''.join(c.lower() for c in name if c.isalpha())
