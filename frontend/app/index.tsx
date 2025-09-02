@@ -331,6 +331,44 @@ export default function CosmicIndex() {
                 </View>
               </View>
             </TouchableOpacity>
+
+            {/* Deck Catalog Button */}
+            <TouchableOpacity 
+              style={[styles.compatibilityButton, { marginTop: 15 }]} 
+              onPress={() => router.push('/deck')}
+            >
+              <View style={styles.diamondGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(155, 89, 182, 0.2)'
+                  ]}
+                  style={styles.diamondGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>🃏</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Каталог колоды</Text>
+                    <Text style={styles.compatibilitySubtext}>Все 78 карт, поиск и фильтры</Text>
+                  </View>
+                </LinearGradient>
+
+                <View style={styles.diamondFacet1} />
+                <View style={styles.diamondFacet2} />
+                <View style={styles.diamondFacet3} />
+                <View style={styles.diamondFacet4} />
+                <View style={styles.diamondSparkle}>
+                  <LinearGradient
+                    colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.3)']}
+                    style={styles.sparkleGradient}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
           </View>
 
           {/* Cosmic Quote */}
