@@ -1127,6 +1127,52 @@ async def get_reading_history(limit: int = 10):
 async def root():
     return {"message": "TARO API - Древняя мудрость в современном исполнении"}
 
+
+# Deck endpoints
+@api_router.get("/deck")
+async def get_full_deck():
+    """Return all 78 cards for catalog (lightweight)."""
+    cards = [_serialize_card_minimal(c if "image" in c else {**c, "image": __import__("tarot_cards_data").tarot_cards_data.get_aesthetic_image(c["id"])}) for c in FULL_TAROT_DECK]
+    return {"cards": cards}
+
+@api_router.get("/card/{card_id}")
+async def get_card(card_id: int):
+    card = _get_card_by_id(card_id)
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return {"card": card}
+
+@api_router.post("/card-interpretation")
+async def get_card_interpretation(req: CardInterpretationRequest):
+    card = _get_card_by_id(req.card_id)
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    # Use enhanced fallback generator for a single card by reusing general function with 1 card
+    tarot_card = TarotCard(**{
+        "id": card["id"],
+        "name": card["name"],
+        "name_en": card.get("name_en", ""),
+        "type": card.get("type", "minor"),
+        "suit": card.get("suit"),
+        "image": card.get("image"),
+        "keywords": card.get("keywords", []),
+        "upright_meaning": card.get("upright_meaning", ""),
+        "reversed_meaning": card.get("reversed_meaning", ""),
+        "is_reversed": bool(req.reversed),
+    })
+    try:
+        # Try AI via existing generator with one-card spread
+        text = await generate_ai_interpretation(
+            question=f"Толкование карты {card['name']}",
+            category="general",
+            spread_type="one_card",
+            cards=[tarot_card],
+            positions=["Значение карты"]
+        )
+        return {"interpretation": text}
+    except Exception:
+        return {"interpretation": _single_card_fallback_interpretation(card, bool(req.reversed))}
+
 # Include the router in the main app
 app.include_router(api_router)
 
