@@ -892,6 +892,54 @@ def select_random_cards(count: int) -> List[TarotCard]:
     return tarot_cards
 
 # API Routes
+
+# --------- Deck helper functions and models ---------
+class CardInterpretationRequest(BaseModel):
+    card_id: int
+    reversed: Optional[bool] = False
+
+
+def _ensure_card_image(card: dict) -> dict:
+    if "image" not in card or not card.get("image"):
+        from tarot_cards_data import get_aesthetic_image
+        tmp = card.copy()
+        tmp["image"] = get_aesthetic_image(tmp["id"])  # type: ignore
+        return tmp
+    return card
+
+
+def _get_card_by_id(card_id: int) -> Optional[dict]:
+    for c in FULL_TAROT_DECK:
+        if int(c.get("id")) == int(card_id):
+            return _ensure_card_image(c)
+    return None
+
+
+def _serialize_card_minimal(card: dict) -> dict:
+    c = _ensure_card_image(card)
+    return {
+        "id": c["id"],
+        "name": c["name"],
+        "name_en": c.get("name_en", ""),
+        "type": c.get("type", "minor"),
+        "suit": c.get("suit"),
+        "image": c.get("image"),
+        "keywords": c.get("keywords", []),
+    }
+
+
+def _single_card_fallback_interpretation(card: dict, is_reversed: bool) -> str:
+    name = card.get("name", "Карта")
+    meaning = card.get("reversed_meaning") if is_reversed else card.get("upright_meaning")
+    keywords = ", ".join(card.get("keywords", [])[:6])
+    posture = "перевернутая" if is_reversed else "прямая"
+    return (
+        f"🔮 Карта {name} ({posture}).\n\n"
+        f"Энергии этой карты проявляются так: {meaning}. \n\n"
+        f"Ключевые указатели: {keywords if keywords else 'интуиция, символизм'}\n\n"
+        "Совет мудрой гадалки: прислушайтесь к внутреннему голосу, уважайте знаки, которые посылает Вселенная, и действуйте мягко, но уверенно."
+    )
+
 @api_router.get("/categories")
 async def get_categories():
     """Get available question categories"""
