@@ -7,6 +7,52 @@ import logging
 from PIL import Image
 import io
 
+def create_placeholder_image(card_name: str, card_id: int) -> str:
+    """Create a simple placeholder image for cards when URLs fail"""
+    # Create a simple SVG placeholder
+    colors = ["#4A148C", "#6A1B9A", "#8E24AA", "#9C27B0", "#AB47BC", "#BA68C8"]
+    color = colors[card_id % len(colors)]
+    
+    svg_content = f'''
+    <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600">
+        <defs>
+            <linearGradient id="cardGradient{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:{color};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.3" />
+            </linearGradient>
+        </defs>
+        
+        <!-- Card background -->
+        <rect width="400" height="600" fill="url(#cardGradient{card_id})" rx="20"/>
+        
+        <!-- Card border -->
+        <rect x="10" y="10" width="380" height="580" fill="none" 
+              stroke="rgba(255,255,255,0.8)" stroke-width="2" rx="15"/>
+        
+        <!-- Card title -->
+        <rect x="30" y="30" width="340" height="60" fill="rgba(255,255,255,0.2)" rx="10"/>
+        <text x="200" y="55" font-family="serif" font-size="16" font-weight="bold" 
+              fill="white" text-anchor="middle">{card_name}</text>
+        <text x="200" y="75" font-family="serif" font-size="12" 
+              fill="rgba(255,255,255,0.9)" text-anchor="middle">ТАРО КАРТА</text>
+        
+        <!-- Decorative center -->
+        <circle cx="200" cy="300" r="80" fill="rgba(255,255,255,0.1)" 
+                stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+        <text x="200" y="320" font-family="serif" font-size="48" 
+              fill="white" text-anchor="middle">✨</text>
+        
+        <!-- Card number -->
+        <text x="200" y="550" font-family="serif" font-size="14" 
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">№ {card_id}</text>
+    </svg>
+    '''
+    
+    # Convert SVG to base64
+    svg_bytes = svg_content.encode('utf-8')
+    svg_base64 = base64.b64encode(svg_bytes).decode('utf-8')
+    return f"data:image/svg+xml;base64,{svg_base64}"
+
 def url_to_base64(url: str, max_size_kb: int = 100) -> str:
     """Convert image URL to compressed base64"""
     try:
