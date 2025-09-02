@@ -148,32 +148,6 @@ FULL_TAROT_DECK_IMAGES = {
 # Expanded comprehensive tarot card images collection - multiple options for each card
 
 
-# Secondary fallback collection with additional high-quality images
-SECONDARY_TAROT_IMAGES = [
-    "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NjgxNTM2NHww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGRlY2t8ZW58MHx8fHwxNzU2ODE1Mzg0fDA&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1696359050478-2e5a778d4c93?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1619472097193-987b3789c836?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMG1vb258ZW58MHx8fHwxNzU2ODE1MzkwfDA&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1657210228958-91c7c1896c65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1654663477425-acf704a970d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxvY2N1bHQlMjBzeW1ib2xzfGVufDB8fHx8MTc1NjgxNTM5N3ww&ixlib=rb-4.1.0&q=85",
-    "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
-    "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
-    "https://images.pexels.com/photos/33682765/pexels-photo-33682765.jpeg",
-    "https://images.pexels.com/photos/33331331/pexels-photo-33331331.jpeg",
-    "https://images.pexels.com/photos/2843275/pexels-photo-2843275.jpeg",
-    "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg",
-    "https://images.pexels.com/photos/4790590/pexels-photo-4790590.jpeg",
-    "https://images.pexels.com/photos/4790559/pexels-photo-4790559.jpeg",
-    "https://images.pexels.com/photos/4790557/pexels-photo-4790557.jpeg",
-    "https://images.pexels.com/photos/6014324/pexels-photo-6014324.jpeg",
-    "https://images.pexels.com/photos/8391594/pexels-photo-8391594.jpeg",
-    "https://images.pexels.com/photos/6512277/pexels-photo-6512277.jpeg",
-    "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg",
-]
-
 # Enhanced fallback images - multiple options for better coverage
 ENHANCED_FALLBACK_IMAGES = [
     # High-quality tarot and mystical images
