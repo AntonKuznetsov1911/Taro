@@ -740,7 +740,12 @@ async def generate_ai_interpretation(question: str, category: str, spread_type: 
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        logging.error(f"OpenAI API error: {e}")
+        # Set quota flag if quota error detected
+        if "insufficient_quota" in str(e) or "429" in str(e):
+            OPENAI_QUOTA_EXCEEDED = True
+            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
+        else:
+            logging.error(f"OpenAI API error: {e}")
         return generate_enhanced_fallback_interpretation(cards, positions, question, category)
 
 def generate_enhanced_fallback_interpretation(cards: List[TarotCard], positions: List[str], question: str, category: str) -> str:
