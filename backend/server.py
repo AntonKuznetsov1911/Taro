@@ -255,7 +255,12 @@ async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, 
         )
         analysis = response.choices[0].message.content.strip()
     except Exception as e:
-        logging.error(f"OpenAI API error: {e}")
+        # Set quota flag if quota error detected  
+        if "insufficient_quota" in str(e) or "429" in str(e):
+            OPENAI_QUOTA_EXCEEDED = True
+            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
+        else:
+            logging.error(f"OpenAI API error: {e}")
         analysis = generate_fallback_compatibility_analysis(name1, name2, compatibility_score)
     
     return compatibility_score, analysis
