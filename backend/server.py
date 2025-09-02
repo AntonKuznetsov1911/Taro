@@ -841,8 +841,8 @@ def generate_enhanced_fallback_interpretation(cards: List[TarotCard], positions:
     return interpretation
 
 def select_random_cards(count: int) -> List[TarotCard]:
-    """Select random cards from Major Arcana"""
-    selected_cards = random.sample(MAJOR_ARCANA, count)
+    """Select random cards from full 78-card tarot deck"""
+    selected_cards = random.sample(FULL_TAROT_DECK, count)
     tarot_cards = []
     
     for card_data in selected_cards:
