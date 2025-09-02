@@ -194,28 +194,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Interface Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎨 Интерфейс</Text>
-              <View style={styles.sectionContent}>
-                <SettingRow
-                  icon="moon"
-                  title="Темная тема"
-                  subtitle="Используется по умолчанию для мистической атмосферы"
-                  value={settings.darkMode}
-                  onToggle={() => toggleSetting('darkMode')}
-                />
-                
-                <SettingRow
-                  icon="sparkles"
-                  title="Анимации"
-                  subtitle="Плавные переходы и эффекты"
-                  value={settings.animations}
-                  onToggle={() => toggleSetting('animations')}
-                />
-              </View>
-            </View>
-
             {/* Notifications Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🔔 Уведомления</Text>
