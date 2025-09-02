@@ -575,6 +575,31 @@ frontend:
           agent: "main"
           comment: "Implemented palmistry results screen with SVG overlay for colored palm lines, line legend, toggle lines visibility, loading states, and integration with backend API. Uses react-native-svg for line rendering."
 
+  - task: "Deck catalog screens (app/deck.tsx, app/deck/[id].tsx) + search/filters + interpretation"
+    implemented: true
+    working: "unknown"
+    file: "frontend/app/deck.tsx, frontend/app/deck/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "unknown"
+          agent: "main"
+          comment: "Добавлены экраны каталога колоды с поиском и фильтрами, детальная карта с переключателем перевернутости и получением толкования через новый бэкенд-эндпоинт. Нужно протестировать навигацию и загрузку данных."
+
+  - task: "Звуки и вибрация + настройки (вкл/выкл)"
+    implemented: true
+    working: "unknown"
+    file: "frontend/app/settings.tsx, frontend/app/_layout.tsx, frontend/src/utils/sound.ts, frontend/app/reading.tsx, frontend/app/deck/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "unknown"
+          agent: "main"
+          comment: "Добавлены переключатели Звуки/Вибрация в настройках (глобальный контекст), воспроизведение клика/переворота при действиях (открытие карты, переключение перевернутости). На web — короткий audio, на native — вибрация. Требуется UI‑проверка."
+
+
   - task: "Main screen palmistry button integration"
     implemented: true
     working: "unknown"
