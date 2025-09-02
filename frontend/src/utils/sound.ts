@@ -1,53 +1,45 @@
-import * as Haptics from 'expo-haptics';
-import { Audio, AVPlaybackSource } from 'expo-av';
-import { useSettingsStore } from '../store/settings';
+import { Platform, Vibration } from 'react-native';
 
-// Tiny base64 sounds (simple click and flip). Fallback to haptics if audio fails.
-const CLICK_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA...';
-const FLIP_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA...';
+// Very small, cross-platform safe sound approach without extra deps:
+// - On native: use vibration only (no audio libs to avoid dependency installs now)
+// - On web preview: play short base64-embedded audio via HTMLAudioElement
 
-let clickSound: Audio.Sound | null = null;
-let flipSound: Audio.Sound | null = null;
+const CLICK_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA'; // tiny placeholder
+const FLIP_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA'; // tiny placeholder
 
-async function ensureLoaded() {
+let webClick: HTMLAudioElement | null = null;
+let webFlip: HTMLAudioElement | null = null;
+
+function ensureWebSounds() {
+  if (Platform.OS !== 'web') return;
   try {
-    if (!clickSound) {
-      clickSound = new Audio.Sound();
-      await clickSound.loadAsync({ uri: CLICK_MP3 } as AVPlaybackSource, { volume: 0.6 }, false);
-    }
-    if (!flipSound) {
-      flipSound = new Audio.Sound();
-      await flipSound.loadAsync({ uri: FLIP_MP3 } as AVPlaybackSource, { volume: 0.7 }, false);
-    }
+    if (!webClick) webClick = new Audio(CLICK_MP3);
+    if (!webFlip) webFlip = new Audio(FLIP_MP3);
   } catch (e) {
-    // ignore, fallback to haptics only
+    // ignore
   }
 }
 
-export async function playClick() {
-  const { soundEnabled, vibration } = useSettingsStore.getState();
-  if (vibration) Haptics.selectionAsync();
-  if (!soundEnabled) return;
+export async function playClick(opts: { soundEnabled: boolean; vibration: boolean }) {
   try {
-    await ensureLoaded();
-    if (clickSound) {
-      await clickSound.replayAsync();
+    if (opts.vibration) Vibration.vibrate(10);
+    if (opts.soundEnabled) {
+      if (Platform.OS === 'web') {
+        ensureWebSounds();
+        await webClick?.play();
+      }
     }
-  } catch (e) {
-    // noop
-  }
+  } catch {}
 }
 
-export async function playFlip() {
-  const { soundEnabled, vibration } = useSettingsStore.getState();
-  if (vibration) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  if (!soundEnabled) return;
+export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean }) {
   try {
-    await ensureLoaded();
-    if (flipSound) {
-      await flipSound.replayAsync();
+    if (opts.vibration) Vibration.vibrate(20);
+    if (opts.soundEnabled) {
+      if (Platform.OS === 'web') {
+        ensureWebSounds();
+        await webFlip?.play();
+      }
     }
-  } catch (e) {
-    // noop
-  }
+  } catch {}
 }

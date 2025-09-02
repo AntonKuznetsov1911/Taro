@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -14,33 +14,36 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StarryBackground } from '../components/StarryBackground';
+import { useSettings } from '../src/contexts/SettingsContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  
-  // Settings state
-  const [settings, setSettings] = useState({
-    language: 'russian',
-    notifications: true,
-    soundEnabled: true,
-    autoSave: true,
-    vibration: true,
-  });
+  const settings = useSettings();
 
   const languages = [
     { code: 'russian', name: 'Русский', flag: '🇷🇺' },
     { code: 'english', name: 'English', flag: '🇺🇸' },
   ];
 
-  const toggleSetting = (key: string) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev]
-    }));
+  const toggle = (key: 'notifications' | 'soundEnabled' | 'autoSave' | 'vibration') => {
+    switch (key) {
+      case 'notifications':
+        settings.setNotifications(!settings.notifications);
+        break;
+      case 'soundEnabled':
+        settings.setSoundEnabled(!settings.soundEnabled);
+        break;
+      case 'autoSave':
+        settings.setAutoSave(!settings.autoSave);
+        break;
+      case 'vibration':
+        settings.setVibration(!settings.vibration);
+        break;
+    }
   };
 
-  const selectLanguage = (languageCode: string) => {
-    setSettings(prev => ({ ...prev, language: languageCode }));
+  const selectLanguage = (languageCode: 'russian' | 'english') => {
+    settings.setLanguage(languageCode);
     Alert.alert('Язык изменен', 'Перезапустите приложение для применения изменений');
   };
 
@@ -50,33 +53,29 @@ export default function SettingsScreen() {
       'Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?',
       [
         { text: 'Отмена', style: 'cancel' },
-        { 
-          text: 'Сбросить', 
+        {
+          text: 'Сбросить',
           style: 'destructive',
           onPress: () => {
-            setSettings({
-              language: 'russian',
-              notifications: true,
-              soundEnabled: true,
-              animations: true,
-              darkMode: true,
-              autoSave: true,
-              vibration: true,
-            });
+            settings.setLanguage('russian');
+            settings.setNotifications(true);
+            settings.setSoundEnabled(true);
+            settings.setAutoSave(true);
+            settings.setVibration(true);
             Alert.alert('Готово', 'Настройки сброшены к значениям по умолчанию');
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  const SettingRow = ({ 
-    icon, 
-    title, 
-    subtitle, 
-    value, 
+  const SettingRow = ({
+    icon,
+    title,
+    subtitle,
+    value,
     onToggle,
-    type = 'switch'
+    type = 'switch',
   }: {
     icon: string;
     title: string;
@@ -99,7 +98,7 @@ export default function SettingsScreen() {
             {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
           </View>
         </View>
-        
+
         {type === 'switch' && (
           <Switch
             value={value as boolean}
@@ -109,7 +108,7 @@ export default function SettingsScreen() {
             ios_backgroundColor="rgba(255, 255, 255, 0.2)"
           />
         )}
-        
+
         {type === 'button' && (
           <TouchableOpacity onPress={onToggle} style={styles.settingButton}>
             <Text style={styles.settingButtonText}>{value}</Text>
@@ -120,16 +119,22 @@ export default function SettingsScreen() {
     </View>
   );
 
-  const LanguageRow = ({ language, isSelected, onSelect }: {
+  const LanguageRow = ({
+    language,
+    isSelected,
+    onSelect,
+  }: {
     language: { code: string; name: string; flag: string };
     isSelected: boolean;
     onSelect: () => void;
   }) => (
     <TouchableOpacity onPress={onSelect} style={styles.languageRow}>
       <LinearGradient
-        colors={isSelected ? 
-          ['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.1)'] :
-          ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+        colors={
+          isSelected
+            ? ['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.1)']
+            : ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']
+        }
         style={styles.languageRowGradient}
       >
         <View style={styles.languageContent}>
@@ -138,7 +143,7 @@ export default function SettingsScreen() {
             {language.name}
           </Text>
         </View>
-        
+
         {isSelected && (
           <View style={styles.checkmark}>
             <Ionicons name="checkmark" size={20} color="#BB6BD9" />
@@ -151,44 +156,34 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-      
-      <LinearGradient
-        colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
-        style={styles.background}
-      >
+
+      <LinearGradient colors={["#000011", "#1a0033", "#2d1b69", "#0f0f23"]} style={styles.background}>
         <StarryBackground />
-        
+
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Настройки</Text>
-            <TouchableOpacity 
-              style={styles.historyButton}
-              onPress={() => router.push('/history')}
-            >
+            <TouchableOpacity style={styles.historyButton} onPress={() => router.push('/history')}>
               <Ionicons name="time" size={24} color="#E8E8E8" />
             </TouchableOpacity>
           </View>
 
           {/* Settings Sections */}
           <View style={styles.content}>
-            
             {/* Language Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🌍 Язык интерфейса</Text>
               <View style={styles.sectionContent}>
-                {languages.map(language => (
+                {languages.map((language) => (
                   <LanguageRow
                     key={language.code}
                     language={language}
                     isSelected={settings.language === language.code}
-                    onSelect={() => selectLanguage(language.code)}
+                    onSelect={() => selectLanguage(language.code as 'russian' | 'english')}
                   />
                 ))}
               </View>
@@ -203,23 +198,23 @@ export default function SettingsScreen() {
                   title="Уведомления"
                   subtitle="Напоминания и новые предсказания"
                   value={settings.notifications}
-                  onToggle={() => toggleSetting('notifications')}
+                  onToggle={() => toggle('notifications')}
                 />
-                
+
                 <SettingRow
                   icon="volume-high"
                   title="Звуки"
                   subtitle="Звуковые эффекты приложения"
                   value={settings.soundEnabled}
-                  onToggle={() => toggleSetting('soundEnabled')}
+                  onToggle={() => toggle('soundEnabled')}
                 />
-                
+
                 <SettingRow
                   icon="phone-portrait"
                   title="Вибрация"
                   subtitle="Тактильная обратная связь"
                   value={settings.vibration}
-                  onToggle={() => toggleSetting('vibration')}
+                  onToggle={() => toggle('vibration')}
                 />
               </View>
             </View>
@@ -233,7 +228,7 @@ export default function SettingsScreen() {
                   title="Автосохранение"
                   subtitle="Автоматически сохранять результаты гаданий"
                   value={settings.autoSave}
-                  onToggle={() => toggleSetting('autoSave')}
+                  onToggle={() => toggle('autoSave')}
                 />
               </View>
             </View>
@@ -242,12 +237,9 @@ export default function SettingsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>👤 Профиль</Text>
               <View style={styles.sectionContent}>
-                <TouchableOpacity 
-                  style={styles.profileButton}
-                  onPress={() => router.push('/profile')}
-                >
+                <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
                   <LinearGradient
-                    colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)']}
+                    colors={["rgba(69, 183, 209, 0.9)", "rgba(52, 152, 219, 1)"]}
                     style={styles.profileButtonGradient}
                   >
                     <Ionicons name="person" size={20} color="#FFF" />
@@ -262,12 +254,9 @@ export default function SettingsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>⚙️ Действия</Text>
               <View style={styles.sectionContent}>
-                <TouchableOpacity 
-                  style={styles.resetButton}
-                  onPress={resetSettings}
-                >
+                <TouchableOpacity style={styles.resetButton} onPress={resetSettings}>
                   <LinearGradient
-                    colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)']}
+                    colors={["rgba(231, 76, 60, 0.8)", "rgba(192, 57, 43, 0.9)"]}
                     style={styles.resetButtonGradient}
                   >
                     <Ionicons name="refresh" size={20} color="#FFF" />
@@ -281,11 +270,9 @@ export default function SettingsScreen() {
             <View style={styles.appInfo}>
               <Text style={styles.appName}>TARO - Мистические предсказания</Text>
               <Text style={styles.appVersion}>Версия 1.0.0</Text>
-              <Text style={styles.appDescription}>
-                Древняя мудрость звезд в современном приложении
-              </Text>
+              <Text style={styles.appDescription}>Древняя мудрость звезд в современном приложении</Text>
             </View>
-            
+
             <View style={styles.bottomSpacing} />
           </View>
         </ScrollView>
