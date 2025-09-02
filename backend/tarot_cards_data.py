@@ -174,6 +174,40 @@ SECONDARY_TAROT_IMAGES = [
     "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg",
 ]
 
+# Enhanced fallback images - multiple options for better coverage
+ENHANCED_FALLBACK_IMAGES = [
+    # High-quality tarot and mystical images
+    "https://images.unsplash.com/photo-1600429991827-5224817554f8?w=400&q=80",
+    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?w=400&q=80", 
+    "https://images.unsplash.com/photo-1600429753199-5376c2738737?w=400&q=80",
+    "https://images.unsplash.com/photo-1565492206137-0797f1ca6dc6?w=400&q=80",
+    "https://images.unsplash.com/photo-1600430086946-2d9fc61bbefc?w=400&q=80",
+    "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg?w=400",
+    "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg?w=400",
+    "https://images.pexels.com/photos/4790590/pexels-photo-4790590.jpeg?w=400",
+    "https://images.pexels.com/photos/4790557/pexels-photo-4790557.jpeg?w=400", 
+    "https://images.pexels.com/photos/4790559/pexels-photo-4790559.jpeg?w=400",
+    "https://images.pexels.com/photos/6014324/pexels-photo-6014324.jpeg?w=400",
+    "https://images.pexels.com/photos/8391594/pexels-photo-8391594.jpeg?w=400",
+    "https://images.pexels.com/photos/6512277/pexels-photo-6512277.jpeg?w=400",
+    "https://images.pexels.com/photos/6944923/pexels-photo-6944923.jpeg?w=400",
+    "https://images.pexels.com/photos/2843275/pexels-photo-2843275.jpeg?w=400",
+    "https://images.pexels.com/photos/2843273/pexels-photo-2843273.jpeg?w=400",
+    "https://images.pexels.com/photos/33682765/pexels-photo-33682765.jpeg?w=400",
+    "https://images.pexels.com/photos/33331331/pexels-photo-33331331.jpeg?w=400",
+    "https://images.pexels.com/photos/13081193/pexels-photo-13081193.jpeg?w=400",
+    "https://images.pexels.com/photos/32820642/pexels-photo-32820642.jpeg?w=400",
+    "https://images.pexels.com/photos/7181711/pexels-photo-7181711.jpeg?w=400",
+    "https://images.pexels.com/photos/6512281/pexels-photo-6512281.jpeg?w=400",
+    # Additional reliable sources with smaller sizes for faster loading
+    "https://via.placeholder.com/400x600/4A148C/FFFFFF?text=TAROT+CARD",
+    "https://via.placeholder.com/400x600/6A1B9A/FFFFFF?text=MYSTICAL+CARD",
+    "https://via.placeholder.com/400x600/8E24AA/FFFFFF?text=MAGICAL+CARD",
+    "https://via.placeholder.com/400x600/9C27B0/FFFFFF?text=FORTUNE+CARD",
+    "https://via.placeholder.com/400x600/AB47BC/FFFFFF?text=ORACLE+CARD",
+    "https://via.placeholder.com/400x600/BA68C8/FFFFFF?text=COSMIC+CARD",
+] * 3  # Repeat 3 times for 78+ images
+
 # Fallback images from the previous collection for redundancy
 BEAUTIFUL_TAROT_IMAGES = [
     # Primary Tarot Card Images (Traditional Rider-Waite and Classic Decks)
