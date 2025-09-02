@@ -468,6 +468,32 @@ def get_zodiac_sign(birth_date: str) -> str:
 async def generate_horoscope(user_profile: UserProfile, target_date: str) -> HoroscopeResult:
     """Generate personalized horoscope for user"""
     
+    # Check if OpenAI quota is exceeded
+    global OPENAI_QUOTA_EXCEEDED
+    if OPENAI_QUOTA_EXCEEDED:
+        logging.info("OpenAI quota exceeded - using fallback horoscope")
+        # Generate lucky numbers and color
+        import random
+        lucky_numbers = random.sample(range(1, 50), 6)
+        colors = ["золотой", "серебряный", "красный", "синий", "зеленый", "фиолетовый", "белый", "черный"]
+        lucky_color = random.choice(colors)
+        mood_rating = random.randint(6, 9)
+        
+        full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
+        
+        return HoroscopeResult(
+            user_profile_id=user_profile.id,
+            date=target_date,
+            zodiac_sign=user_profile.zodiac_sign,
+            horoscope_text=full_horoscope,
+            mood_rating=mood_rating,
+            love_forecast=love_forecast,
+            career_forecast=career_forecast,
+            health_forecast=health_forecast,
+            lucky_numbers=lucky_numbers,
+            lucky_color=lucky_color
+        )
+    
     # Generate lucky numbers and color
     import random
     lucky_numbers = random.sample(range(1, 50), 6)
