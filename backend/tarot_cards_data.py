@@ -52,14 +52,36 @@ def url_to_base64(url: str, max_size_kb: int = 100) -> str:
         logging.error(f"Error converting URL to base64: {e}")
         return ""
 
-# Beautiful tarot card images from curated collection
+# Comprehensive tarot card images collection - curated by vision expert
 BEAUTIFUL_TAROT_IMAGES = [
-    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwyfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1623230951203-1f8fa5298426?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
-    "https://images.unsplash.com/photo-1637757935037-a7837f36807d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw0fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
+    # Primary Tarot Card Images (Traditional Rider-Waite and Classic Decks)
+    "https://images.unsplash.com/photo-1600429991827-5224817554f8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOHww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600430073932-e915854d9d4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOHww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600429753199-5376c2738737?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw0fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1Njc5OTkwOXww&ixlib=rb-4.1.0&q=85",
+    
+    # Atmospheric Tarot Reading Images
+    "https://images.unsplash.com/photo-1627764574958-fb54cd7d7448?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxmb3J0dW5lJTIwdGVsbGVyfGVufDB8fHx8MTc1Njc5OTkyMXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1747710977538-17b75f76f6f7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwyfHxmb3J0dW5lJTIwdGVsbGVyfGVufDB8fHx8MTc1Njc5OTkyMXww&ixlib=rb-4.1.0&q=85",
+    
+    # Mystical Atmospheric Images
+    "https://images.unsplash.com/photo-1603669388517-e61210964af4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwzfHxteXN0aWNhbCUyMGVzb3RlcmljfGVufDB8fHx8MTc1Njc5OTkxNXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1642791994760-ae038c886889?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHw0fHxteXN0aWNhbCUyMGVzb3RlcmljfGVufDB8fHx8MTc1Njc5OTkxNXww&ixlib=rb-4.1.0&q=85",
+    
+    # Magical/Occult Themed Images
+    "https://images.unsplash.com/photo-1551029506-0807df4e2031?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwyfHxtYWdpYyUyMG9jY3VsdHxlbnwwfHx8fDE3NTY3OTk5MzB8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1578634383009-bc0448eb3ca7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHxtYWdpYyUyMG9jY3VsdHxlbnwwfHx8fDE3NTY3OTk5MzB8MA&ixlib=rb-4.1.0&q=85",
+    
+    # Pexels High-Quality Images
+    "https://images.pexels.com/photos/33715981/pexels-photo-33715981.jpeg",
+    "https://images.pexels.com/photos/33715978/pexels-photo-33715978.jpeg", 
     "https://images.pexels.com/photos/3088369/pexels-photo-3088369.jpeg",
     "https://images.pexels.com/photos/3363695/pexels-photo-3363695.jpeg",
+    "https://images.pexels.com/photos/5435267/pexels-photo-5435267.jpeg",
+    "https://images.pexels.com/photos/10877395/pexels-photo-10877395.jpeg",
+    
+    # Additional classic images
+    "https://images.unsplash.com/photo-1623230951203-1f8fa5298426?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1637757935037-a7837f36807d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw0fHx0YXJvdCUyMGNhcmRzfGVufDB8fHx8MTc1NDU1ODg0NXww&ixlib=rb-4.1.0&q=85",
     "https://images.unsplash.com/photo-1607773709367-06b7a91f7e4a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
     "https://images.unsplash.com/photo-1615829332206-22479388eecc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
     "https://images.unsplash.com/photo-1671013033034-5ea58e9c5008?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwzfHxteXN0aWNhbCUyMHRhcm90fGVufDB8fHx8MTc1NDU1ODg1MHww&ixlib=rb-4.1.0&q=85",
