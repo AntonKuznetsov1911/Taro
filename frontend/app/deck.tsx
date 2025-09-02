@@ -34,7 +34,7 @@ export default function DeckScreen() {
   const [query, setQuery] = useState('');
   const [suit, setSuit] = useState<SuitKey>('all');
 
-  useEffect(() =&gt; {
+  useEffect(() => {
     const load = async () =&gt; {
       try {
         const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/deck`);
