@@ -226,7 +226,7 @@ def create_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
     return f"data:image/svg+xml;base64,{svg_base64}"
 
 def create_enhanced_card_svg(card_name: str, card_id: int, is_major: bool = True) -> str:
-    """Create enhanced SVG card image with unique design for each card"""
+    """Create enhanced SVG card image with full-card background and unique design for each card"""
     
     # Unique card designs for Major Arcana
     card_designs = {
@@ -263,71 +263,100 @@ def create_enhanced_card_svg(card_name: str, card_id: int, is_major: bool = True
     })
     
     svg_content = f'''
-    <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
+    <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
         <defs>
-            <linearGradient id="cardGrad{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <!-- Full card background gradient -->
+            <linearGradient id="fullCardGrad{card_id}" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" style="stop-color:{design['colors'][0]};stop-opacity:1" />
-                <stop offset="50%" style="stop-color:{design['colors'][1]};stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:{design['colors'][0]};stop-opacity:0.6" />
+                <stop offset="30%" style="stop-color:{design['colors'][1]};stop-opacity:0.9" />
+                <stop offset="70%" style="stop-color:{design['colors'][0]};stop-opacity:0.8" />
+                <stop offset="100%" style="stop-color:{design['colors'][1]};stop-opacity:1" />
             </linearGradient>
-            <radialGradient id="centerGlow{card_id}" cx="50%" cy="50%" r="40%">
-                <stop offset="0%" style="stop-color:white;stop-opacity:0.3" />
-                <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+            
+            <!-- Mystical overlay pattern -->
+            <radialGradient id="mysticalOverlay{card_id}" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" style="stop-color:white;stop-opacity:0.2" />
+                <stop offset="50%" style="stop-color:white;stop-opacity:0.1" />
+                <stop offset="100%" style="stop-color:transparent;stop-opacity:0" />
             </radialGradient>
-            <pattern id="mysticalPattern{card_id}" patternUnits="userSpaceOnUse" width="30" height="30">
-                <circle cx="15" cy="15" r="1" fill="rgba(255,255,255,0.2)"/>
-                <circle cx="5" cy="25" r="0.5" fill="rgba(255,255,255,0.1)"/>
-                <circle cx="25" cy="5" r="0.5" fill="rgba(255,255,255,0.1)"/>
+            
+            <!-- Detailed mystical pattern -->
+            <pattern id="fullCardPattern{card_id}" patternUnits="userSpaceOnUse" width="40" height="40">
+                <circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.15)"/>
+                <circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/>
+                <circle cx="30" cy="30" r="1" fill="rgba(255,255,255,0.1)"/>
+                <circle cx="10" cy="30" r="0.5" fill="rgba(255,255,255,0.08)"/>
+                <circle cx="30" cy="10" r="0.5" fill="rgba(255,255,255,0.08)"/>
             </pattern>
+            
+            <!-- Border glow effect -->
+            <filter id="borderGlow{card_id}">
+                <feGaussianBlur stdDeviation="2"/>
+                <feColorMatrix values="1 0 1 0 0  0 1 1 0 0  1 0 1 0 0  0 0 0 1 0"/>
+            </filter>
         </defs>
         
-        <!-- Card background -->
-        <rect width="200" height="300" fill="url(#cardGrad{card_id})" rx="18"/>
-        <rect width="200" height="300" fill="url(#mysticalPattern{card_id})" rx="18"/>
-        <rect width="200" height="300" fill="url(#centerGlow{card_id})" rx="18"/>
+        <!-- Full card background - fills entire card -->
+        <rect width="200" height="300" fill="url(#fullCardGrad{card_id})" rx="15"/>
         
-        <!-- Elegant border -->
-        <rect x="5" y="5" width="190" height="290" fill="none" 
-              stroke="rgba(255,255,255,0.6)" stroke-width="2" rx="15"/>
-        <rect x="12" y="12" width="176" height="276" fill="none" 
-              stroke="rgba(255,255,255,0.3)" stroke-width="1" rx="12"/>
+        <!-- Mystical pattern overlay -->
+        <rect width="200" height="300" fill="url(#fullCardPattern{card_id})" rx="15"/>
+        
+        <!-- Radial mystical glow -->
+        <rect width="200" height="300" fill="url(#mysticalOverlay{card_id})" rx="15"/>
+        
+        <!-- Elegant border with glow -->
+        <rect x="3" y="3" width="194" height="294" fill="none" 
+              stroke="rgba(255,255,255,0.6)" stroke-width="1.5" rx="12"
+              filter="url(#borderGlow{card_id})"/>
+        <rect x="8" y="8" width="184" height="284" fill="none" 
+              stroke="rgba(255,255,255,0.4)" stroke-width="1" rx="10"/>
               
-        <!-- Top section - Card name -->
-        <rect x="15" y="20" width="170" height="40" fill="rgba(255,255,255,0.1)" rx="8"/>
-        <text x="100" y="35" font-family="serif" font-size="12" font-weight="bold" 
-              fill="white" text-anchor="middle">{card_name}</text>
-        <text x="100" y="50" font-family="serif" font-size="9" 
-              fill="rgba(255,255,255,0.8)" text-anchor="middle">
+        <!-- Top section with card name -->
+        <rect x="15" y="15" width="170" height="45" fill="rgba(0,0,0,0.2)" rx="8" 
+              stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+        <text x="100" y="32" font-family="serif" font-size="14" font-weight="bold" 
+              fill="white" text-anchor="middle" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+              {card_name}
+        </text>
+        <text x="100" y="48" font-family="serif" font-size="10" 
+              fill="rgba(255,255,255,0.9)" text-anchor="middle">
               {design['element']} • {design['mood']}
         </text>
         
-        <!-- Central symbol area -->
-        <circle cx="100" cy="150" r="55" fill="rgba(255,255,255,0.1)" 
-                stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
-        <circle cx="100" cy="150" r="40" fill="none" 
-                stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+        <!-- Large central symbol area - dominates the card -->
+        <circle cx="100" cy="170" r="70" fill="rgba(255,255,255,0.15)" 
+                stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+        <circle cx="100" cy="170" r="55" fill="none" 
+                stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
+        <circle cx="100" cy="170" r="40" fill="rgba(255,255,255,0.1)"/>
         
-        <!-- Main symbol -->
-        <text x="100" y="170" font-family="serif" font-size="48" 
-              fill="white" text-anchor="middle">{design['symbol']}</text>
+        <!-- Huge main symbol - fills most of central area -->
+        <text x="100" y="200" font-family="serif" font-size="64" 
+              fill="white" text-anchor="middle" 
+              style="text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">
+              {design['symbol']}
+        </text>
               
-        <!-- Decorative elements -->
-        <text x="100" y="85" font-family="serif" font-size="16" 
-              fill="rgba(255,255,255,0.7)" text-anchor="middle">✦</text>
-        <text x="100" y="235" font-family="serif" font-size="16" 
-              fill="rgba(255,255,255,0.7)" text-anchor="middle">✦</text>
+        <!-- Corner decorative elements -->
+        <text x="100" y="85" font-family="serif" font-size="20" 
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">✦</text>
+        <text x="100" y="255" font-family="serif" font-size="20" 
+              fill="rgba(255,255,255,0.8)" text-anchor="middle">✦</text>
               
-        <!-- Side decorations -->
-        <text x="35" y="150" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.5)" text-anchor="middle">✧</text>
-        <text x="165" y="150" font-family="serif" font-size="12" 
-              fill="rgba(255,255,255,0.5)" text-anchor="middle">✧</text>
+        <!-- Side mystical symbols -->
+        <text x="30" y="170" font-family="serif" font-size="16" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✧</text>
+        <text x="170" y="170" font-family="serif" font-size="16" 
+              fill="rgba(255,255,255,0.6)" text-anchor="middle">✧</text>
         
         <!-- Bottom section -->
-        <text x="100" y="270" font-family="serif" font-size="11" 
-              fill="rgba(255,255,255,0.8)" text-anchor="middle">СТАРШИЙ АРКАН</text>
-        <text x="100" y="285" font-family="serif" font-size="10" 
-              fill="rgba(255,255,255,0.6)" text-anchor="middle">№ {card_id}</text>
+        <rect x="15" y="270" width="170" height="20" fill="rgba(0,0,0,0.2)" rx="5"
+              stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+        <text x="100" y="282" font-family="serif" font-size="11" 
+              fill="rgba(255,255,255,0.9)" text-anchor="middle" font-weight="bold">
+              СТАРШИЙ АРКАН #{card_id}
+        </text>
     </svg>
     '''
     
