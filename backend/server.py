@@ -613,6 +613,12 @@ def generate_fallback_compatibility_analysis(name1: str, name2: str, score: int)
 async def generate_ai_interpretation(question: str, category: str, spread_type: str, cards: List[TarotCard], positions: List[str]) -> str:
     """Generate AI interpretation using OpenAI"""
     
+    # Check if OpenAI quota is exceeded
+    global OPENAI_QUOTA_EXCEEDED
+    if OPENAI_QUOTA_EXCEEDED:
+        logging.info("OpenAI quota exceeded - using fallback interpretation")
+        return generate_enhanced_fallback_interpretation(cards, positions, question, category)
+    
     # Prepare cards info for AI
     cards_info = []
     for i, card in enumerate(cards):
