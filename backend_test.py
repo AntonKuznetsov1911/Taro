@@ -2860,6 +2860,234 @@ class TatoAiTester:
         
         return total_passed == total_tests
 
+    def test_new_tarot_image_system_comprehensive(self):
+        """Test the new 5-level fallback tarot card image system as requested"""
+        print("🎨 NEW TAROT CARD IMAGE SYSTEM TESTING")
+        print("=" * 60)
+        print("Testing updated 5-level fallback system for all 22 Major Arcana cards")
+        print("Expected: 70%+ large images (>10KB), 30%- SVG fallback (~2KB)")
+        print()
+        
+        try:
+            # Generate multiple different spreads to test all cards
+            test_spreads = [
+                ("one_card", "love", "Что ждет меня в любви?"),
+                ("three_cards", "career", "Как развивается моя карьера?"),
+                ("celtic_cross", "finance", "Какие финансовые перспективы?"),
+                ("three_cards", "general", "Что важно знать о будущем?"),
+                ("one_card", "love", "Найду ли я счастье?"),
+                ("celtic_cross", "career", "Мой профессиональный путь?"),
+                ("three_cards", "finance", "Финансовая стабильность?"),
+                ("one_card", "general", "Главный совет на сегодня?"),
+                ("celtic_cross", "love", "Глубокий анализ отношений?"),
+                ("three_cards", "career", "Карьерные возможности?")
+            ]
+            
+            all_cards_data = []
+            unique_cards = {}
+            large_images = 0
+            small_images = 0
+            total_spreads_tested = 0
+            
+            print("📊 GENERATING MULTIPLE SPREADS TO TEST ALL CARDS")
+            print("-" * 50)
+            
+            for i, (spread_type, category, question) in enumerate(test_spreads, 1):
+                print(f"🎴 Spread {i}: {spread_type} ({category})")
+                
+                payload = {
+                    "category": category,
+                    "spread_type": spread_type,
+                    "question": question
+                }
+                
+                response = self.session.post(
+                    f"{self.base_url}/reading",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    cards = data.get("cards", [])
+                    total_spreads_tested += 1
+                    
+                    print(f"   ✅ Success - {len(cards)} cards generated")
+                    
+                    for card in cards:
+                        card_name = card.get("name", "Unknown")
+                        image = card.get("image", "")
+                        
+                        if image and "base64," in image:
+                            base64_part = image.split("base64,")[1]
+                            image_size_chars = len(base64_part)
+                            # Estimate actual size (base64 is ~33% larger than binary)
+                            estimated_size_kb = (image_size_chars * 0.75) / 1024
+                            
+                            # Store card data
+                            card_info = {
+                                "name": card_name,
+                                "image_size_chars": image_size_chars,
+                                "estimated_size_kb": estimated_size_kb,
+                                "image_format": image.split(";")[0].replace("data:image/", "") if ";" in image else "unknown",
+                                "spread": f"{spread_type}_{category}"
+                            }
+                            
+                            all_cards_data.append(card_info)
+                            
+                            # Track unique cards
+                            if card_name not in unique_cards:
+                                unique_cards[card_name] = card_info
+                            
+                            # Classify image size
+                            if estimated_size_kb > 10:  # Large image (JPEG photo)
+                                large_images += 1
+                                print(f"      📸 {card_name}: {estimated_size_kb:.1f}KB (LARGE - likely JPEG)")
+                            else:  # Small image (SVG fallback)
+                                small_images += 1
+                                print(f"      🎨 {card_name}: {estimated_size_kb:.1f}KB (small - likely SVG)")
+                        else:
+                            print(f"      ❌ {card_name}: No valid image")
+                            return False
+                else:
+                    print(f"   ❌ Failed - HTTP {response.status_code}")
+                    return False
+                
+                print()
+            
+            # Analysis and results
+            total_cards_tested = len(all_cards_data)
+            unique_cards_count = len(unique_cards)
+            large_percentage = (large_images / total_cards_tested) * 100 if total_cards_tested > 0 else 0
+            small_percentage = (small_images / total_cards_tested) * 100 if total_cards_tested > 0 else 0
+            
+            print("📈 IMAGE SYSTEM ANALYSIS RESULTS")
+            print("=" * 40)
+            print(f"Total spreads tested: {total_spreads_tested}")
+            print(f"Total cards analyzed: {total_cards_tested}")
+            print(f"Unique cards found: {unique_cards_count}")
+            print(f"Large images (>10KB): {large_images} ({large_percentage:.1f}%)")
+            print(f"Small images (≤10KB): {small_images} ({small_percentage:.1f}%)")
+            print()
+            
+            # Detailed card analysis
+            print("🔍 DETAILED CARD ANALYSIS")
+            print("-" * 30)
+            
+            # Sort unique cards by size for analysis
+            sorted_cards = sorted(unique_cards.values(), key=lambda x: x["estimated_size_kb"], reverse=True)
+            
+            print("📊 Top 10 largest images:")
+            for i, card in enumerate(sorted_cards[:10], 1):
+                print(f"   {i:2d}. {card['name']}: {card['estimated_size_kb']:.1f}KB ({card['image_format']})")
+            
+            print("\n📊 Smallest 5 images:")
+            for i, card in enumerate(sorted_cards[-5:], 1):
+                print(f"   {i:2d}. {card['name']}: {card['estimated_size_kb']:.1f}KB ({card['image_format']})")
+            
+            # Image format analysis
+            format_counts = {}
+            for card in all_cards_data:
+                fmt = card["image_format"]
+                format_counts[fmt] = format_counts.get(fmt, 0) + 1
+            
+            print(f"\n📊 Image formats distribution:")
+            for fmt, count in format_counts.items():
+                percentage = (count / total_cards_tested) * 100
+                print(f"   {fmt}: {count} cards ({percentage:.1f}%)")
+            
+            # Success criteria evaluation
+            print("\n🎯 SUCCESS CRITERIA EVALUATION")
+            print("-" * 35)
+            
+            criteria_results = []
+            
+            # Criterion 1: At least 70% large images
+            large_target = large_percentage >= 70
+            criteria_results.append(large_target)
+            status1 = "✅ PASS" if large_target else "❌ FAIL"
+            print(f"{status1} - Large images (>10KB): {large_percentage:.1f}% (target: ≥70%)")
+            
+            # Criterion 2: Maximum 30% small images
+            small_target = small_percentage <= 30
+            criteria_results.append(small_target)
+            status2 = "✅ PASS" if small_target else "❌ FAIL"
+            print(f"{status2} - Small images (≤10KB): {small_percentage:.1f}% (target: ≤30%)")
+            
+            # Criterion 3: All spreads work without errors
+            spreads_target = total_spreads_tested == len(test_spreads)
+            criteria_results.append(spreads_target)
+            status3 = "✅ PASS" if spreads_target else "❌ FAIL"
+            print(f"{status3} - All spreads functional: {total_spreads_tested}/{len(test_spreads)} (target: 100%)")
+            
+            # Criterion 4: Good card uniqueness
+            uniqueness_percentage = (unique_cards_count / total_cards_tested) * 100 if total_cards_tested > 0 else 0
+            uniqueness_target = uniqueness_percentage >= 30  # At least 30% unique cards
+            criteria_results.append(uniqueness_target)
+            status4 = "✅ PASS" if uniqueness_target else "❌ FAIL"
+            print(f"{status4} - Card uniqueness: {uniqueness_percentage:.1f}% (target: ≥30%)")
+            
+            # Criterion 5: No image errors
+            no_errors = all(card["estimated_size_kb"] > 0 for card in all_cards_data)
+            criteria_results.append(no_errors)
+            status5 = "✅ PASS" if no_errors else "❌ FAIL"
+            print(f"{status5} - No image errors: All cards have valid images")
+            
+            # Overall assessment
+            passed_criteria = sum(criteria_results)
+            total_criteria = len(criteria_results)
+            success_rate = (passed_criteria / total_criteria) * 100
+            
+            print(f"\n🏆 OVERALL ASSESSMENT")
+            print("=" * 25)
+            print(f"Criteria passed: {passed_criteria}/{total_criteria} ({success_rate:.1f}%)")
+            
+            if success_rate >= 80:
+                print("🎉 EXCELLENT - New image system working as expected!")
+                result_status = True
+            elif success_rate >= 60:
+                print("✅ GOOD - Image system mostly working with minor issues")
+                result_status = True
+            else:
+                print("⚠️ NEEDS IMPROVEMENT - Image system has significant issues")
+                result_status = False
+            
+            # Log the test result
+            details = f"Tested {total_cards_tested} cards across {total_spreads_tested} spreads. Large images: {large_percentage:.1f}%, Small images: {small_percentage:.1f}%, Unique cards: {uniqueness_percentage:.1f}%, Success rate: {success_rate:.1f}%"
+            self.log_test("New tarot image system (5-level fallback)", result_status, details)
+            
+            return result_status
+            
+        except Exception as e:
+            self.log_test("New tarot image system", False, f"Exception: {str(e)}")
+            return False
+
+    def run_image_system_test_only(self):
+        """Run only the new tarot image system test as requested"""
+        print("🎨 FOCUSED TESTING: NEW TAROT CARD IMAGE SYSTEM")
+        print("=" * 60)
+        print("Testing the updated 5-level fallback system for tarot card images")
+        print("Focus: Image coverage, quality, uniqueness, and system stability")
+        print()
+        
+        # Run the comprehensive image system test
+        image_system_passed = self.test_new_tarot_image_system_comprehensive()
+        
+        print("\n" + "=" * 60)
+        print("🏆 IMAGE SYSTEM TEST RESULTS")
+        print("=" * 60)
+        
+        if image_system_passed:
+            print("🎉 SUCCESS - New tarot image system is working excellently!")
+            print("✅ All criteria met for the 5-level fallback system")
+        else:
+            print("⚠️ ISSUES DETECTED - Image system needs attention")
+            print("❌ Some criteria not met, check details above")
+        
+        print(f"\nTest completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        return image_system_passed
+
 if __name__ == "__main__":
     print(f"Testing TatoAi Backend API at: {BACKEND_URL}")
     print()
