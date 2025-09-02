@@ -23,8 +23,6 @@ export default function SettingsScreen() {
     language: 'russian',
     notifications: true,
     soundEnabled: true,
-    animations: true,
-    darkMode: true,
     autoSave: true,
     vibration: true,
   });
