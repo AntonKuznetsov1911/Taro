@@ -538,11 +538,11 @@ def get_aesthetic_image(card_id: int) -> str:
         if specific_image:  # If specific image was successfully loaded
             return specific_image
     
-    # Level 2: Try secondary collection by index
-    if card_id < len(SECONDARY_TAROT_IMAGES):
-        secondary_image = url_to_base64(SECONDARY_TAROT_IMAGES[card_id])
-        if secondary_image:  # If secondary image was successfully loaded
-            return secondary_image
+    # Level 2: Try enhanced fallback collection by index
+    if card_id < len(ENHANCED_FALLBACK_IMAGES):
+        enhanced_image = url_to_base64(ENHANCED_FALLBACK_IMAGES[card_id])
+        if enhanced_image:  # If enhanced image was successfully loaded
+            return enhanced_image
     
     # Level 3: Try original fallback collection
     if card_id < len(BEAUTIFUL_TAROT_IMAGES):
