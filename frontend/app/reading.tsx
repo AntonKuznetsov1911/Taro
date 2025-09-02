@@ -104,11 +104,15 @@ export default function ReadingScreen() {
     }
   };
 
-  const revealCard = (index: number) => {
+  const settings = useSettings();
+
+  const revealCard = async (index: number) => {
     const newRevealed = [...cardsRevealed];
     newRevealed[index] = true;
     setCardsRevealed(newRevealed);
+    await playFlip({ soundEnabled: settings.soundEnabled, vibration: settings.vibration });
   };
+
 
   const revealAllCards = () => {
     setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
