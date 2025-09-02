@@ -62,9 +62,11 @@ export default function CardDetailScreen() {
     }
   };
 
+  const settings = useSettings();
+
   const onToggleReversed = async (val: boolean) =&gt; {
     setReversed(val);
-    playClick();
+    await playClick({ soundEnabled: settings.soundEnabled, vibration: settings.vibration });
     await fetchInterpretation(val);
   };
 
