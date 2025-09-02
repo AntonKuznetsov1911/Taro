@@ -35,7 +35,7 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 # Import tarot cards data
-from tarot_cards_data import MAJOR_ARCANA, CARD_BACK_IMAGE
+from tarot_cards_data import MAJOR_ARCANA, CARD_BACK_IMAGE, FULL_TAROT_DECK
 
 # Spreads configurations
 SPREADS = {
