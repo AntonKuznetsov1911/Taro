@@ -538,7 +538,12 @@ async def generate_horoscope(user_profile: UserProfile, target_date: str) -> Hor
         health_forecast = "Космические энергии способствуют восстановлению сил и внутренней гармонии."
         
     except Exception as e:
-        logging.error(f"OpenAI API error: {e}")
+        # Set quota flag if quota error detected
+        if "insufficient_quota" in str(e) or "429" in str(e):
+            OPENAI_QUOTA_EXCEEDED = True
+            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
+        else:
+            logging.error(f"OpenAI API error: {e}")
         full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
     
     return HoroscopeResult(
