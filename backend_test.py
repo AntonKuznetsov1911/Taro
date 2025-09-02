@@ -2240,6 +2240,17 @@ class TatoAiTester:
         self.test_categories_endpoint()
         self.test_spreads_endpoint()
         
+        # 🎯 FULL 78-CARD DECK TESTING (as requested by user)
+        print("🃏 TESTING FULL 78-CARD TAROT DECK SYSTEM")
+        print("-" * 50)
+        self.test_full_78_card_deck_completeness()
+        self.test_card_variety_in_spreads()
+        self.test_card_data_quality()
+        self.test_api_functionality_with_full_deck()
+        self.test_minor_arcana_cards_presence()
+        self.test_card_statistics_analysis()
+        print()
+        
         # Core functionality tests
         self.test_create_reading()
         self.test_reading_history()
