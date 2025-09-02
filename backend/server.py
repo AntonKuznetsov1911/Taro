@@ -92,6 +92,7 @@ class TarotCard(BaseModel):
     name: str
     name_en: str
     type: str
+    suit: Optional[str] = None  # For Minor Arcana: wands/cups/swords/pentacles, for Major: major
     image: str
     keywords: List[str]
     upright_meaning: str
