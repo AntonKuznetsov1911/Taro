@@ -846,6 +846,12 @@ def select_random_cards(count: int) -> List[TarotCard]:
     tarot_cards = []
     
     for card_data in selected_cards:
+        # Ensure the card has an image field
+        if 'image' not in card_data:
+            from tarot_cards_data import get_aesthetic_image
+            card_data = card_data.copy()  # Don't modify the original
+            card_data['image'] = get_aesthetic_image(card_data['id'])
+        
         card = TarotCard(**card_data)
         # 30% chance of being reversed
         card.is_reversed = random.random() < 0.3
