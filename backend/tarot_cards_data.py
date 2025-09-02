@@ -345,9 +345,23 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get beautiful tarot card image - using enhanced SVG for reliability"""
-    # Always use enhanced SVG to ensure consistent quality and fast loading
-    return create_enhanced_card_svg(f"Card {card_id}", card_id)
+    """Get beautiful tarot card image - hybrid approach with URL images + SVG fallback"""
+    # Try to get an aesthetic image from URL first
+    if card_id < len(BEAUTIFUL_TAROT_IMAGES):
+        url_image = url_to_base64(BEAUTIFUL_TAROT_IMAGES[card_id])
+        if url_image:  # If URL image was successfully loaded
+            return url_image
+    
+    # Fallback to our enhanced SVG system for reliability
+    card_names = [
+        "Дурак", "Маг", "Верховная Жрица", "Императрица", "Император", 
+        "Иерофант", "Влюблённые", "Колесница", "Сила", "Отшельник",
+        "Колесо Фортуны", "Справедливость", "Повешенный", "Смерть", 
+        "Умеренность", "Дьявол", "Башня", "Звезда", "Луна", "Солнце", "Суд", "Мир"
+    ]
+    
+    card_name = card_names[card_id] if card_id < len(card_names) else f"Карта {card_id}"
+    return create_enhanced_card_svg(card_name, card_id)
 
 # All 22 Major Arcana cards with aesthetic images where possible
 MAJOR_ARCANA = [
