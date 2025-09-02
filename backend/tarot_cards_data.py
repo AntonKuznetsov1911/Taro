@@ -1,4 +1,6 @@
-# Tarot Cards Data with aesthetic images from curated collection
+# Import minor arcana data
+from minor_arcana_data import MINOR_ARCANA_WANDS, MINOR_ARCANA_CUPS
+from minor_arcana_swords_pentacles import MINOR_ARCANA_SWORDS, MINOR_ARCANA_PENTACLES
 import base64
 import requests
 import logging
