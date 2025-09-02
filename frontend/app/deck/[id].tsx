@@ -29,8 +29,8 @@ export default function CardDetailScreen() {
   const [interpretation, setInterpretation] = useState('');
   const cardId = Number(id);
 
-  useEffect(() =&gt; {
-    const load = async () =&gt; {
+  useEffect(() => {
+    const load = async () => {
       try {
         const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card/${cardId}`);
         const data = await res.json();
@@ -45,7 +45,7 @@ export default function CardDetailScreen() {
     load();
   }, [cardId]);
 
-  const fetchInterpretation = async (isReversed: boolean) =&gt; {
+  const fetchInterpretation = async (isReversed: boolean) => {
     try {
       const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card-interpretation`, {
         method: 'POST',
@@ -64,7 +64,7 @@ export default function CardDetailScreen() {
 
   const settings = useSettings();
 
-  const onToggleReversed = async (val: boolean) =&gt; {
+  const onToggleReversed = async (val: boolean) => {
     setReversed(val);
     await playClick({ soundEnabled: settings.soundEnabled, vibration: settings.vibration });
     await fetchInterpretation(val);
@@ -72,75 +72,75 @@ export default function CardDetailScreen() {
 
   if (loading || !card) {
     return (
-      &lt;SafeAreaView style={styles.container}&gt;
-        &lt;LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}&gt;
-          &lt;View style={styles.loadingWrap}&gt;
-            &lt;ActivityIndicator size="large" color="#9B59B6" /&gt;
-            &lt;Text style={styles.loadingText}&gt;Загрузка карты...&lt;/Text&gt;
-          &lt;/View&gt;
-        &lt;/LinearGradient&gt;
-      &lt;/SafeAreaView&gt;
+      <SafeAreaView style={styles.container}>
+        <LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}>
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color="#9B59B6" />
+            <Text style={styles.loadingText}>Загрузка карты...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
     );
   }
 
   return (
-    &lt;SafeAreaView style={styles.container}&gt;
-      &lt;LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}&gt;
-        &lt;ScrollView showsVerticalScrollIndicator={false}&gt;
-          &lt;View style={styles.header}&gt;
-            &lt;TouchableOpacity onPress={() =&gt; router.back()} style={styles.backButton}&gt;
-              &lt;Ionicons name="arrow-back" size={24} color="#E8E8E8" /&gt;
-            &lt;/TouchableOpacity&gt;
-            &lt;Text style={styles.title}&gt;{card.name}&lt;/Text&gt;
-            &lt;View style={{ width: 24 }} /&gt;
-          &lt;/View&gt;
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.title}>{card.name}</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-          &lt;View style={styles.imageWrap}&gt;
+          <View style={styles.imageWrap}>
             {card.image ? (
-              &lt;Image source={{ uri: card.image }} style={styles.image} resizeMode="cover" /&gt;
+              <Image source={{ uri: card.image }} style={styles.image} resizeMode="cover" />
             ) : (
-              &lt;LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.imageFallback}&gt;
-                &lt;Text style={styles.cardName}&gt;{card.name}&lt;/Text&gt;
-              &lt;/LinearGradient&gt;
+              <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.imageFallback}>
+                <Text style={styles.cardName}>{card.name}</Text>
+              </LinearGradient>
             )}
-          &lt;/View&gt;
+          </View>
 
-          &lt;View style={styles.row}&gt;
-            &lt;View style={styles.badge}&gt;
-              &lt;Text style={styles.badgeText}&gt;{card.type === 'major' ? 'Старший аркан' : (card.suit || card.type)}&lt;/Text&gt;
-            &lt;/View&gt;
-            &lt;View style={styles.spacer} /&gt;
-            &lt;View style={styles.switchRow}&gt;
-              &lt;Text style={styles.label}&gt;Перевернутая&lt;/Text&gt;
-              &lt;Switch value={reversed} onValueChange={onToggleReversed} trackColor={{ false: '#666', true: '#9B59B6' }} thumbColor={reversed ? '#BB6BD9' : '#EEE'} /&gt;
-            &lt;/View&gt;
-          &lt;/View&gt;
+          <View style={styles.row}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{card.type === 'major' ? 'Старший аркан' : (card.suit || card.type)}</Text>
+            </View>
+            <View style={styles.spacer} />
+            <View style={styles.switchRow}>
+              <Text style={styles.label}>Перевернутая</Text>
+              <Switch value={reversed} onValueChange={onToggleReversed} trackColor={{ false: '#666', true: '#9B59B6' }} thumbColor={reversed ? '#BB6BD9' : '#EEE'} />
+            </View>
+          </View>
 
-          &lt;View style={styles.section}&gt;
-            &lt;Text style={styles.sectionTitle}&gt;Ключевые слова&lt;/Text&gt;
-            &lt;View style={styles.keywords}&gt;
-              {card.keywords.map((k, i) =&gt; (
-                &lt;View style={styles.keyword} key={i}&gt;
-                  &lt;Text style={styles.keywordText}&gt;{k}&lt;/Text&gt;
-                &lt;/View&gt;
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Ключевые слова</Text>
+            <View style={styles.keywords}>
+              {card.keywords.map((k, i) => (
+                <View style={styles.keyword} key={i}>
+                  <Text style={styles.keywordText}>{k}</Text>
+                </View>
               ))}
-            &lt;/View&gt;
-          &lt;/View&gt;
+            </View>
+          </View>
 
-          &lt;View style={styles.section}&gt;
-            &lt;Text style={styles.sectionTitle}&gt;Значение&lt;/Text&gt;
-            &lt;Text style={styles.meaning}&gt;{reversed ? card.reversed_meaning : card.upright_meaning}&lt;/Text&gt;
-          &lt;/View&gt;
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Значение</Text>
+            <Text style={styles.meaning}>{reversed ? card.reversed_meaning : card.upright_meaning}</Text>
+          </View>
 
-          &lt;View style={styles.section}&gt;
-            &lt;Text style={styles.sectionTitle}&gt;Толкование&lt;/Text&gt;
-            &lt;Text style={styles.meaning}&gt;{interpretation}&lt;/Text&gt;
-          &lt;/View&gt;
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Толкование</Text>
+            <Text style={styles.meaning}>{interpretation}</Text>
+          </View>
 
-          &lt;View style={{ height: 24 }} /&gt;
-        &lt;/ScrollView&gt;
-      &lt;/LinearGradient&gt;
-    &lt;/SafeAreaView&gt;
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 

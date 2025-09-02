@@ -35,7 +35,7 @@ export default function DeckScreen() {
   const [suit, setSuit] = useState<SuitKey>('all');
 
   useEffect(() => {
-    const load = async () =&gt; {
+    const load = async () => {
       try {
         const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/deck`);
         const data = await res.json();
@@ -49,86 +49,86 @@ export default function DeckScreen() {
     load();
   }, []);
 
-  const filtered = useMemo(() =&gt; {
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return cards.filter((c) =&gt; {
+    return cards.filter((c) => {
       const suitOk = suit === 'all' ? true : (c.suit || c.type) === suit;
       const qOk = !q
         ? true
         : c.name.toLowerCase().includes(q) ||
           c.name_en.toLowerCase().includes(q) ||
-          (c.keywords || []).some((k) =&gt; k.toLowerCase().includes(q));
-      return suitOk &amp;&amp; qOk;
+          (c.keywords || []).some((k) => k.toLowerCase().includes(q));
+      return suitOk && qOk;
     });
   }, [cards, query, suit]);
 
-  const renderItem = ({ item }: { item: CardItem }) =&gt; (
-    &lt;TouchableOpacity style={styles.card} onPress={() =&gt; router.push(`/deck/${item.id}`)} activeOpacity={0.8}&gt;
+  const renderItem = ({ item }: { item: CardItem }) => (
+    <TouchableOpacity style={styles.card} onPress={() => router.push(`/deck/${item.id}`)} activeOpacity={0.8}>
       {item.image ? (
-        &lt;Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" /&gt;
+        <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
       ) : (
-        &lt;LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.cardFallback}&gt;
-          &lt;Text style={styles.cardName}&gt;{item.name}&lt;/Text&gt;
-        &lt;/LinearGradient&gt;
+        <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.cardFallback}>
+          <Text style={styles.cardName}>{item.name}</Text>
+        </LinearGradient>
       )}
-      &lt;View style={styles.cardLabel}&gt;
-        &lt;Text style={styles.cardLabelText} numberOfLines={1}&gt;{item.name}&lt;/Text&gt;
-      &lt;/View&gt;
-    &lt;/TouchableOpacity&gt;
+      <View style={styles.cardLabel}>
+        <Text style={styles.cardLabelText} numberOfLines={1}>{item.name}</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
-    &lt;SafeAreaView style={styles.container}&gt;
-      &lt;LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}&gt;
-        &lt;KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}&gt;
-          &lt;View style={styles.header}&gt;
-            &lt;TouchableOpacity onPress={() =&gt; router.back()} style={styles.backButton}&gt;
-              &lt;Ionicons name="arrow-back" size={24} color="#E8E8E8" /&gt;
-            &lt;/TouchableOpacity&gt;
-            &lt;Text style={styles.title}&gt;Каталог колоды&lt;/Text&gt;
-            &lt;View style={{ width: 24 }} /&gt;
-          &lt;/View&gt;
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Каталог колоды</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-          &lt;View style={styles.searchRow}&gt;
-            &lt;Ionicons name="search" size={18} color="#9B59B6" /&gt;
-            &lt;TextInput
+          <View style={styles.searchRow}>
+            <Ionicons name="search" size={18} color="#9B59B6" />
+            <TextInput
               placeholder="Поиск по названию или ключевым словам"
               placeholderTextColor="#9B59B6AA"
               style={styles.input}
               value={query}
               onChangeText={setQuery}
-            /&gt;
-          &lt;/View&gt;
+            />
+          </View>
 
-          &lt;View style={styles.filters}&gt;
-            {SUIT_FILTERS.map((f) =&gt; {
+          <View style={styles.filters}>
+            {SUIT_FILTERS.map((f) => {
               const active = suit === f.key;
               return (
-                &lt;TouchableOpacity key={f.key} onPress={() =&gt; setSuit(f.key)} style={[styles.filterChip, active &amp;&amp; styles.filterChipActive]}&gt;
-                  &lt;Text style={[styles.filterText, active &amp;&amp; styles.filterTextActive]}&gt;{f.label}&lt;/Text&gt;
-                &lt;/TouchableOpacity&gt;
+                <TouchableOpacity key={f.key} onPress={() => setSuit(f.key)} style={[styles.filterChip, active && styles.filterChipActive]}>
+                  <Text style={[styles.filterText, active && styles.filterTextActive]}>{f.label}</Text>
+                </TouchableOpacity>
               );
             })}
-          &lt;/View&gt;
+          </View>
 
           {loading ? (
-            &lt;View style={styles.loadingWrap}&gt;
-              &lt;ActivityIndicator size="large" color="#9B59B6" /&gt;
-              &lt;Text style={styles.loadingText}&gt;Загрузка колоды...&lt;/Text&gt;
-            &lt;/View&gt;
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color="#9B59B6" />
+              <Text style={styles.loadingText}>Загрузка колоды...</Text>
+            </View>
           ) : (
-            &lt;FlatList
+            <FlatList
               contentContainerStyle={styles.listContent}
               data={filtered}
               numColumns={2}
-              keyExtractor={(it) =&gt; String(it.id)}
+              keyExtractor={(it) => String(it.id)}
               renderItem={renderItem}
               showsVerticalScrollIndicator={false}
-            /&gt;
+            />
           )}
-        &lt;/KeyboardAvoidingView&gt;
-      &lt;/LinearGradient&gt;
-    &lt;/SafeAreaView&gt;
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
