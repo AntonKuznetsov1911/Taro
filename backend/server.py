@@ -427,6 +427,8 @@ def generate_fallback_palmistry_interpretation(question: str) -> str:
 
 *Пусть звезды освещают Ваш путь к счастью!* ⭐🤲"""
     
+    return interpretation
+
 def get_zodiac_sign(birth_date: str) -> str:
     """Determine zodiac sign based on birth date"""
     from datetime import datetime
