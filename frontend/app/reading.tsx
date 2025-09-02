@@ -132,7 +132,7 @@ export default function ReadingScreen() {
                 <Image
                   source={{ uri: card.image }}
                   style={styles.cardImage}
-                  resizeMode="contain"
+                  resizeMode="cover"
                 />
               ) : (
                 <LinearGradient
