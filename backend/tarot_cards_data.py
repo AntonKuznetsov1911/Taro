@@ -550,9 +550,9 @@ CARD_BACK_SVG = '''
 CARD_BACK_IMAGE = f"data:image/svg+xml;base64,{base64.b64encode(CARD_BACK_SVG.encode('utf-8')).decode('utf-8')}"
 
 def get_aesthetic_image(card_id: int) -> str:
-    """Get beautiful tarot card image - supports full 78-card deck"""
+    """Get beautiful tarot card image - reliable system with placeholder fallback"""
     
-    # Get card name for placeholder
+    # Get card name for all cases
     card_names = [
         # Major Arcana (0-21)
         "Дурак", "Маг", "Верховная Жрица", "Императрица", "Император", 
@@ -579,7 +579,31 @@ def get_aesthetic_image(card_id: int) -> str:
     
     card_name = card_names[card_id] if card_id < len(card_names) else f"Карта {card_id}"
     
-    # Always return placeholder image for now
+    # Try URL images with timeout and fallback to placeholder
+    try:
+        # Level 1: Try specific card image from full deck
+        if card_id in FULL_TAROT_DECK_IMAGES:
+            specific_image = url_to_base64(FULL_TAROT_DECK_IMAGES[card_id])
+            if specific_image and len(specific_image) > 1000:  # Valid image
+                return specific_image
+        
+        # Level 2: Try enhanced fallback collection by index  
+        if card_id < len(ENHANCED_FALLBACK_IMAGES):
+            enhanced_image = url_to_base64(ENHANCED_FALLBACK_IMAGES[card_id])
+            if enhanced_image and len(enhanced_image) > 1000:  # Valid image
+                return enhanced_image
+        
+        # Level 3: Try rotation from enhanced collection
+        if ENHANCED_FALLBACK_IMAGES:
+            rotation_index = card_id % len(ENHANCED_FALLBACK_IMAGES)
+            rotation_image = url_to_base64(ENHANCED_FALLBACK_IMAGES[rotation_index])
+            if rotation_image and len(rotation_image) > 1000:  # Valid image
+                return rotation_image
+                
+    except Exception as e:
+        logging.warning(f"Error loading images for card {card_id}: {e}")
+    
+    # Ultimate fallback: Beautiful placeholder
     return create_placeholder_image(card_name, card_id)
 
 # All 22 Major Arcana cards with aesthetic images where possible
