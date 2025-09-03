@@ -15,6 +15,7 @@ const defaultSettings: Settings = {
   soundEnabled: true,
   autoSave: true,
   vibration: true,
+  effectsVolume: 0.7,
 };
 
 export type SettingsContextType = Settings & {
