@@ -46,7 +46,7 @@ export async function playClick(opts: { soundEnabled: boolean; vibration: boolea
   } catch {}
 }
 
-export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean }) {
+export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
   try {
     if (opts.vibration) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!opts.soundEnabled) return;
