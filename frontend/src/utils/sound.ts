@@ -37,8 +37,10 @@ export async function playClick(opts: { soundEnabled: boolean; vibration: boolea
     if (!opts.soundEnabled) return;
     await ensureLoaded();
     if (Platform.OS === 'web') {
+      if (webClick) webClick.volume = Math.max(0, Math.min(1, opts.volume ?? 0.7));
       await webClick?.play();
     } else if (clickSound) {
+      await clickSound.setVolumeAsync(Math.max(0, Math.min(1, opts.volume ?? 0.7)));
       await clickSound.replayAsync();
     }
   } catch {}
