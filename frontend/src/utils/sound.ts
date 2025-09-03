@@ -20,7 +20,7 @@ async function ensureLoaded() {
     }
     if (!clickSound) {
       clickSound = new Audio.Sound();
-      await clickSound.loadAsync({ uri: CLICK_MP3 } as AVPlaybackSource, { volume: 0.6 }, false);
+      await clickSound.loadAsync({ uri: CLICK_MP3 } as AVPlaybackSource, {}, false);
     }
     if (!flipSound) {
       flipSound = new Audio.Sound();
