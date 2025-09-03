@@ -40,6 +40,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled: (soundEnabled) => setState((s) => ({ ...s, soundEnabled })),
       setAutoSave: (autoSave) => setState((s) => ({ ...s, autoSave })),
       setVibration: (vibration) => setState((s) => ({ ...s, vibration })),
+      setEffectsVolume: (effectsVolume) => setState((s) => ({ ...s, effectsVolume })),
     }),
     [state]
   );
