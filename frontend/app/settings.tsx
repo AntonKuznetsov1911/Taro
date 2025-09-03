@@ -209,6 +209,24 @@ export default function SettingsScreen() {
                   onToggle={() => toggle('soundEnabled')}
                 />
 
+                <View style={{ paddingHorizontal: 4 }}>
+                  <Text style={{ color: '#B8B8B8', marginBottom: 6 }}>Громкость эффектов</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Ionicons name="volume-low" size={16} color="#B8B8B8" />
+                    <View style={{ flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden' }}>
+                      <View style={{ width: `${Math.round(settings.effectsVolume * 100)}%`, height: '100%', backgroundColor: '#9B59B6' }} />
+                    </View>
+                    <Text style={{ color: '#E8E8E8', width: 34, textAlign: 'right' }}>{Math.round(settings.effectsVolume * 100)}%</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                    {([0, 0.25, 0.5, 0.75, 1] as number[]).map((v) => (
+                      <TouchableOpacity key={v} onPress={() => settings.setEffectsVolume(v)} style={{ padding: 8 }}>
+                        <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: Math.abs(settings.effectsVolume - v) < 0.01 ? '#BB6BD9' : 'rgba(255,255,255,0.3)' }} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
                 <SettingRow
                   icon="phone-portrait"
                   title="Вибрация"
