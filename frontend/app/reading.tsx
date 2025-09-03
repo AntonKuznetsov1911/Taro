@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
-import { playFlip } from '../src/utils/sound';
+import { playFlip, playReveal } from '../src/utils/sound';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -51,6 +51,8 @@ export default function ReadingScreen() {
   const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
   const [cardBackImage, setCardBackImage] = useState<string>('');
 
+  const settings = useSettings();
+
   useEffect(() => {
     loadCardBack();
     createReading();
@@ -70,29 +72,13 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
-      console.log('Creating reading with params:', { category, spread, question });
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/reading`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          category: category,
-          spread_type: spread,
-          question: question,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, spread_type: spread, question }),
       });
-
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
+      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      console.log('Reading data received:', data);
-      console.log('First card image:', data.cards[0]?.image?.substring(0, 100));
-      
       setReading(data);
       setCardsRevealed(new Array(data.cards.length).fill(false));
     } catch (error) {
@@ -104,18 +90,16 @@ export default function ReadingScreen() {
     }
   };
 
-  const settings = useSettings();
-
   const revealCard = async (index: number) => {
     const newRevealed = [...cardsRevealed];
     newRevealed[index] = true;
     setCardsRevealed(newRevealed);
-    await playFlip({ soundEnabled: settings.soundEnabled, vibration: settings.vibration });
+    await playFlip({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
   };
 
-
-  const revealAllCards = () => {
+  const revealAllCards = async () => {
     setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
+    await playReveal({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
   };
 
   const CardComponent = ({ card, position, index, revealed }: {
@@ -133,18 +117,10 @@ export default function ReadingScreen() {
         {revealed ? (
           <View style={styles.cardContent}>
             <View style={[styles.cardInner, card.is_reversed && styles.cardReversed]}>
-              {/* Always show the card image - prioritize SVG images */}
               {card.image ? (
-                <Image
-                  source={{ uri: card.image }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
+                <Image source={{ uri: card.image }} style={styles.cardImage} resizeMode="cover" />
               ) : (
-                <LinearGradient
-                  colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']}
-                  style={styles.cardImageFallback}
-                >
+                <LinearGradient colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']} style={styles.cardImageFallback}>
                   <Text style={styles.cardName}>{card.name}</Text>
                   <Text style={styles.cardType}>{card.type === 'major' ? 'Старший аркан' : 'Младший аркан'}</Text>
                   {card.is_reversed && <Text style={styles.reversedIndicator}>⚌ Перевернутая</Text>}
@@ -155,8 +131,6 @@ export default function ReadingScreen() {
                   </View>
                 </LinearGradient>
               )}
-              
-              {/* Card info overlay - only show card name at bottom */}
               {card.image && (
                 <View style={styles.cardOverlay}>
                   <Text style={styles.cardNameOverlay}>{card.name}</Text>
@@ -169,25 +143,15 @@ export default function ReadingScreen() {
           <View style={styles.cardBack}>
             {cardBackImage ? (
               cardBackImage.startsWith('data:image') ? (
-                <Image
-                  source={{ uri: cardBackImage }}
-                  style={styles.cardBackImage}
-                  resizeMode="cover"
-                />
+                <Image source={{ uri: cardBackImage }} style={styles.cardBackImage} resizeMode="cover" />
               ) : (
-                <LinearGradient
-                  colors={['#2C3E50', '#34495E']}
-                  style={styles.cardBackFallback}
-                >
+                <LinearGradient colors={['#2C3E50', '#34495E']} style={styles.cardBackFallback}>
                   <Text style={styles.cardBackText}>🌙</Text>
                   <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
                 </LinearGradient>
               )
             ) : (
-              <LinearGradient
-                colors={['#2C3E50', '#34495E']}
-                style={styles.cardBackFallback}
-              >
+              <LinearGradient colors={['#2C3E50', '#34495E']} style={styles.cardBackFallback}>
                 <ActivityIndicator size="small" color="#FFD700" />
                 <Text style={styles.loadingText}>Загрузка...</Text>
               </LinearGradient>
@@ -202,10 +166,7 @@ export default function ReadingScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#0a0a0a', '#1a1a2e', '#16213e']}
-          style={styles.background}
-        >
+        <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.background}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#9B59B6" />
             <Text style={styles.loadingText}>Карты перемешиваются...</Text>
@@ -216,18 +177,12 @@ export default function ReadingScreen() {
     );
   }
 
-  if (!reading) {
-    return null;
-  }
+  if (!reading) return null;
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0a0a0a', '#1a1a2e', '#16213e']}
-        style={styles.background}
-      >
+      <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.background}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
@@ -235,13 +190,11 @@ export default function ReadingScreen() {
             <Text style={styles.title}>Ваше гадание</Text>
           </View>
 
-          {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={styles.questionLabel}>Ваш вопрос:</Text>
-            <Text style={styles.questionText}>"{reading.question}"</Text>
+            <Text style={styles.questionText}>&quot;{reading.question}&quot;</Text>
           </View>
 
-          {/* Cards */}
           <View style={styles.cardsSection}>
             <View style={styles.cardsSectionHeader}>
               <Text style={styles.cardsSectionTitle}>Выпавшие карты</Text>
@@ -251,21 +204,13 @@ export default function ReadingScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            
             <View style={styles.cardsContainer}>
               {reading.cards.map((card, index) => (
-                <CardComponent
-                  key={index}
-                  card={card}
-                  position={reading.positions[index]}
-                  index={index}
-                  revealed={cardsRevealed[index]}
-                />
+                <CardComponent key={index} card={card} position={reading.positions[index]} index={index} revealed={cardsRevealed[index]} />
               ))}
             </View>
           </View>
 
-          {/* Interpretation */}
           {cardsRevealed.every(revealed => revealed) && (
             <View style={styles.interpretationContainer}>
               <Text style={styles.interpretationTitle}>✨ Толкование</Text>
@@ -277,29 +222,16 @@ export default function ReadingScreen() {
             </View>
           )}
 
-          {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/')}
-            >
-              <LinearGradient
-                colors={['#4ECDC4', '#26A0B4']}
-                style={styles.actionButtonGradient}
-              >
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/') }>
+              <LinearGradient colors={['#4ECDC4', '#26A0B4']} style={styles.actionButtonGradient}>
                 <Ionicons name="home" size={20} color="#FFF" />
                 <Text style={styles.actionButtonText}>На главную</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/history')}
-            >
-              <LinearGradient
-                colors={['#FF6B9D', '#C44569']}
-                style={styles.actionButtonGradient}
-              >
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/history')}>
+              <LinearGradient colors={['#FF6B9D', '#C44569']} style={styles.actionButtonGradient}>
                 <Ionicons name="time" size={20} color="#FFF" />
                 <Text style={styles.actionButtonText}>История</Text>
               </LinearGradient>
@@ -312,268 +244,52 @@ export default function ReadingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#E8E8E8',
-    marginTop: 20,
-    fontWeight: '600',
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: '#B8B8B8',
-    marginTop: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  backButton: {
-    marginRight: 15,
-    padding: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#E8E8E8',
-  },
-  questionContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#1e1e1e',
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#9B59B633',
-  },
-  questionLabel: {
-    fontSize: 14,
-    color: '#9B59B6',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  questionText: {
-    fontSize: 16,
-    color: '#E8E8E8',
-    lineHeight: 24,
-    fontStyle: 'italic',
-  },
-  cardsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  cardsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  cardsSectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#E8E8E8',
-  },
-  revealAllButton: {
-    backgroundColor: '#9B59B633',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-  },
-  revealAllText: {
-    fontSize: 12,
-    color: '#9B59B6',
-    fontWeight: '600',
-  },
-  cardsContainer: {
-    gap: 15,
-  },
-  cardContainer: {
-    alignItems: 'center',
-  },
-  card: {
-    width: 200,
-    height: 300,
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    position: 'relative',
-  },
-  cardContent: {
-    flex: 1,
-    position: 'relative',
-  },
-  cardInner: {
-    flex: 1,
-    position: 'relative',
-  },
-  cardReversed: {
-    transform: [{ rotate: '180deg' }],
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-  },
-  cardImageFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  cardOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 10,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  cardNameOverlay: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textAlign: 'center',
-  },
-  reversedIndicatorOverlay: {
-    fontSize: 10,
-    color: '#FFD700',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  cardName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  cardType: {
-    fontSize: 12,
-    color: '#E8E8E8',
-    opacity: 0.8,
-    marginBottom: 15,
-  },
-  reversedIndicator: {
-    fontSize: 12,
-    color: '#FFD700',
-    marginBottom: 10,
-    fontWeight: '600',
-  },
-  keywordsContainer: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  keyword: {
-    fontSize: 12,
-    color: '#E8E8E8',
-    backgroundColor: '#FFFFFF33',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  cardBack: {
-    flex: 1,
-    position: 'relative',
-  },
-  cardBackImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-  },
-  cardBackFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardBackText: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  tapToReveal: {
-    fontSize: 12,
-    color: '#B8B8B8',
-    textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 12,
-    color: '#FFD700',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  positionText: {
-    fontSize: 14,
-    color: '#9B59B6',
-    fontWeight: '600',
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  interpretationContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  interpretationTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  interpretationContent: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#9B59B633',
-    maxHeight: 400,
-  },
-  interpretationScroll: {
-    maxHeight: 360,
-  },
-  interpretationText: {
-    fontSize: 16,
-    color: '#E8E8E8',
-    lineHeight: 24,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    gap: 15,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  actionButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-  },
+  container: { flex: 1 },
+  background: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 18, color: '#E8E8E8', marginTop: 20, fontWeight: '600' },
+  loadingSubtext: { fontSize: 14, color: '#B8B8B8', marginTop: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  backButton: { marginRight: 15, padding: 8 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#E8E8E8' },
+  questionContainer: { marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1e1e1e', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#9B59B633' },
+  questionLabel: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginBottom: 8 },
+  questionText: { fontSize: 16, color: '#E8E8E8', lineHeight: 24, fontStyle: 'italic' },
+  cardsSection: { paddingHorizontal: 20, marginBottom: 20 },
+  cardsSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  cardsSectionTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8' },
+  revealAllButton: { backgroundColor: '#9B59B633', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
+  revealAllText: { fontSize: 12, color: '#9B59B6', fontWeight: '600' },
+  cardsContainer: { gap: 15 },
+  cardContainer: { alignItems: 'center' },
+  card: { width: 200, height: 300, borderRadius: 15, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, position: 'relative' },
+  cardContent: { flex: 1, position: 'relative' },
+  cardInner: { flex: 1, position: 'relative' },
+  cardReversed: { transform: [{ rotate: '180deg' }] },
+  cardImage: { width: '100%', height: '100%', borderRadius: 15 },
+  cardImageFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)', padding: 10, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
+  cardNameOverlay: { fontSize: 14, fontWeight: 'bold', color: '#FFF', textAlign: 'center' },
+  reversedIndicatorOverlay: { fontSize: 10, color: '#FFD700', textAlign: 'center', marginTop: 2 },
+  cardName: { fontSize: 18, fontWeight: 'bold', color: '#FFF', textAlign: 'center', marginBottom: 10 },
+  cardType: { fontSize: 12, color: '#E8E8E8', opacity: 0.8, marginBottom: 15 },
+  reversedIndicator: { fontSize: 12, color: '#FFD700', marginBottom: 10, fontWeight: '600' },
+  keywordsContainer: { alignItems: 'center', gap: 5 },
+  keyword: { fontSize: 12, color: '#E8E8E8', backgroundColor: '#FFFFFF33', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  cardBack: { flex: 1, position: 'relative' },
+  cardBackImage: { width: '100%', height: '100%', borderRadius: 15 },
+  cardBackFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  cardBackText: { fontSize: 48, marginBottom: 10 },
+  tapToReveal: { fontSize: 12, color: '#B8B8B8', textAlign: 'center' },
+  loadingText: { fontSize: 12, color: '#FFD700', textAlign: 'center', marginTop: 8 },
+  positionText: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginTop: 10, textAlign: 'center' },
+  interpretationContainer: { marginHorizontal: 20, marginBottom: 20 },
+  interpretationTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8', marginBottom: 15, textAlign: 'center' },
+  interpretationContent: { backgroundColor: '#1e1e1e', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#9B59B633', maxHeight: 400 },
+  interpretationScroll: { maxHeight: 360 },
+  interpretationText: { fontSize: 16, color: '#E8E8E8', lineHeight: 24 },
+  actionsContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 30, gap: 15 },
+  actionButton: { flex: 1, borderRadius: 15, overflow: 'hidden' },
+  actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
+  actionButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   StatusBar,
   Switch,
   Alert,
+  PanResponder,
+  LayoutChangeEvent,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +21,29 @@ import { useSettings } from '../src/contexts/SettingsContext';
 export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettings();
+
+  const [trackWidth, setTrackWidth] = useState(1);
+
+  const onTrackLayout = (e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const x = evt.nativeEvent.locationX;
+        const v = Math.max(0, Math.min(1, x / trackWidth));
+        settings.setEffectsVolume(v);
+      },
+      onPanResponderMove: (evt) => {
+        const x = evt.nativeEvent.locationX;
+        const v = Math.max(0, Math.min(1, x / trackWidth));
+        settings.setEffectsVolume(v);
+      },
+    })
+  ).current;
 
   const languages = [
     { code: 'russian', name: 'Русский', flag: '🇷🇺' },
@@ -62,6 +87,7 @@ export default function SettingsScreen() {
             settings.setSoundEnabled(true);
             settings.setAutoSave(true);
             settings.setVibration(true);
+            settings.setEffectsVolume(0.7);
             Alert.alert('Готово', 'Настройки сброшены к значениям по умолчанию');
           },
         },
@@ -69,26 +95,11 @@ export default function SettingsScreen() {
     );
   };
 
-  const SettingRow = ({
-    icon,
-    title,
-    subtitle,
-    value,
-    onToggle,
-    type = 'switch',
-  }: {
-    icon: string;
-    title: string;
-    subtitle?: string;
-    value?: boolean | string;
-    onToggle?: () => void;
-    type?: 'switch' | 'button';
+  const SettingRow = ({ icon, title, subtitle, value, onToggle, type = 'switch' }: {
+    icon: string; title: string; subtitle?: string; value?: boolean | string; onToggle?: () => void; type?: 'switch' | 'button';
   }) => (
     <View style={styles.settingRow}>
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-        style={styles.settingRowGradient}
-      >
+      <LinearGradient colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']} style={styles.settingRowGradient}>
         <View style={styles.settingLeft}>
           <View style={styles.settingIconContainer}>
             <Ionicons name={icon as any} size={20} color="#BB6BD9" />
@@ -98,17 +109,9 @@ export default function SettingsScreen() {
             {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
           </View>
         </View>
-
         {type === 'switch' && (
-          <Switch
-            value={value as boolean}
-            onValueChange={onToggle}
-            trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#9B59B6' }}
-            thumbColor={value ? '#BB6BD9' : 'rgba(255, 255, 255, 0.8)'}
-            ios_backgroundColor="rgba(255, 255, 255, 0.2)"
-          />
+          <Switch value={value as boolean} onValueChange={onToggle} trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#9B59B6' }} thumbColor={value ? '#BB6BD9' : 'rgba(255, 255, 255, 0.8)'} ios_backgroundColor="rgba(255, 255, 255, 0.2)" />
         )}
-
         {type === 'button' && (
           <TouchableOpacity onPress={onToggle} style={styles.settingButton}>
             <Text style={styles.settingButtonText}>{value}</Text>
@@ -119,31 +122,16 @@ export default function SettingsScreen() {
     </View>
   );
 
-  const LanguageRow = ({
-    language,
-    isSelected,
-    onSelect,
-  }: {
-    language: { code: string; name: string; flag: string };
-    isSelected: boolean;
-    onSelect: () => void;
-  }) => (
+  const LanguageRow = ({ language, isSelected, onSelect }: { language: { code: string; name: string; flag: string }; isSelected: boolean; onSelect: () => void; }) => (
     <TouchableOpacity onPress={onSelect} style={styles.languageRow}>
       <LinearGradient
-        colors={
-          isSelected
-            ? ['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.1)']
-            : ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']
-        }
+        colors={isSelected ? ['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.1)'] : ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
         style={styles.languageRowGradient}
       >
         <View style={styles.languageContent}>
           <Text style={styles.languageFlag}>{language.flag}</Text>
-          <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>
-            {language.name}
-          </Text>
+          <Text style={[styles.languageName, isSelected && styles.languageNameSelected]}>{language.name}</Text>
         </View>
-
         {isSelected && (
           <View style={styles.checkmark}>
             <Ionicons name="checkmark" size={20} color="#BB6BD9" />
@@ -156,12 +144,9 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-
       <LinearGradient colors={["#000011", "#1a0033", "#2d1b69", "#0f0f23"]} style={styles.background}>
         <StarryBackground />
-
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
@@ -172,94 +157,51 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Settings Sections */}
           <View style={styles.content}>
-            {/* Language Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🌍 Язык интерфейса</Text>
               <View style={styles.sectionContent}>
-                {languages.map((language) => (
-                  <LanguageRow
-                    key={language.code}
-                    language={language}
-                    isSelected={settings.language === language.code}
-                    onSelect={() => selectLanguage(language.code as 'russian' | 'english')}
-                  />
+                {languages.map(language => (
+                  <LanguageRow key={language.code} language={language} isSelected={settings.language === language.code} onSelect={() => selectLanguage(language.code as 'russian' | 'english')} />
                 ))}
               </View>
             </View>
 
-            {/* Notifications Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🔔 Уведомления</Text>
               <View style={styles.sectionContent}>
-                <SettingRow
-                  icon="notifications"
-                  title="Уведомления"
-                  subtitle="Напоминания и новые предсказания"
-                  value={settings.notifications}
-                  onToggle={() => toggle('notifications')}
-                />
+                <SettingRow icon="notifications" title="Уведомления" subtitle="Напоминания и новые предсказания" value={settings.notifications} onToggle={() => toggle('notifications')} />
+                <SettingRow icon="volume-high" title="Звуки" subtitle="Звуковые эффекты приложения" value={settings.soundEnabled} onToggle={() => toggle('soundEnabled')} />
+                <SettingRow icon="phone-portrait" title="Вибрация" subtitle="Тактильная обратная связь" value={settings.vibration} onToggle={() => toggle('vibration')} />
 
-                <SettingRow
-                  icon="volume-high"
-                  title="Звуки"
-                  subtitle="Звуковые эффекты приложения"
-                  value={settings.soundEnabled}
-                  onToggle={() => toggle('soundEnabled')}
-                />
-
-                <View style={{ paddingHorizontal: 4 }}>
+                {/* Volume slider */}
+                <View style={{ marginTop: 8 }}>
                   <Text style={{ color: '#B8B8B8', marginBottom: 6 }}>Громкость эффектов</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={styles.sliderRow}>
                     <Ionicons name="volume-low" size={16} color="#B8B8B8" />
-                    <View style={{ flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden' }}>
-                      <View style={{ width: `${Math.round(settings.effectsVolume * 100)}%`, height: '100%', backgroundColor: '#9B59B6' }} />
+                    <View style={styles.sliderTrack} onLayout={onTrackLayout} {...panResponder.panHandlers}>
+                      <View style={[styles.sliderFill, { width: `${Math.round(settings.effectsVolume * 100)}%` }]} />
+                      <View style={[styles.sliderThumb, { left: `calc(${Math.round(settings.effectsVolume * 100)}% - 10px)` }]} />
                     </View>
-                    <Text style={{ color: '#E8E8E8', width: 34, textAlign: 'right' }}>{Math.round(settings.effectsVolume * 100)}%</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                    {([0, 0.25, 0.5, 0.75, 1] as number[]).map((v) => (
-                      <TouchableOpacity key={v} onPress={() => settings.setEffectsVolume(v)} style={{ padding: 8 }}>
-                        <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: Math.abs(settings.effectsVolume - v) < 0.01 ? '#BB6BD9' : 'rgba(255,255,255,0.3)' }} />
-                      </TouchableOpacity>
-                    ))}
+                    <Ionicons name="volume-high" size={16} color="#B8B8B8" />
+                    <Text style={styles.sliderValue}>{Math.round(settings.effectsVolume * 100)}%</Text>
                   </View>
                 </View>
-
-                <SettingRow
-                  icon="phone-portrait"
-                  title="Вибрация"
-                  subtitle="Тактильная обратная связь"
-                  value={settings.vibration}
-                  onToggle={() => toggle('vibration')}
-                />
               </View>
             </View>
 
-            {/* Data Section */}
-            <View style={styles.section}>
+            <View className="section">
               <Text style={styles.sectionTitle}>💾 Данные</Text>
               <View style={styles.sectionContent}>
-                <SettingRow
-                  icon="save"
-                  title="Автосохранение"
-                  subtitle="Автоматически сохранять результаты гаданий"
-                  value={settings.autoSave}
-                  onToggle={() => toggle('autoSave')}
-                />
+                <SettingRow icon="save" title="Автосохранение" subtitle="Автоматически сохранять результаты гаданий" value={settings.autoSave} onToggle={() => toggle('autoSave')} />
               </View>
             </View>
 
-            {/* Profile Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>👤 Профиль</Text>
               <View style={styles.sectionContent}>
                 <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
-                  <LinearGradient
-                    colors={["rgba(69, 183, 209, 0.9)", "rgba(52, 152, 219, 1)"]}
-                    style={styles.profileButtonGradient}
-                  >
+                  <LinearGradient colors={["rgba(69, 183, 209, 0.9)", "rgba(52, 152, 219, 1)"]} style={styles.profileButtonGradient}>
                     <Ionicons name="person" size={20} color="#FFF" />
                     <Text style={styles.profileButtonText}>Редактировать профиль</Text>
                     <Ionicons name="chevron-forward" size={16} color="#FFF" />
@@ -268,15 +210,11 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Actions Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>⚙️ Действия</Text>
               <View style={styles.sectionContent}>
                 <TouchableOpacity style={styles.resetButton} onPress={resetSettings}>
-                  <LinearGradient
-                    colors={["rgba(231, 76, 60, 0.8)", "rgba(192, 57, 43, 0.9)"]}
-                    style={styles.resetButtonGradient}
-                  >
+                  <LinearGradient colors={["rgba(231, 76, 60, 0.8)", "rgba(192, 57, 43, 0.9)"]} style={styles.resetButtonGradient}>
                     <Ionicons name="refresh" size={20} color="#FFF" />
                     <Text style={styles.resetButtonText}>Сбросить настройки</Text>
                   </LinearGradient>
@@ -284,7 +222,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* App Info */}
             <View style={styles.appInfo}>
               <Text style={styles.appName}>TARO - Мистические предсказания</Text>
               <Text style={styles.appVersion}>Версия 1.0.0</Text>
@@ -300,198 +237,47 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#E8E8E8',
-  },
-  historyButton: {
-    padding: 8,
-  },
-  content: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 15,
-  },
-  sectionContent: {
-    gap: 12,
-  },
-  settingRow: {
-    borderRadius: 15,
-    overflow: 'hidden',
-  },
-  settingRowGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(155, 89, 182, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  settingTextContainer: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#E8E8E8',
-    marginBottom: 2,
-  },
-  settingSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 16,
-  },
-  settingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  settingButtonText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  languageRow: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  languageRowGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-  },
-  languageContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  languageFlag: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  languageName: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  languageNameSelected: {
-    color: '#E8E8E8',
-    fontWeight: '600',
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileButton: {
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 5,
-  },
-  profileButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  profileButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    flex: 1,
-    textAlign: 'center',
-  },
-  resetButton: {
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 5,
-  },
-  resetButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  appInfo: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    marginTop: 20,
-  },
-  appName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#BB6BD9',
-    marginBottom: 4,
-  },
-  appVersion: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 8,
-  },
-  appDescription: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  bottomSpacing: {
-    height: 20,
-  },
+  container: { flex: 1 },
+  background: { flex: 1 },
+  scrollView: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.1)' },
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#E8E8E8' },
+  historyButton: { padding: 8 },
+  content: { padding: 20 },
+  section: { marginBottom: 30 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#E8E8E8', marginBottom: 15 },
+  sectionContent: { gap: 12 },
+  settingRow: { borderRadius: 15, overflow: 'hidden' },
+  settingRowGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 15 },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  settingIconContainer: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(155, 89, 182, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  settingTextContainer: { flex: 1 },
+  settingTitle: { fontSize: 16, fontWeight: '500', color: '#E8E8E8', marginBottom: 2 },
+  settingSubtitle: { fontSize: 12, color: 'rgba(255, 255, 255, 0.6)', lineHeight: 16 },
+  settingButton: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  settingButtonText: { fontSize: 14, color: 'rgba(255, 255, 255, 0.8)' },
+  languageRow: { borderRadius: 12, overflow: 'hidden' },
+  languageRowGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 12 },
+  languageContent: { flexDirection: 'row', alignItems: 'center' },
+  languageFlag: { fontSize: 24, marginRight: 12 },
+  languageName: { fontSize: 16, color: 'rgba(255, 255, 255, 0.8)' },
+  languageNameSelected: { color: '#E8E8E8', fontWeight: '600' },
+  checkmark: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  profileButton: { borderRadius: 15, overflow: 'hidden', elevation: 5 },
+  profileButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 10 },
+  profileButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF', flex: 1, textAlign: 'center' },
+  resetButton: { borderRadius: 15, overflow: 'hidden', elevation: 5 },
+  resetButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 10 },
+  resetButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+  appInfo: { alignItems: 'center', paddingVertical: 30, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)', marginTop: 20 },
+  appName: { fontSize: 18, fontWeight: '600', color: '#BB6BD9', marginBottom: 4 },
+  appVersion: { fontSize: 14, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 8 },
+  appDescription: { fontSize: 12, color: 'rgba(255, 255, 255, 0.5)', textAlign: 'center', fontStyle: 'italic' },
+  bottomSpacing: { height: 20 },
+  sliderRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sliderTrack: { flex: 1, height: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 6, overflow: 'hidden', position: 'relative' },
+  sliderFill: { height: '100%', backgroundColor: '#9B59B6' },
+  sliderThumb: { position: 'absolute', top: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: '#BB6BD9', borderWidth: 2, borderColor: '#EEE' },
+  sliderValue: { color: '#E8E8E8', width: 46, textAlign: 'right' },
 });

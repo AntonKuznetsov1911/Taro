@@ -29,6 +29,8 @@ export default function CardDetailScreen() {
   const [interpretation, setInterpretation] = useState('');
   const cardId = Number(id);
 
+  const settings = useSettings();
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -55,18 +57,13 @@ export default function CardDetailScreen() {
       const data = await res.json();
       setInterpretation(data.interpretation);
     } catch (e) {
-      // fallback: use built-in meanings
-      if (card) {
-        setInterpretation(isReversed ? card.reversed_meaning : card.upright_meaning);
-      }
+      if (card) setInterpretation(isReversed ? card.reversed_meaning : card.upright_meaning);
     }
   };
 
-  const settings = useSettings();
-
   const onToggleReversed = async (val: boolean) => {
     setReversed(val);
-    await playClick({ soundEnabled: settings.soundEnabled, vibration: settings.vibration });
+    await playClick({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
     await fetchInterpretation(val);
   };
 
