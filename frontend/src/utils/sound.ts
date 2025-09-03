@@ -31,7 +31,7 @@ async function ensureLoaded() {
   }
 }
 
-export async function playClick(opts: { soundEnabled: boolean; vibration: boolean }) {
+export async function playClick(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
   try {
     if (opts.vibration) await Haptics.selectionAsync();
     if (!opts.soundEnabled) return;
