@@ -24,6 +24,7 @@ export type SettingsContextType = Settings & {
   setSoundEnabled: (val: boolean) => void;
   setAutoSave: (val: boolean) => void;
   setVibration: (val: boolean) => void;
+  setEffectsVolume: (val: number) => void; // 0..1
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
