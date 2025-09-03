@@ -183,8 +183,8 @@ export default function SettingsScreen() {
                   <View style={styles.sliderRow}>
                     <Ionicons name="volume-low" size={16} color="#B8B8B8" />
                     <View style={styles.sliderTrack} onLayout={onTrackLayout} {...panResponder.panHandlers}>
-                      <View style={[styles.sliderFill, { width: `${Math.round(settings.effectsVolume * 100)}%` }]} />
-                      <View style={[styles.sliderThumb, { left: `calc(${Math.round(settings.effectsVolume * 100)}% - 10px)` }]} />
+                      <View style={[styles.sliderFill, { width: fillWidth }]} />
+                      <View style={[styles.sliderThumb, { left: thumbLeft }]} />
                     </View>
                     <Ionicons name="volume-high" size={16} color="#B8B8B8" />
                     <Text style={styles.sliderValue}>{Math.round(settings.effectsVolume * 100)}%</Text>
