@@ -6,6 +6,7 @@ export type Settings = {
   soundEnabled: boolean;
   autoSave: boolean;
   vibration: boolean;
+  effectsVolume: number; // 0..1
 };
 
 const defaultSettings: Settings = {
