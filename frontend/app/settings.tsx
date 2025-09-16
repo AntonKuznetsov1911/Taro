@@ -192,7 +192,7 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <View className="section">
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>💾 Данные</Text>
               <View style={styles.sectionContent}>
                 <SettingRow icon="save" title="Автосохранение" subtitle="Автоматически сохранять результаты гаданий" value={settings.autoSave} onToggle={() => toggle('autoSave')} />
