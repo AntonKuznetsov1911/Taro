@@ -22,10 +22,9 @@ export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettings();
 
+  const [trackWidth, setTrackWidth] = useState(1);
   const thumbLeft = Math.max(0, Math.min(trackWidth - 20, trackWidth * settings.effectsVolume - 10));
   const fillWidth = Math.max(0, Math.min(trackWidth, trackWidth * settings.effectsVolume));
-
-  const [trackWidth, setTrackWidth] = useState(1);
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     setTrackWidth(e.nativeEvent.layout.width);
