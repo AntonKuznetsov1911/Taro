@@ -449,6 +449,27 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  planetButton: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    elevation: 10,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)'
+  },
+  planetEmoji: {
+    fontSize: 22,
+  },
+
     borderRadius: 25,
   },
   particlesContainer: {
