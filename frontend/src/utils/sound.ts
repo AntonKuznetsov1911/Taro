@@ -14,16 +14,33 @@ let clickSound: Audio.Sound | null = null;
 let flipSound: Audio.Sound | null = null;
 let revealSound: Audio.Sound | null = null;
 
-let webClick: HTMLAudioElement | null = null;
-let webFlip: HTMLAudioElement | null = null;
-let webReveal: HTMLAudioElement | null = null;
+let webAudioCtx: AudioContext | null = null;
+
+function webBeep(durationMs: number, freq: number, volume = 0.3) {
+  if (typeof window === 'undefined') return;
+  try {
+    // @ts-ignore
+    const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!webAudioCtx) webAudioCtx = new AC();
+    if (webAudioCtx.state === 'suspended') webAudioCtx.resume();
+
+    const osc = webAudioCtx.createOscillator();
+    const gain = webAudioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(webAudioCtx.destination);
+    const now = webAudioCtx.currentTime;
+    osc.start(now);
+    osc.stop(now + durationMs / 1000);
+  } catch {}
+}
 
 async function ensureLoaded() {
   try {
     if (Platform.OS === 'web') {
-      if (!webClick) webClick = new Audio(CLICK_MP3);
-      if (!webFlip) webFlip = new Audio(FLIP_MP3);
-      if (!webReveal) webReveal = new Audio(REVEAL_MP3);
+      // No preloading for web beeps
       return;
     }
     if (!clickSound) {
