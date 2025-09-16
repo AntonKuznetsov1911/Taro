@@ -132,20 +132,21 @@ export default function CosmicIndex() {
         {/* Звездное небо как фон */}
         <StarryBackground />
         
-        {/* Floating Settings Button - Outside ScrollView */}
-        <TouchableOpacity 
-          style={styles.floatingSettingsButton} 
-          onPress={() => router.push('/settings')}
-        >
-          <LinearGradient
-            colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']}
-            style={styles.settingsButtonGradient}
-          >
-            <Ionicons name="settings-outline" size={22} color="#E8E8E8" />
-          </LinearGradient>
-        </TouchableOpacity>
-        
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+          {/* Header with Settings Planet */}
+          <View style={styles.header}>
+            <View style={styles.cosmicTitleContainer}>
+              <Text style={styles.mainTitle}>ТARO</Text>
+              <View style={styles.cosmicSubtitle}>
+                <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/settings')} accessibilityLabel="Открыть настройки" style={styles.planetButton}>
+              <LinearGradient colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']} style={styles.settingsButtonGradient}>
+                <Text style={styles.planetEmoji}>🪐</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
           {/* Cosmic Header */}
           <View style={styles.header}>
             <View style={styles.cosmicTitleContainer}>
