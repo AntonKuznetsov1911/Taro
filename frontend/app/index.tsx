@@ -133,7 +133,7 @@ export default function CosmicIndex() {
         <StarryBackground />
         
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-          {/* Header with Settings Planet */}
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.cosmicTitleContainer}>
               <Text style={styles.mainTitle}>ТARO</Text>
@@ -141,11 +141,6 @@ export default function CosmicIndex() {
                 <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => router.push('/settings')} accessibilityLabel="Открыть настройки" style={styles.planetButton}>
-              <LinearGradient colors={['rgba(155, 89, 182, 0.3)', 'rgba(142, 68, 173, 0.5)']} style={styles.settingsButtonGradient}>
-                <Text style={styles.planetEmoji}>🪐</Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
           {/* Cosmic Header */}
           <View style={styles.header}>
