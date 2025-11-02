@@ -142,15 +142,6 @@ export default function CosmicIndex() {
               </View>
             </View>
           </View>
-          {/* Cosmic Header */}
-          <View style={styles.header}>
-            <View style={styles.cosmicTitleContainer}>
-              <Text style={styles.mainTitle}>ТARO</Text>
-              <View style={styles.cosmicSubtitle}>
-                <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
-              </View>
-            </View>
-          </View>
 
           {/* Floating cosmic particles */}
           <View style={styles.particlesContainer}>
