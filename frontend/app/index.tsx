@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StarryBackground } from '../components/StarryBackground';
+import { DailyCardWidget } from '../components/DailyCardWidget';
 import { Platform } from 'react-native';
 
 // Base64 изображения таро The Lovers
@@ -159,6 +160,9 @@ export default function CosmicIndex() {
             <Text style={[styles.particle, { top: 300, left: 30 }]}>✨</Text>
             <Text style={[styles.particle, { top: 150, right: 40 }]}>💫</Text>
           </View>
+
+          {/* Daily Card Widget */}
+          <DailyCardWidget />
 
           {/* Category Selection */}
           <View style={styles.section}>

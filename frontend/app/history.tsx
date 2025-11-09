@@ -12,6 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { EnhancedHistoryCard } from '../components/EnhancedHistoryCard';
+import { HistoryFilters } from '../components/HistoryFilters';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -57,6 +59,18 @@ export default function HistoryScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedReading, setExpandedReading] = useState<string | null>(null);
 
+  // Enhanced features state
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  const [tags, setTags] = useState<{ [key: string]: string[] }>({});
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSpread, setSelectedSpread] = useState<string | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'category'>('date');
+
   useEffect(() => {
     fetchReadings();
   }, []);
@@ -92,68 +106,65 @@ export default function HistoryScreen() {
     setExpandedReading(expandedReading === readingId ? null : readingId);
   };
 
-  const ReadingCard = ({ reading }: { reading: TarotReading }) => {
-    const isExpanded = expandedReading === reading.id;
-    const category = CATEGORIES[reading.category as keyof typeof CATEGORIES];
-    
-    return (
-      <View style={styles.readingCard}>
-        <TouchableOpacity onPress={() => toggleExpansion(reading.id)}>
-          <View style={styles.readingHeader}>
-            <View style={styles.readingInfo}>
-              <View style={styles.categoryBadge}>
-                <Text style={[styles.categoryIcon, { color: category.color }]}>
-                  {category.icon}
-                </Text>
-                <Text style={[styles.categoryName, { color: category.color }]}>
-                  {category.name}
-                </Text>
-              </View>
-              <Text style={styles.readingDate}>{formatDate(reading.created_at)}</Text>
-            </View>
-            <Ionicons 
-              name={isExpanded ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#9B59B6" 
-            />
-          </View>
-
-          <Text style={styles.readingQuestion} numberOfLines={isExpanded ? undefined : 2}>
-            "{reading.question}"
-          </Text>
-
-          <View style={styles.readingMeta}>
-            <Text style={styles.spreadType}>
-              {SPREADS[reading.spread_type as keyof typeof SPREADS]} • {reading.cards.length} карт
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            <View style={styles.cardsPreview}>
-              <Text style={styles.cardsTitle}>Выпавшие карты:</Text>
-              {reading.cards.map((card, index) => (
-                <View key={index} style={styles.cardPreview}>
-                  <Text style={styles.cardPosition}>{reading.positions[index]}:</Text>
-                  <Text style={styles.cardName}>
-                    {card.name} {card.is_reversed && '(перевернутая)'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.interpretationPreview}>
-              <Text style={styles.interpretationTitle}>Толкование:</Text>
-              <Text style={styles.interpretationText} numberOfLines={6}>
-                {reading.interpretation}
-              </Text>
-            </View>
-          </View>
-        )}
-      </View>
-    );
+  const toggleFavorite = (readingId: string) => {
+    setFavorites((prev) => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(readingId)) {
+        newFavorites.delete(readingId);
+      } else {
+        newFavorites.add(readingId);
+      }
+      return newFavorites;
+    });
   };
+
+  const saveNotes = (readingId: string, note: string) => {
+    setNotes((prev) => ({ ...prev, [readingId]: note }));
+  };
+
+  const addTag = (readingId: string, tag: string) => {
+    setTags((prev) => ({
+      ...prev,
+      [readingId]: [...(prev[readingId] || []), tag],
+    }));
+  };
+
+  const removeTag = (readingId: string, tag: string) => {
+    setTags((prev) => ({
+      ...prev,
+      [readingId]: (prev[readingId] || []).filter((t) => t !== tag),
+    }));
+  };
+
+  // Filter and sort readings
+  const filteredReadings = readings
+    .filter((reading) => {
+      // Search filter
+      if (searchQuery && !reading.question.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      // Category filter
+      if (selectedCategory && reading.category !== selectedCategory) {
+        return false;
+      }
+      // Spread filter
+      if (selectedSpread && reading.spread_type !== selectedSpread) {
+        return false;
+      }
+      // Favorites filter
+      if (showFavoritesOnly && !favorites.has(reading.id)) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      } else {
+        return a.category.localeCompare(b.category);
+      }
+    });
+
 
   if (isLoading) {
     return (
@@ -185,6 +196,22 @@ export default function HistoryScreen() {
           <Text style={styles.title}>История гаданий</Text>
         </View>
 
+        {/* Filters */}
+        {readings.length > 0 && (
+          <HistoryFilters
+            searchQuery={searchQuery}
+            selectedCategory={selectedCategory}
+            selectedSpread={selectedSpread}
+            showFavoritesOnly={showFavoritesOnly}
+            sortBy={sortBy}
+            onSearchChange={setSearchQuery}
+            onCategorySelect={setSelectedCategory}
+            onSpreadSelect={setSelectedSpread}
+            onToggleFavorites={setShowFavoritesOnly}
+            onSortChange={setSortBy}
+          />
+        )}
+
         {readings.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🔮</Text>
@@ -203,11 +230,44 @@ export default function HistoryScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        ) : filteredReadings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>Ничего не найдено</Text>
+            <Text style={styles.emptyText}>Попробуйте изменить фильтры поиска</Text>
+            <TouchableOpacity
+              style={styles.newReadingButton}
+              onPress={() => {
+                setSearchQuery('');
+                setSelectedCategory(null);
+                setSelectedSpread(null);
+                setShowFavoritesOnly(false);
+              }}
+            >
+              <LinearGradient
+                colors={['#9B59B6', '#8E44AD']}
+                style={styles.newReadingButtonGradient}
+              >
+                <Ionicons name="refresh" size={20} color="#FFF" />
+                <Text style={styles.newReadingButtonText}>Сбросить фильтры</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         ) : (
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <View style={styles.readingsContainer}>
-              {readings.map((reading) => (
-                <ReadingCard key={reading.id} reading={reading} />
+              {filteredReadings.map((reading) => (
+                <EnhancedHistoryCard
+                  key={reading.id}
+                  reading={reading}
+                  isFavorite={favorites.has(reading.id)}
+                  notes={notes[reading.id] || ''}
+                  tags={tags[reading.id] || []}
+                  onToggleFavorite={() => toggleFavorite(reading.id)}
+                  onSaveNotes={(note) => saveNotes(reading.id, note)}
+                  onAddTag={(tag) => addTag(reading.id, tag)}
+                  onRemoveTag={(tag) => removeTag(reading.id, tag)}
+                />
               ))}
             </View>
           </ScrollView>
