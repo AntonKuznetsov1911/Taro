@@ -166,6 +166,27 @@ class HoroscopeResult(BaseModel):
     lucky_color: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Astro-Psychology Models
+class AstroAnswer(BaseModel):
+    question_id: str
+    option_id: str
+    keywords: List[str]
+    arcana: Optional[str] = None
+
+class AstroPersonalityRequest(BaseModel):
+    answers: List[AstroAnswer]
+    name: Optional[str] = None
+
+class AstroPersonalityResult(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    personality_analysis: str
+    dominant_arcana: List[str]
+    character_traits: List[str]
+    life_path: str
+    current_phase: str
+    advice: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 # Global flag to disable OpenAI when quota exceeded
 OPENAI_QUOTA_EXCEEDED = False
 
@@ -1477,10 +1498,10 @@ async def analyze_compatibility(request: CompatibilityRequest):
 @api_router.post("/palmistry", response_model=PalmistryResult)
 async def analyze_palmistry(request: PalmistryRequest):
     """Analyze palmistry from palm image"""
-    
+
     # Generate palmistry analysis
     lines, interpretation = await generate_palmistry_analysis(request.image_base64, request.question)
-    
+
     # Create palmistry result
     result = PalmistryResult(
         question=request.question,
@@ -1488,10 +1509,243 @@ async def analyze_palmistry(request: PalmistryRequest):
         lines=lines,
         interpretation=interpretation
     )
-    
+
     # Save to database
     await db.palmistry_results.insert_one(result.dict())
-    
+
+    return result
+
+async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:
+    """Generate deep astro-psychological personality analysis based on user answers"""
+
+    # Collect all keywords and arcanas from answers
+    all_keywords = []
+    arcana_counts = {}
+
+    for answer in answers:
+        all_keywords.extend(answer.keywords)
+        if answer.arcana:
+            arcana_counts[answer.arcana] = arcana_counts.get(answer.arcana, 0) + 1
+
+    # Find dominant arcanas (top 3)
+    dominant_arcana = sorted(arcana_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+    dominant_arcana_names = [arcana for arcana, _ in dominant_arcana]
+
+    # Prepare analysis prompt
+    keywords_text = ", ".join(set(all_keywords))
+    arcanas_text = ", ".join(dominant_arcana_names)
+    name_text = name if name else "друг мой"
+
+    prompt = f"""Ты мудрая астропсихолог и духовный наставник. Создай глубокий персонализированный анализ личности в стиле шоу "Натальная карта".
+
+ДАННЫЕ АНАЛИЗА:
+- Имя: {name_text}
+- Ключевые характеристики: {keywords_text}
+- Доминирующие архетипы Таро: {arcanas_text}
+
+ЗАДАЧА:
+Создай уникальный астропсихологический портрет личности. Это НЕ предсказание, а глубокий разбор внутреннего мира человека.
+
+СТРУКТУРА АНАЛИЗА:
+
+1. ПРИВЕТСТВИЕ (30-50 слов):
+   - Обратись к человеку тепло и лично
+   - "Здравствуй, {name_text}! Вселенная уже давно хотела с тобой поговорить..."
+   - Создай атмосферу откровения и доверия
+
+2. ТВОЯ СУТЬ - Глубинная природа личности (150-200 слов):
+   - Опиши внутреннюю природу на основе архетипов {arcanas_text}
+   - Каков этот человек в глубине души?
+   - Какая энергия его ведёт? (огонь/вода/воздух/земля)
+   - Его уникальные дары и таланты
+   - Используй метафоры природы, космоса, мифологии
+   - Говори о "твоей душе", "твоей энергии", "твоём свете"
+
+3. ТВОЙ ЖИЗНЕННЫЙ ПУТЬ - Тенденции и паттерны (150-200 слов):
+   - Какие темы повторяются в жизни этого человека?
+   - Какие уроки Вселенная ему преподносит?
+   - К чему он стремится (осознанно и неосознанно)?
+   - Что ему нужно принять в себе?
+   - Какие страхи мешают раскрыться?
+   - Используй символизм Таро и психологические инсайты
+
+4. ЗДЕСЬ И СЕЙЧАС - Текущая фаза жизни (100-150 слов):
+   - В какой фазе трансформации сейчас находится человек?
+   - Что происходит с его энергией прямо сейчас?
+   - Какие внутренние процессы идут?
+   - Что ему важно осознать в данный момент?
+
+5. ПОСЛАНИЕ ВСЕЛЕННОЙ - Совет и направление (150-200 слов):
+   - Что нужно развивать, усиливать?
+   - От чего стоит отпустить, освободиться?
+   - Какие качества в себе культивировать?
+   - Конкретные духовные практики или подходы
+   - Как использовать свои сильные стороны?
+   - Завершающее вдохновляющее послание
+
+ТОН И СТИЛЬ:
+- Дружелюбный, но мудрый - как разговор со старым другом-наставником
+- Мистический, но не пугающий
+- Используй "ты" и прямое обращение
+- Смесь психологии, эзотерики и символизма Таро
+- Эмоционально глубокий, проникновенный
+- Мотивирующий и вдохновляющий
+- Избегай банальностей и общих фраз
+- Каждая фраза должна резонировать с душой
+
+ВАЖНО:
+- Это не гадание на будущее, а РАЗБОР ЛИЧНОСТИ
+- Фокус на самопознании и внутреннем росте
+- Человек должен почувствовать, что его ВИДЯТ и ПОНИМАЮТ
+- Создай ощущение уникальности и персонализации
+- Используй метафоры света, тени, энергии, космоса
+- Говори о потенциале, а не ограничениях
+
+ОБЪЁМ: 600-800 слов
+
+Создай текст, который тронет душу и откроет новое понимание себя!"""
+
+    try:
+        if not OPENAI_QUOTA_EXCEEDED:
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1200,
+                temperature=0.85
+            )
+            personality_analysis = response.choices[0].message.content.strip()
+        else:
+            # Fallback analysis
+            personality_analysis = generate_fallback_personality_analysis(keywords_text, arcanas_text, name_text)
+
+    except Exception as e:
+        global OPENAI_QUOTA_EXCEEDED
+        if "insufficient_quota" in str(e) or "429" in str(e):
+            OPENAI_QUOTA_EXCEEDED = True
+            logging.warning("OpenAI quota exceeded - using fallback for personality analysis")
+        else:
+            logging.error(f"OpenAI API error: {e}")
+        personality_analysis = generate_fallback_personality_analysis(keywords_text, arcanas_text, name_text)
+
+    # Generate structured sections
+    character_traits = list(set(all_keywords[:8]))  # Top 8 unique traits
+
+    # Determine life path based on dominant arcana
+    life_path = get_life_path_description(dominant_arcana_names[0] if dominant_arcana_names else "The Fool")
+
+    # Determine current phase
+    current_phase = get_current_phase_description(all_keywords)
+
+    # Generate specific advice
+    advice = get_personalized_advice(all_keywords, dominant_arcana_names)
+
+    result = AstroPersonalityResult(
+        personality_analysis=personality_analysis,
+        dominant_arcana=dominant_arcana_names,
+        character_traits=character_traits,
+        life_path=life_path,
+        current_phase=current_phase,
+        advice=advice
+    )
+
+    return result
+
+def generate_fallback_personality_analysis(keywords: str, arcanas: str, name: str) -> str:
+    """Generate fallback personality analysis when AI is unavailable"""
+    return f"""Здравствуй, {name}! Звёзды и карты указывают на уникальное сочетание энергий в твоей личности.
+
+**Твоя суть:**
+В тебе живёт сила архетипов {arcanas}, которые формируют твою глубинную природу. Твои ключевые качества - {keywords} - делают тебя особенным человеком с уникальной миссией. Ты несёшь в себе баланс разных энергий, и это твоя сила.
+
+**Твой путь:**
+Вселенная ведёт тебя по пути самопознания и трансформации. Каждый опыт, каждая встреча - это урок, который помогает тебе раскрыть свой потенциал. Твоя задача - принять все грани своей личности, и свет, и тень.
+
+**Здесь и сейчас:**
+Сейчас ты находишься в важной фазе внутренних перемен. Доверься процессу, прислушайся к своей интуиции. Энергия этого момента поддерживает твоё развитие.
+
+**Послание:**
+Помни - ты уникален и ценен именно таким, какой ты есть. Развивай свои таланты, не бойся быть собой, следуй зову своего сердца. Вселенная всегда на твоей стороне."""
+
+def get_life_path_description(dominant_arcana: str) -> str:
+    """Get life path description based on dominant Tarot arcana"""
+    life_paths = {
+        "The Fool": "Путь первооткрывателя и искателя приключений",
+        "The Magician": "Путь творца и мастера своей реальности",
+        "The High Priestess": "Путь интуиции и тайного знания",
+        "The Empress": "Путь творения и изобилия",
+        "The Emperor": "Путь лидера и строителя",
+        "The Hierophant": "Путь мудрости и традиций",
+        "The Lovers": "Путь любви и гармоничных отношений",
+        "The Chariot": "Путь победителя и достижений",
+        "Strength": "Путь внутренней силы и мужества",
+        "The Hermit": "Путь мудреца и искателя истины",
+        "The Hanged Man": "Путь трансформации через принятие",
+        "Death": "Путь глубоких трансформаций",
+        "Temperance": "Путь баланса и гармонии",
+        "The Devil": "Путь освобождения от иллюзий",
+        "The Tower": "Путь революционных перемен",
+        "The Star": "Путь надежды и вдохновения",
+        "The Moon": "Путь интуиции и подсознательного",
+        "The Sun": "Путь радости и самовыражения",
+        "Judgement": "Путь пробуждения и возрождения",
+        "The World": "Путь целостности и завершения циклов",
+        "Justice": "Путь справедливости и баланса",
+        "Pentacles": "Путь материального благополучия",
+    }
+    return life_paths.get(dominant_arcana, "Путь уникального самопознания")
+
+def get_current_phase_description(keywords: List[str]) -> str:
+    """Determine current life phase based on keywords"""
+    if any(k in keywords for k in ['anxious', 'worried', 'uncertain', 'confused']):
+        return "Фаза внутреннего поиска и переосмысления"
+    elif any(k in keywords for k in ['energetic', 'motivated', 'active', 'ambitious']):
+        return "Фаза активного роста и движения вперёд"
+    elif any(k in keywords for k in ['peaceful', 'balanced', 'calm', 'centered']):
+        return "Фаза гармонии и внутреннего равновесия"
+    elif any(k in keywords for k in ['transformative', 'evolving', 'growth']):
+        return "Фаза глубокой трансформации и перерождения"
+    else:
+        return "Фаза открытий и новых возможностей"
+
+def get_personalized_advice(keywords: List[str], arcanas: List[str]) -> str:
+    """Generate personalized advice based on keywords and arcanas"""
+    advice_parts = []
+
+    # Advice based on energy type
+    if any(k in keywords for k in ['passionate', 'energetic', 'active']):
+        advice_parts.append("Направь свою огненную энергию на создание чего-то значимого")
+    elif any(k in keywords for k in ['emotional', 'intuitive', 'deep']):
+        advice_parts.append("Доверяй своей интуиции - она твой главный проводник")
+    elif any(k in keywords for k in ['intellectual', 'analytical', 'logical']):
+        advice_parts.append("Используй свой ум, но не забывай слушать сердце")
+    elif any(k in keywords for k in ['practical', 'stable', 'grounded']):
+        advice_parts.append("Твоя стабильность - фундамент для смелых экспериментов")
+
+    # Advice based on arcana
+    if "The Fool" in arcanas:
+        advice_parts.append("Не бойся делать первый шаг в неизвестность")
+    elif "The Hermit" in arcanas:
+        advice_parts.append("Найди время для одиночества и размышлений")
+    elif "The Lovers" in arcanas:
+        advice_parts.append("Развивай глубокие, искренние отношения")
+    elif "Strength" in arcanas:
+        advice_parts.append("Твоя мягкая сила способна преодолеть любые препятствия")
+
+    # General closing advice
+    advice_parts.append("Будь собой - это твоя главная сверхспособность")
+
+    return ". ".join(advice_parts) + "."
+
+@api_router.post("/astro-personality", response_model=AstroPersonalityResult)
+async def analyze_astro_personality(request: AstroPersonalityRequest):
+    """Generate astro-psychological personality analysis based on questionnaire answers"""
+
+    # Generate personality analysis
+    result = await generate_astro_personality_analysis(request.answers, request.name)
+
+    # Save to database
+    await db.astro_personality_results.insert_one(result.dict())
+
     return result
 
 @api_router.post("/profile", response_model=UserProfile)
