@@ -333,9 +333,110 @@ export default function CosmicIndex() {
               </View>
             </TouchableOpacity>
 
+            {/* Astro-Personality Button */}
+            <TouchableOpacity
+              style={[styles.compatibilityButton, { marginTop: 15 }]}
+              onPress={() => router.push('/astro-personality')}
+            >
+              <View style={styles.astroGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(155, 89, 182, 0.2)'
+                  ]}
+                  style={styles.astroGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>✨</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Астропсихология</Text>
+                    <Text style={styles.compatibilitySubtext}>Уникальный портрет личности</Text>
+                  </View>
+                </LinearGradient>
+
+                <View style={styles.cosmicOrb1} />
+                <View style={styles.cosmicOrb2} />
+                <View style={styles.cosmicOrb3} />
+                <View style={styles.centerCosmicGlow}>
+                  <LinearGradient
+                    colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 0.6)']}
+                    style={styles.cosmicGlowGradient}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Runes Button */}
+            <TouchableOpacity
+              style={[styles.compatibilityButton, { marginTop: 15 }]}
+              onPress={() => router.push('/runes')}
+            >
+              <View style={styles.runesGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(52, 152, 219, 0.2)'
+                  ]}
+                  style={styles.runesGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>ᚠ</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Руны</Text>
+                    <Text style={styles.compatibilitySubtext}>Древний оракул викингов</Text>
+                  </View>
+                </LinearGradient>
+                <View style={styles.runeSymbol1} />
+                <View style={styles.runeSymbol2} />
+                <View style={styles.runeSymbol3} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Numerology Button */}
+            <TouchableOpacity
+              style={[styles.compatibilityButton, { marginTop: 15 }]}
+              onPress={() => router.push('/numerology')}
+            >
+              <View style={styles.numerologyGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(46, 204, 113, 0.2)'
+                  ]}
+                  style={styles.numerologyGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>🔢</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Нумерология</Text>
+                    <Text style={styles.compatibilitySubtext}>Тайна вашего числа судьбы</Text>
+                  </View>
+                </LinearGradient>
+
+                <View style={styles.number1} />
+                <View style={styles.number2} />
+                <View style={styles.number3} />
+                <View style={styles.centerNumber}>
+                  <LinearGradient
+                    colors={['rgba(46, 204, 113, 0.9)', 'rgba(39, 174, 96, 0.6)']}
+                    style={styles.numberGradient}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
             {/* Deck Catalog Button */}
-            <TouchableOpacity 
-              style={[styles.compatibilityButton, { marginTop: 15 }]} 
+            <TouchableOpacity
+              style={[styles.compatibilityButton, { marginTop: 15 }]}
               onPress={() => router.push('/deck')}
             >
               <View style={styles.diamondGlassContainer}>
@@ -970,6 +1071,172 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 5,
+  },
+  // Astro-Personality Button Styles
+  astroGlassContainer: {
+    position: 'relative',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(155, 89, 182, 0.4)',
+    backgroundColor: 'rgba(155, 89, 182, 0.08)',
+    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(155, 89, 182, 0.3)',
+    backdropFilter: 'blur(15px)',
+  },
+  astroGlassGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 25,
+    borderRadius: 18,
+  },
+  cosmicOrb1: {
+    position: 'absolute',
+    top: 10,
+    left: 25,
+    width: 6,
+    height: 6,
+    backgroundColor: 'rgba(155, 89, 182, 0.7)',
+    borderRadius: 3,
+  },
+  cosmicOrb2: {
+    position: 'absolute',
+    top: 8,
+    right: 30,
+    width: 4,
+    height: 4,
+    backgroundColor: 'rgba(142, 68, 173, 0.6)',
+    borderRadius: 2,
+  },
+  cosmicOrb3: {
+    position: 'absolute',
+    bottom: 12,
+    left: 40,
+    width: 5,
+    height: 5,
+    backgroundColor: 'rgba(155, 89, 182, 0.5)',
+    borderRadius: 2.5,
+  },
+  centerCosmicGlow: {
+    position: 'absolute',
+    top: 12,
+    right: 15,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  cosmicGlowGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 5,
+  },
+  // Numerology Button Styles
+  numerologyGlassContainer: {
+    position: 'relative',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(46, 204, 113, 0.4)',
+    backgroundColor: 'rgba(46, 204, 113, 0.08)',
+    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(46, 204, 113, 0.3)',
+    backdropFilter: 'blur(15px)',
+  },
+  numerologyGlassGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 25,
+    borderRadius: 18,
+  },
+  number1: {
+    position: 'absolute',
+    top: 8,
+    left: 20,
+    width: 20,
+    height: 2,
+    backgroundColor: 'rgba(46, 204, 113, 0.6)',
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
+  },
+  number2: {
+    position: 'absolute',
+    top: 15,
+    right: 25,
+    width: 15,
+    height: 2,
+    backgroundColor: 'rgba(39, 174, 96, 0.5)',
+    borderRadius: 1,
+    transform: [{ rotate: '-30deg' }],
+  },
+  number3: {
+    position: 'absolute',
+    bottom: 10,
+    left: 35,
+    width: 18,
+    height: 2,
+    backgroundColor: 'rgba(46, 204, 113, 0.7)',
+    borderRadius: 1,
+    transform: [{ rotate: '20deg' }],
+  },
+  centerNumber: {
+    position: 'absolute',
+    top: 10,
+    right: 15,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  numberGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 6,
+  },
+  // Runes Button Styles
+  runesGlassContainer: {
+    position: 'relative',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 152, 219, 0.4)',
+    backgroundColor: 'rgba(52, 152, 219, 0.08)',
+    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(52, 152, 219, 0.3)',
+    backdropFilter: 'blur(15px)',
+  },
+  runesGlassGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 25,
+    borderRadius: 18,
+  },
+  runeSymbol1: {
+    position: 'absolute',
+    top: 10,
+    left: 25,
+    width: 15,
+    height: 2,
+    backgroundColor: 'rgba(52, 152, 219, 0.6)',
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
+  },
+  runeSymbol2: {
+    position: 'absolute',
+    top: 8,
+    right: 30,
+    width: 12,
+    height: 2,
+    backgroundColor: 'rgba(41, 128, 185, 0.5)',
+    borderRadius: 1,
+    transform: [{ rotate: '-30deg' }],
+  },
+  runeSymbol3: {
+    position: 'absolute',
+    bottom: 10,
+    left: 35,
+    width: 18,
+    height: 2,
+    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+    borderRadius: 1,
+    transform: [{ rotate: '20deg' }],
   },
   quoteSection: {
     paddingHorizontal: 20,
