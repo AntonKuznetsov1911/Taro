@@ -9,6 +9,10 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,12 +20,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImageManipulator from 'expo-image-manipulator';
 
+const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
 export default function CameraScreen() {
   const router = useRouter();
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImageBase64, setCapturedImageBase64] = useState<string>('');
+  const [question, setQuestion] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
   if (!permission) {
@@ -78,6 +87,7 @@ export default function CameraScreen() {
           );
 
           setCapturedImage(manipResult.uri);
+          setCapturedImageBase64(manipResult.base64 || '');
           setIsProcessing(false);
         }
       } catch (error) {
@@ -90,15 +100,55 @@ export default function CameraScreen() {
 
   const retakePicture = () => {
     setCapturedImage(null);
+    setCapturedImageBase64('');
+    setQuestion('');
   };
 
-  const proceedWithImage = () => {
-    if (capturedImage) {
-      // Navigate to palmistry result with the captured image
-      router.push({
-        pathname: '/palmistry',
-        params: { imageUri: capturedImage }
+  const proceedWithImage = async () => {
+    if (!capturedImageBase64) {
+      Alert.alert('Ошибка', 'Не удалось получить изображение');
+      return;
+    }
+
+    if (!question.trim()) {
+      Alert.alert('Внимание', 'Пожалуйста, введите вопрос для гадания');
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+
+      // Call palmistry API
+      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/palmistry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_base64: `data:image/jpeg;base64,${capturedImageBase64}`,
+          question: question.trim(),
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+
+      // Navigate to result screen with analysis data
+      router.push({
+        pathname: '/palmistry-result',
+        params: {
+          imageUri: capturedImage,
+          question: question.trim(),
+          interpretation: data.interpretation,
+          palmLines: JSON.stringify(data.palm_lines),
+        },
+      });
+    } catch (error) {
+      console.error('Error analyzing palm:', error);
+      Alert.alert('Ошибка', 'Не удалось проанализировать ладонь. Попробуйте еще раз.');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -109,56 +159,101 @@ export default function CameraScreen() {
   if (capturedImage) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
-          style={styles.background}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          <StatusBar barStyle="light-content" backgroundColor="#000011" />
-          
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Предварительный просмотр</Text>
-            <View style={styles.placeholder} />
-          </View>
+          <LinearGradient
+            colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+            style={styles.background}
+          >
+            <StatusBar barStyle="light-content" backgroundColor="#000011" />
 
-          <View style={styles.previewContainer}>
-            <Image source={{ uri: capturedImage }} style={styles.previewImage} />
-            
-            <View style={styles.instructionBox}>
-              <Text style={styles.instructionTitle}>✨ Проверьте снимок</Text>
-              <Text style={styles.instructionText}>
-                Убедитесь, что линии ладони хорошо видны. Если снимок получился нечетким, сделайте новое фото.
-              </Text>
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                disabled={isAnalyzing}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Предварительный просмотр</Text>
+              <View style={styles.placeholder} />
             </View>
-          </View>
 
-          <View style={styles.bottomActions}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={retakePicture}>
-              <LinearGradient
-                colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)']}
-                style={styles.buttonGradient}
-              >
-                <Ionicons name="camera" size={20} color="#FFF" />
-                <Text style={styles.secondaryButtonText}>Переснять</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <ScrollView
+              style={styles.scrollContainer}
+              contentContainerStyle={styles.previewContainer}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Image source={{ uri: capturedImage }} style={styles.previewImage} />
 
-            <TouchableOpacity style={styles.primaryButton} onPress={proceedWithImage}>
-              <LinearGradient
-                colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
-                style={styles.buttonGradient}
+              <View style={styles.instructionBox}>
+                <Text style={styles.instructionTitle}>✨ Проверьте снимок</Text>
+                <Text style={styles.instructionText}>
+                  Убедитесь, что линии ладони хорошо видны. Если снимок получился нечетким, сделайте новое фото.
+                </Text>
+              </View>
+
+              <View style={styles.questionContainer}>
+                <Text style={styles.questionLabel}>Ваш вопрос:</Text>
+                <TextInput
+                  style={styles.questionInput}
+                  placeholder="Например: Что меня ждет в ближайшем будущем?"
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  value={question}
+                  onChangeText={setQuestion}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={200}
+                  editable={!isAnalyzing}
+                />
+                <Text style={styles.characterCount}>{question.length}/200</Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.bottomActions}>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={retakePicture}
+                disabled={isAnalyzing}
               >
-                <Ionicons name="sparkles" size={20} color="#FFF" />
-                <Text style={styles.primaryButtonText}>Гадать</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+                <LinearGradient
+                  colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)']}
+                  style={styles.buttonGradient}
+                >
+                  <Ionicons name="camera" size={20} color="#FFF" />
+                  <Text style={styles.secondaryButtonText}>Переснять</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, isAnalyzing && styles.buttonDisabled]}
+                onPress={proceedWithImage}
+                disabled={isAnalyzing}
+              >
+                <LinearGradient
+                  colors={isAnalyzing ?
+                    ['rgba(100, 100, 100, 0.5)', 'rgba(80, 80, 80, 0.7)'] :
+                    ['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
+                  style={styles.buttonGradient}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <Text style={styles.primaryButtonText}>Анализ...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={20} color="#FFF" />
+                      <Text style={styles.primaryButtonText}>Гадать</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -377,10 +472,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
-  previewContainer: {
+  scrollContainer: {
     flex: 1,
+  },
+  previewContainer: {
     alignItems: 'center',
     paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   previewImage: {
     width: 300,
@@ -389,6 +487,37 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(155, 89, 182, 0.5)',
     marginBottom: 20,
+  },
+  questionContainer: {
+    width: '100%',
+    maxWidth: 320,
+    marginTop: 20,
+  },
+  questionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    marginBottom: 10,
+  },
+  questionInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    padding: 15,
+    color: '#E8E8E8',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.5)',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  characterCount: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    textAlign: 'right',
+    marginTop: 5,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   bottomActions: {
     flexDirection: 'row',
