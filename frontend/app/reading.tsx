@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
+import { ReadingInterpretation } from '../components/ReadingInterpretation';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -212,14 +213,12 @@ export default function ReadingScreen() {
           </View>
 
           {cardsRevealed.every(revealed => revealed) && (
-            <View style={styles.interpretationContainer}>
-              <Text style={styles.interpretationTitle}>✨ Толкование</Text>
-              <View style={styles.interpretationContent}>
-                <ScrollView style={styles.interpretationScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.interpretationText}>{reading.interpretation}</Text>
-                </ScrollView>
-              </View>
-            </View>
+            <ReadingInterpretation
+              interpretation={reading.interpretation}
+              question={reading.question}
+              category={reading.category}
+              spreadType={reading.spread_type}
+            />
           )}
 
           <View style={styles.actionsContainer}>
