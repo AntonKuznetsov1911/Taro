@@ -369,6 +369,35 @@ export default function CosmicIndex() {
               </View>
             </TouchableOpacity>
 
+            {/* Runes Button */}
+            <TouchableOpacity
+              style={[styles.compatibilityButton, { marginTop: 15 }]}
+              onPress={() => router.push('/runes')}
+            >
+              <View style={styles.runesGlassContainer}>
+                <LinearGradient
+                  colors={[
+                    'rgba(255, 255, 255, 0.25)',
+                    'rgba(255, 255, 255, 0.1)',
+                    'rgba(255, 255, 255, 0.05)',
+                    'rgba(52, 152, 219, 0.2)'
+                  ]}
+                  style={styles.runesGlassGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.compatibilityIcon}>ᚠ</Text>
+                  <View>
+                    <Text style={styles.compatibilityText}>Руны</Text>
+                    <Text style={styles.compatibilitySubtext}>Древний оракул викингов</Text>
+                  </View>
+                </LinearGradient>
+                <View style={styles.runeSymbol1} />
+                <View style={styles.runeSymbol2} />
+                <View style={styles.runeSymbol3} />
+              </View>
+            </TouchableOpacity>
+
             {/* Numerology Button */}
             <TouchableOpacity
               style={[styles.compatibilityButton, { marginTop: 15 }]}
@@ -1161,6 +1190,53 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 6,
+  },
+  // Runes Button Styles
+  runesGlassContainer: {
+    position: 'relative',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 152, 219, 0.4)',
+    backgroundColor: 'rgba(52, 152, 219, 0.08)',
+    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(52, 152, 219, 0.3)',
+    backdropFilter: 'blur(15px)',
+  },
+  runesGlassGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 25,
+    borderRadius: 18,
+  },
+  runeSymbol1: {
+    position: 'absolute',
+    top: 10,
+    left: 25,
+    width: 15,
+    height: 2,
+    backgroundColor: 'rgba(52, 152, 219, 0.6)',
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
+  },
+  runeSymbol2: {
+    position: 'absolute',
+    top: 8,
+    right: 30,
+    width: 12,
+    height: 2,
+    backgroundColor: 'rgba(41, 128, 185, 0.5)',
+    borderRadius: 1,
+    transform: [{ rotate: '-30deg' }],
+  },
+  runeSymbol3: {
+    position: 'absolute',
+    bottom: 10,
+    left: 35,
+    width: 18,
+    height: 2,
+    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+    borderRadius: 1,
+    transform: [{ rotate: '20deg' }],
   },
   quoteSection: {
     paddingHorizontal: 20,
