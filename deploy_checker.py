@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Taro App Deployment Checker
 Автоматическая проверка статуса развертывания
@@ -7,8 +8,15 @@ Taro App Deployment Checker
 import requests
 import time
 import json
+import sys
 from datetime import datetime
 from typing import Dict, Tuple
+
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    import os
+    os.system('chcp 65001 >nul 2>&1')
+    sys.stdout.reconfigure(encoding='utf-8')
 
 class Colors:
     """ANSI цвета для терминала"""
