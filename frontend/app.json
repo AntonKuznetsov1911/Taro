@@ -8,6 +8,9 @@
     "scheme": "taro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "EXPO_PUBLIC_BACKEND_URL": "https://taro-mystical.loca.lt"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.antonkuznetsov.taro"
