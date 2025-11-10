@@ -1516,6 +1516,7 @@ async def analyze_palmistry(request: PalmistryRequest):
     return result
 
 async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:
+    global OPENAI_QUOTA_EXCEEDED
     """Generate deep astro-psychological personality analysis based on user answers"""
 
     # Collect all keywords and arcanas from answers
@@ -1619,7 +1620,6 @@ async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: 
             personality_analysis = generate_fallback_personality_analysis(keywords_text, arcanas_text, name_text)
 
     except Exception as e:
-        global OPENAI_QUOTA_EXCEEDED
         if "insufficient_quota" in str(e) or "429" in str(e):
             OPENAI_QUOTA_EXCEEDED = True
             logging.warning("OpenAI quota exceeded - using fallback for personality analysis")
