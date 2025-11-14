@@ -70,9 +70,13 @@ const generateStars = (): Star[] => {
 export const StarryBackground: React.FC = () => {
   const [stars] = useState<Star[]>(generateStars());
 
-  return (
-    <>
-      <style>{`
+  useEffect(() => {
+    // Добавляем CSS стили в head программно
+    const styleId = 'starry-background-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
         @keyframes twinkle {
           0%, 100% { opacity: 0.2; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.5); }
@@ -136,6 +140,7 @@ export const StarryBackground: React.FC = () => {
           top: 50%;
           transform: translateY(-50%);
           box-shadow: 0 0 10px rgba(135, 206, 235, 0.8);
+          pointer-events: none;
         }
 
         .star-shooting::before {
@@ -147,9 +152,14 @@ export const StarryBackground: React.FC = () => {
           right: 100%;
           top: 50%;
           transform: translateY(-50%);
+          pointer-events: none;
         }
-      `}</style>
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
+  return (
       <View style={styles.container}>
         {stars.map((star) => (
           <div
@@ -202,7 +212,6 @@ export const StarryBackground: React.FC = () => {
           />
         ))}
       </View>
-    </>
   );
 };
 
