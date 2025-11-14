@@ -13,7 +13,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StarryBackground } from '../components/StarryBackground';
 import { DailyCardWidget } from '../components/DailyCardWidget';
 import { Platform } from 'react-native';
 
@@ -130,9 +129,6 @@ export default function CosmicIndex() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        {/* Звездное небо как фон */}
-        <StarryBackground />
-        
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}
           <View style={styles.header}>
@@ -142,14 +138,6 @@ export default function CosmicIndex() {
                 <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
               </View>
             </View>
-          </View>
-
-          {/* Floating cosmic particles */}
-          <View style={styles.particlesContainer}>
-            <Text style={[styles.particle, { top: 120, left: 50 }]}>✦</Text>
-            <Text style={[styles.particle, { top: 200, right: 80 }]}>⭐</Text>
-            <Text style={[styles.particle, { top: 300, left: 30 }]}>✨</Text>
-            <Text style={[styles.particle, { top: 150, right: 40 }]}>💫</Text>
           </View>
 
           {/* Daily Card Widget */}
