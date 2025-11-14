@@ -1,7 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
 
 // Конфигурация звезд
 const STAR_COUNT = 150;
@@ -160,7 +157,16 @@ export const StarryBackground: React.FC = () => {
   }, []);
 
   return (
-      <View style={styles.container}>
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        zIndex: 0,
+        pointerEvents: 'none',
+      }}>
         {stars.map((star) => (
           <div
             key={star.id}
@@ -211,19 +217,6 @@ export const StarryBackground: React.FC = () => {
             }}
           />
         ))}
-      </View>
+      </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
-    zIndex: 0,
-    pointerEvents: 'none',
-  },
-});
