@@ -568,6 +568,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 400,
     zIndex: 1,
+    pointerEvents: 'none',
   },
   particle: {
     position: 'absolute',
