@@ -66,16 +66,16 @@ export async function waitForNetwork(timeoutMs: number = 5000): Promise<boolean>
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      window.removeEventListener('online', handleOnline);
-      resolve(false);
-    }, timeoutMs);
-
     const handleOnline = () => {
       clearTimeout(timeout);
       window.removeEventListener('online', handleOnline);
       resolve(true);
     };
+
+    const timeout = setTimeout(() => {
+      window.removeEventListener('online', handleOnline);
+      resolve(false);
+    }, timeoutMs);
 
     window.addEventListener('online', handleOnline);
   });
