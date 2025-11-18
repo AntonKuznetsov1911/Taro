@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { DailyCardWidget } from '../components/DailyCardWidget';
-import { Platform } from 'react-native';
 
 // Base64 изображения таро The Lovers
 const TAROT_LOVERS_BASE64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKRwqFyI0NDMrKy8vLzBAMD8/Pz8/QEA=';
@@ -24,14 +23,29 @@ const { width } = Dimensions.get('window');
 // ВАРИАНТ 1: КОСМИЧЕСКИЙ МИСТИЦИЗМ
 // Элегантный дизайн с акцентом на космические элементы, звезды, туманности
 
-const CATEGORIES = [
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  gradient: string[];
+  description: string;
+}
+
+interface Spread {
+  id: string;
+  name: string;
+  description: string;
+}
+
+const CATEGORIES: Category[] = [
   { id: 'love', name: 'Любовь', icon: '💫', color: '#FF6B9D', gradient: ['rgba(255, 107, 157, 0.4)', 'rgba(255, 142, 155, 0.5)', 'rgba(196, 69, 105, 0.6)'], description: 'Вопросы сердца' },
   { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['rgba(78, 205, 196, 0.4)', 'rgba(69, 183, 209, 0.5)', 'rgba(38, 160, 180, 0.6)'], description: 'Профессиональный путь' },
   { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['rgba(69, 183, 209, 0.4)', 'rgba(93, 173, 226, 0.5)', 'rgba(46, 134, 171, 0.6)'], description: 'Денежная энергия' },
   { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['rgba(155, 89, 182, 0.4)', 'rgba(187, 107, 217, 0.5)', 'rgba(108, 52, 131, 0.6)'], description: 'Жизненные вопросы' }
 ];
 
-const SPREADS = [
+const SPREADS: Spread[] = [
   { id: 'one_card', name: 'Одна карта', description: 'Быстрый ответ на конкретный вопрос' },
   { id: 'three_cards', name: 'Три карты', description: 'Прошлое • Настоящее • Будущее' },
   { id: 'celtic_cross', name: 'Кельтский крест', description: 'Детальный анализ ситуации' }
@@ -42,7 +56,7 @@ export default function CosmicIndex() {
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
-  const CategoryCard = ({ category }: { category: any }) => (
+  const CategoryCard = ({ category }: { category: Category }) => (
     <TouchableOpacity
       style={styles.categoryCard}
       onPress={() => setSelectedCategory(category.id)}
@@ -80,7 +94,7 @@ export default function CosmicIndex() {
     </TouchableOpacity>
   );
 
-  const SpreadCard = ({ spread }: { spread: any }) => (
+  const SpreadCard = ({ spread }: { spread: Spread }) => (
     <TouchableOpacity
       style={[styles.spreadCard, selectedSpread === spread.id && styles.selectedSpreadCard]}
       onPress={() => setSelectedSpread(spread.id)}
