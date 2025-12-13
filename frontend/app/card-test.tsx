@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CosmicBackground } from '../components/CosmicBackground';
-import Constants from 'expo-constants';
+import { CONFIG } from '../src/config';
 
-const EXPO_PUBLIC_BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+const EXPO_PUBLIC_BACKEND_URL = CONFIG.BACKEND_URL;
 
 interface TarotCard {
   id: number;
