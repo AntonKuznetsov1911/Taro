@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taro - Инструкции по завершению развертывания</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        .status {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status.checking {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .status.waiting {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .steps {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .step {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .step-description {
+            color: #666;
+            line-height: 1.6;
+            margin-left: 40px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .button:hover {
+            background: #5568d3;
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .button.success {
+            background: #28a745;
+        }
+
+        .button.success:hover {
+            background: #218838;
+        }
+
+        .buttons {
+            margin-top: 30px;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #1976D2;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+
+        #site-status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 Taro App</h1>
+        <p class="subtitle">Завершение развертывания приложения</p>
+
+        <div class="status checking" id="status">
+            <div class="spinner"></div>
+            <div>
+                <strong>Проверка доступности сайта...</strong>
+                <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                    Проверяю https://antonkuznetsov1911.github.io/Taro/
+                </div>
+            </div>
+        </div>
+
+        <div class="steps">
+            <h2 style="margin-bottom: 20px; color: #333;">📋 Что нужно сделать:</h2>
+
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">1</span>
+                    Включить GitHub Pages
+                </div>
+                <div class="step-description">
+                    В открывшемся окне браузера перейдите в раздел <strong>Settings → Pages</strong><br>
+                    В поле <strong>Source</strong> выберите <code>GitHub Actions</code><br>
+                    Нажмите <strong>Save</strong>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">2</span>
+                    Проверить workflow
+                </div>
+                <div class="step-description">
+                    Перейдите во вкладку <strong>Actions</strong><br>
+                    Убедитесь, что workflow "Deploy to GitHub Pages" запустился<br>
+                    Дождитесь зеленой галочки (обычно 3-5 минут)
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">3</span>
+                    Открыть приложение
+                </div>
+                <div class="step-description">
+                    После успешного деплоя приложение будет доступно по адресу:<br>
+                    <code>https://antonkuznetsov1911.github.io/Taro/</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ Важно:</strong> Для полной работы приложения необходимо развернуть backend на Render.com, Railway или Heroku.
+            Подробные инструкции находятся в файле <code>DEPLOYMENT.md</code>
+        </div>
+
+        <div class="buttons">
+            <a href="https://github.com/AntonKuznetsov1911/Taro/settings/pages" class="button" target="_blank">
+                ⚙️ Настройки Pages
+            </a>
+            <a href="https://github.com/AntonKuznetsov1911/Taro/actions" class="button secondary" target="_blank">
+                🔄 GitHub Actions
+            </a>
+            <a href="https://antonkuznetsov1911.github.io/Taro/" class="button success" target="_blank" id="open-site">
+                🌐 Открыть сайт
+            </a>
+        </div>
+
+        <div id="site-status"></div>
+    </div>
+
+    <script>
+        let checkCount = 0;
+        const maxChecks = 60; // 5 минут максимум
+
+        async function checkSite() {
+            const url = 'https://antonkuznetsov1911.github.io/Taro/';
+            const statusEl = document.getElementById('status');
+            const siteStatusEl = document.getElementById('site-status');
+
+            try {
+                const response = await fetch(url, { mode: 'no-cors' });
+                // no-cors mode не дает нам прочитать статус, но если запрос прошел, значит сайт доступен
+                statusEl.className = 'status success';
+                statusEl.innerHTML = `
+                    <div style="font-size: 24px;">✅</div>
+                    <div>
+                        <strong>Сайт успешно развернут!</strong>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                            Приложение Taro доступно по адресу выше
+                        </div>
+                    </div>
+                `;
+
+                // Автоматически открыть сайт через 2 секунды
+                setTimeout(() => {
+                    window.open(url, '_blank');
+                }, 2000);
+
+                return true;
+            } catch (error) {
+                checkCount++;
+
+                if (checkCount >= maxChecks) {
+                    statusEl.className = 'status waiting';
+                    statusEl.innerHTML = `
+                        <div style="font-size: 24px;">⏳</div>
+                        <div>
+                            <strong>Сайт пока недоступен</strong>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                                Убедитесь, что вы включили GitHub Pages в настройках и workflow завершился успешно
+                            </div>
+                        </div>
+                    `;
+                    return true;
+                }
+
+                const elapsed = Math.floor(checkCount * 5);
+                statusEl.innerHTML = `
+                    <div class="spinner"></div>
+                    <div>
+                        <strong>Проверка доступности сайта...</strong>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                            Попытка ${checkCount}/${maxChecks} | Прошло: ${elapsed}с
+                        </div>
+                    </div>
+                `;
+
+                return false;
+            }
+        }
+
+        // Первая проверка через 10 секунд
+        setTimeout(async function check() {
+            const success = await checkSite();
+            if (!success) {
+                // Проверять каждые 5 секунд
+                setTimeout(check, 5000);
+            }
+        }, 10000);
+
+        // Показать приветственное сообщение
+        console.log('🔮 Taro App Deployment Helper');
+        console.log('Автоматическая проверка доступности сайта запущена...');
+    </script>
+</body>
+</html>

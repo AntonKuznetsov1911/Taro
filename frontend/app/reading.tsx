@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
+import { ReadingInterpretation } from '../components/ReadingInterpretation';
+import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
 
 const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -102,67 +104,6 @@ export default function ReadingScreen() {
     await playReveal({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
   };
 
-  const CardComponent = ({ card, position, index, revealed }: {
-    card: TarotCard;
-    position: string;
-    index: number;
-    revealed: boolean;
-  }) => (
-    <TouchableOpacity
-      style={styles.cardContainer}
-      onPress={() => !revealed && revealCard(index)}
-      activeOpacity={revealed ? 1 : 0.8}
-    >
-      <View style={styles.card}>
-        {revealed ? (
-          <View style={styles.cardContent}>
-            <View style={[styles.cardInner, card.is_reversed && styles.cardReversed]}>
-              {card.image ? (
-                <Image source={{ uri: card.image }} style={styles.cardImage} resizeMode="cover" />
-              ) : (
-                <LinearGradient colors={card.is_reversed ? ['#8E44AD', '#6C3483'] : ['#9B59B6', '#8E44AD']} style={styles.cardImageFallback}>
-                  <Text style={styles.cardName}>{card.name}</Text>
-                  <Text style={styles.cardType}>{card.type === 'major' ? 'Старший аркан' : 'Младший аркан'}</Text>
-                  {card.is_reversed && <Text style={styles.reversedIndicator}>⚌ Перевернутая</Text>}
-                  <View style={styles.keywordsContainer}>
-                    {card.keywords.slice(0, 3).map((keyword, i) => (
-                      <Text key={i} style={styles.keyword}>{keyword}</Text>
-                    ))}
-                  </View>
-                </LinearGradient>
-              )}
-              {card.image && (
-                <View style={styles.cardOverlay}>
-                  <Text style={styles.cardNameOverlay}>{card.name}</Text>
-                  {card.is_reversed && <Text style={styles.reversedIndicatorOverlay}>⚌ Перевернутая</Text>}
-                </View>
-              )}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.cardBack}>
-            {cardBackImage ? (
-              cardBackImage.startsWith('data:image') ? (
-                <Image source={{ uri: cardBackImage }} style={styles.cardBackImage} resizeMode="cover" />
-              ) : (
-                <LinearGradient colors={['#2C3E50', '#34495E']} style={styles.cardBackFallback}>
-                  <Text style={styles.cardBackText}>🌙</Text>
-                  <Text style={styles.tapToReveal}>Нажмите для открытия</Text>
-                </LinearGradient>
-              )
-            ) : (
-              <LinearGradient colors={['#2C3E50', '#34495E']} style={styles.cardBackFallback}>
-                <ActivityIndicator size="small" color="#FFD700" />
-                <Text style={styles.loadingText}>Загрузка...</Text>
-              </LinearGradient>
-            )}
-          </View>
-        )}
-      </View>
-      <Text style={styles.positionText}>{position}</Text>
-    </TouchableOpacity>
-  );
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -206,20 +147,26 @@ export default function ReadingScreen() {
             </View>
             <View style={styles.cardsContainer}>
               {reading.cards.map((card, index) => (
-                <CardComponent key={index} card={card} position={reading.positions[index]} index={index} revealed={cardsRevealed[index]} />
+                <AnimatedTarotCard
+                  key={index}
+                  card={card}
+                  position={reading.positions[index]}
+                  index={index}
+                  revealed={cardsRevealed[index]}
+                  cardBackImage={cardBackImage}
+                  onReveal={() => revealCard(index)}
+                />
               ))}
             </View>
           </View>
 
           {cardsRevealed.every(revealed => revealed) && (
-            <View style={styles.interpretationContainer}>
-              <Text style={styles.interpretationTitle}>✨ Толкование</Text>
-              <View style={styles.interpretationContent}>
-                <ScrollView style={styles.interpretationScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.interpretationText}>{reading.interpretation}</Text>
-                </ScrollView>
-              </View>
-            </View>
+            <ReadingInterpretation
+              interpretation={reading.interpretation}
+              question={reading.question}
+              category={reading.category}
+              spreadType={reading.spread_type}
+            />
           )}
 
           <View style={styles.actionsContainer}>

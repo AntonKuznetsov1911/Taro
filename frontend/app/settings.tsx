@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StarryBackground } from '../components/StarryBackground';
+import { CosmicBackground } from '../components/CosmicBackground';
 import { useSettings } from '../src/contexts/SettingsContext';
 
 export default function SettingsScreen() {
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
       <LinearGradient colors={["#000011", "#1a0033", "#2d1b69", "#0f0f23"]} style={styles.background}>
-        <StarryBackground />
+        <CosmicBackground />
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
