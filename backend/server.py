@@ -4,7 +4,6 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
-import openai
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -19,14 +18,63 @@ from io import BytesIO
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# OpenAI configuration
-from openai import OpenAI
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# AI Client (Claude + XAI)
+try:
+    from ai_client import ai_client
+    
+    # Проверяем статус AI клиентов
+    ai_status = ai_client.get_status()
+    logger.info("✅ AI Client успешно импортирован")
+    
+    # Логируем статус каждого AI провайдера
+    if ai_status['claude']['available']:
+        logger.info(f"✅ Claude API доступен (модель: {ai_status['claude']['model']})")
+    else:
+        logger.warning("⚠️ Claude API недоступен - ANTHROPIC_API_KEY не установлен")
+    
+    if ai_status['xai']['available']:
+        logger.info(f"✅ XAI (Grok) API доступен (модель: {ai_status['xai']['model']})")
+    else:
+        logger.warning("⚠️ XAI (Grok) API недоступен - XAI_API_KEY не установлен")
+    
+    if not ai_client.is_available():
+        logger.warning("⚠️ ВНИМАНИЕ: Все AI API недоступны. Сервер будет использовать fallback функции.")
+        logger.info("💡 Для работы AI функций установите ANTHROPIC_API_KEY или XAI_API_KEY")
+    else:
+        logger.info("✅ Хотя бы один AI API доступен")
+        
+except Exception as e:
+    logger.error(f"❌ Ошибка импорта AI Client: {e}")
+    raise
+
+# MongoDB connection with error handling
+try:
+    mongo_url = os.environ.get('MONGO_URL')
+    if not mongo_url:
+        raise ValueError("MONGO_URL не установлена в переменных окружения")
+    logger.info("✅ MONGO_URL найдена")
+    
+    db_name = os.environ.get('DB_NAME')
+    if not db_name:
+        raise ValueError("DB_NAME не установлена в переменных окружения")
+    logger.info(f"✅ DB_NAME найдена: {db_name}")
+    
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[db_name]
+    logger.info("✅ MongoDB клиент инициализирован")
+except KeyError as e:
+    logger.error(f"❌ Отсутствует обязательная переменная окружения: {e}")
+    raise
+except Exception as e:
+    logger.error(f"❌ Ошибка подключения к MongoDB: {e}")
+    raise
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -187,50 +235,11 @@ class AstroPersonalityResult(BaseModel):
     advice: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# Global flag to disable OpenAI when quota exceeded
-OPENAI_QUOTA_EXCEEDED = False
-
-async def check_openai_quota():
-    """Check if OpenAI quota is exceeded and set global flag"""
-    global OPENAI_QUOTA_EXCEEDED
-    try:
-        # Try a minimal request to check quota
-        response = await openai.chat.completions.create(
-            model="gpt-3.5-turbo", 
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=1
-        )
-        OPENAI_QUOTA_EXCEEDED = False
-        return True
-    except Exception as e:
-        if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - switching to fallback mode")
-        return False
+# AI Client автоматически управляет квотами Claude и XAI
 
 async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, str]:
     """Generate compatibility analysis using AI"""
-    
-    # Check if OpenAI quota is exceeded
-    global OPENAI_QUOTA_EXCEEDED
-    if OPENAI_QUOTA_EXCEEDED:
-        logging.info("OpenAI quota exceeded - using fallback compatibility analysis")
-        # Calculate numerology-based compatibility score
-        def name_to_number(name: str) -> int:
-            name_clean = ''.join(c.lower() for c in name if c.isalpha())
-            total = sum(ord(c) - ord('а') + 1 for c in name_clean if 'а' <= c <= 'я')
-            total += sum(ord(c) - ord('a') + 1 for c in name_clean if 'a' <= c <= 'z')
-            while total > 9:
-                total = sum(int(d) for d in str(total))
-            return total
-        
-        num1 = name_to_number(name1)
-        num2 = name_to_number(name2)
-        base_score = abs(9 - abs(num1 - num2)) * 10 + random.randint(5, 25)
-        compatibility_score = min(99, max(15, base_score))
-        analysis = generate_fallback_compatibility_analysis(name1, name2, compatibility_score)
-        return compatibility_score, analysis
-    
+
     # Calculate numerology-based compatibility score
     def name_to_number(name: str) -> int:
         name_clean = ''.join(c.lower() for c in name if c.isalpha())
@@ -268,20 +277,13 @@ async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, 
 Стиль настоящей мудрой гадалки с душой!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
+        analysis = ai_client.generate_text(
+            prompt=prompt,
             max_tokens=600,
             temperature=0.8
         )
-        analysis = response.choices[0].message.content.strip()
     except Exception as e:
-        # Set quota flag if quota error detected  
-        if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
-        else:
-            logging.error(f"OpenAI API error: {e}")
+        logging.error(f"AI API error: {e}")
         analysis = generate_fallback_compatibility_analysis(name1, name2, compatibility_score)
     
     return compatibility_score, analysis
@@ -336,8 +338,7 @@ async def generate_palmistry_analysis(image_base64: str, question: str) -> tuple
     ]
 
     # Try to use Vision API for real palm analysis
-    global OPENAI_QUOTA_EXCEEDED
-    if not OPENAI_QUOTA_EXCEEDED:
+    if ai_client.claude_available:
         try:
             # Use GPT-4 Vision to analyze the palm photo
             vision_prompt = f"""Ты опытный хиромант с 40-летним стажем. Проанализируй фотографию ладони и определи:
@@ -371,32 +372,21 @@ async def generate_palmistry_analysis(image_base64: str, question: str) -> tuple
 
 Опиши ВСЁ что видишь максимально детально - это основа для точного предсказания."""
 
-            vision_response = openai_client.chat.completions.create(
-                model="gpt-4-vision-preview",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": vision_prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"{image_base64}" if image_base64.startswith("data:image") else f"data:image/jpeg;base64,{image_base64}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                max_tokens=1000
+            vision_text = ai_client.generate_with_vision(
+                prompt=vision_prompt,
+                image_base64=image_base64,
+                max_tokens=1500,
+                temperature=0.7
             )
 
-            palm_description = vision_response.choices[0].message.content.strip()
+            palm_description = vision_text
 
         except Exception as e:
             logging.error(f"Vision API error: {e}")
             if "insufficient_quota" in str(e) or "429" in str(e):
-                OPENAI_QUOTA_EXCEEDED = True
-            palm_description = "По фотографии вижу основные линии ладони."
+                palm_description = "По фотографии вижу основные линии ладони."
+            else:
+                palm_description = "По фотографии вижу основные линии ладони."
     else:
         palm_description = "По фотографии вижу основные линии ладони."
 
@@ -488,18 +478,18 @@ async def generate_palmistry_analysis(image_base64: str, question: str) -> tuple
 Создай МАКСИМАЛЬНО ПОДРОБНОЕ толкование, которое действительно поможет человеку понять свою судьбу и принять правильные решения!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": interpretation_prompt}],
+        response_text = ai_client.generate_text(
+            prompt=interpretation_prompt,
             max_tokens=1800,
             temperature=0.8
         )
-        interpretation = response.choices[0].message.content.strip()
+        interpretation = response_text
     except Exception as e:
-        logging.error(f"OpenAI interpretation error: {e}")
+        logging.error(f"AI interpretation error: {e}")
         if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-        interpretation = generate_fallback_palmistry_interpretation(question)
+            interpretation = generate_fallback_palmistry_interpretation(question)
+        else:
+            interpretation = generate_fallback_palmistry_interpretation(question)
 
     return palm_lines, interpretation
 
@@ -589,32 +579,6 @@ def get_zodiac_sign(birth_date: str) -> str:
 async def generate_horoscope(user_profile: UserProfile, target_date: str) -> HoroscopeResult:
     """Generate personalized horoscope for user"""
     
-    # Check if OpenAI quota is exceeded
-    global OPENAI_QUOTA_EXCEEDED
-    if OPENAI_QUOTA_EXCEEDED:
-        logging.info("OpenAI quota exceeded - using fallback horoscope")
-        # Generate lucky numbers and color
-        import random
-        lucky_numbers = random.sample(range(1, 50), 6)
-        colors = ["золотой", "серебряный", "красный", "синий", "зеленый", "фиолетовый", "белый", "черный"]
-        lucky_color = random.choice(colors)
-        mood_rating = random.randint(6, 9)
-        
-        full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
-        
-        return HoroscopeResult(
-            user_profile_id=user_profile.id,
-            date=target_date,
-            zodiac_sign=user_profile.zodiac_sign,
-            horoscope_text=full_horoscope,
-            mood_rating=mood_rating,
-            love_forecast=love_forecast,
-            career_forecast=career_forecast,
-            health_forecast=health_forecast,
-            lucky_numbers=lucky_numbers,
-            lucky_color=lucky_color
-        )
-    
     # Generate lucky numbers and color
     import random
     lucky_numbers = random.sample(range(1, 50), 6)
@@ -671,13 +635,12 @@ async def generate_horoscope(user_profile: UserProfile, target_date: str) -> Hor
 Создай вдохновляющий и точный гороскоп, который поможет человеку лучше понять энергии дня!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
+        response_text = ai_client.generate_text(
+            prompt=prompt,
             max_tokens=800,
             temperature=0.8
         )
-        full_horoscope = response.choices[0].message.content.strip()
+        full_horoscope = response_text
         
         # Extract sections for different forecasts
         love_forecast = "Звезды благоволят романтическим встречам и глубоким разговорам с любимыми."
@@ -687,10 +650,9 @@ async def generate_horoscope(user_profile: UserProfile, target_date: str) -> Hor
     except Exception as e:
         # Set quota flag if quota error detected
         if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
+            logging.warning("AI quota exceeded - switching to fallback mode for future requests")
         else:
-            logging.error(f"OpenAI API error: {e}")
+            logging.error(f"AI API error: {e}")
         full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
     
     return HoroscopeResult(
@@ -791,11 +753,6 @@ async def generate_ai_interpretation(question: str, category: str, spread_type: 
     """Generate AI interpretation using OpenAI"""
 
     # Check if OpenAI quota is exceeded
-    global OPENAI_QUOTA_EXCEEDED
-    if OPENAI_QUOTA_EXCEEDED:
-        logging.info("OpenAI quota exceeded - using fallback interpretation")
-        return generate_enhanced_fallback_interpretation(cards, positions, question, category)
-
     # Prepare cards info for AI with enhanced details
     cards_info = []
     for i, card in enumerate(cards):
@@ -954,20 +911,13 @@ async def generate_ai_interpretation(question: str, category: str, spread_type: 
 Создай ИСЧЕРПЫВАЮЩЕЕ, ДЕТАЛЬНОЕ толкование, которое станет настоящим путеводителем для человека! Пусть каждое слово несёт ценность и помогает принимать правильные решения!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=3000,  # Значительно увеличил лимит для детальных ответов
-            temperature=0.85   # Повысил креативность для более живого языка
+        return ai_client.generate_text(
+            prompt=prompt,
+            max_tokens=3000,
+            temperature=0.85
         )
-        return response.choices[0].message.content.strip()
     except Exception as e:
-        # Set quota flag if quota error detected
-        if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
-        else:
-            logging.error(f"OpenAI API error: {e}")
+        logging.error(f"AI API error: {e}")
         return generate_enhanced_fallback_interpretation(cards, positions, question, category)
 
 def analyze_card_combinations(cards: List[TarotCard]) -> str:
@@ -1515,9 +1465,7 @@ async def analyze_palmistry(request: PalmistryRequest):
 
     return result
 
-async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:
-    global OPENAI_QUOTA_EXCEEDED
-    """Generate deep astro-psychological personality analysis based on user answers"""
+async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:    """Generate deep astro-psychological personality analysis based on user answers"""
 
     # Collect all keywords and arcanas from answers
     all_keywords = []
@@ -1607,24 +1555,14 @@ async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: 
 Создай текст, который тронет душу и откроет новое понимание себя!"""
 
     try:
-        if not OPENAI_QUOTA_EXCEEDED:
-            response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1200,
-                temperature=0.85
-            )
-            personality_analysis = response.choices[0].message.content.strip()
-        else:
-            # Fallback analysis
-            personality_analysis = generate_fallback_personality_analysis(keywords_text, arcanas_text, name_text)
+        personality_analysis = ai_client.generate_text(
+            prompt=prompt,
+            max_tokens=1200,
+            temperature=0.85
+        )
 
     except Exception as e:
-        if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - using fallback for personality analysis")
-        else:
-            logging.error(f"OpenAI API error: {e}")
+        logging.error(f"AI API error: {e}")
         personality_analysis = generate_fallback_personality_analysis(keywords_text, arcanas_text, name_text)
 
     # Generate structured sections
@@ -1843,50 +1781,6 @@ async def get_reading_history(limit: int = 10):
     # Convert all to unified format
     unified_history = []
     
-
-# Deck endpoints
-@api_router.get("/deck")
-async def get_full_deck():
-    """Return all 78 cards for catalog (lightweight)."""
-    cards = [_serialize_card_minimal(c) for c in FULL_TAROT_DECK]
-    return {"cards": cards}
-
-@api_router.get("/card/{card_id}")
-async def get_card(card_id: int):
-    card = _get_card_by_id(card_id)
-    if not card:
-        raise HTTPException(status_code=404, detail="Card not found")
-    return {"card": card}
-
-@api_router.post("/card-interpretation")
-async def get_card_interpretation(req: CardInterpretationRequest):
-    card = _get_card_by_id(req.card_id)
-    if not card:
-        raise HTTPException(status_code=404, detail="Card not found")
-    tarot_card = TarotCard(**{
-        "id": card["id"],
-        "name": card["name"],
-        "name_en": card.get("name_en", ""),
-        "type": card.get("type", "minor"),
-        "suit": card.get("suit"),
-        "image": card.get("image"),
-        "keywords": card.get("keywords", []),
-        "upright_meaning": card.get("upright_meaning", ""),
-        "reversed_meaning": card.get("reversed_meaning", ""),
-        "is_reversed": bool(req.reversed),
-    })
-    try:
-        text = await generate_ai_interpretation(
-            question=f"Толкование карты {card['name']}",
-            category="general",
-            spread_type="one_card",
-            cards=[tarot_card],
-            positions=["Значение карты"]
-        )
-        return {"interpretation": text}
-    except Exception:
-        return {"interpretation": _single_card_fallback_interpretation(card, bool(req.reversed))}
-
     # Add tarot readings
     for reading in tarot_readings:
         unified_history.append({
@@ -1932,16 +1826,11 @@ async def get_card_interpretation(req: CardInterpretationRequest):
     unified_history.sort(key=lambda x: x["created_at"], reverse=True)
     return unified_history[:limit]
 
-@api_router.get("/")
-async def root():
-    return {"message": "TARO API - Древняя мудрость в современном исполнении"}
-
-
 # Deck endpoints
 @api_router.get("/deck")
 async def get_full_deck():
     """Return all 78 cards for catalog (lightweight)."""
-    cards = [_serialize_card_minimal(c if "image" in c else {**c, "image": __import__("tarot_cards_data").tarot_cards_data.get_aesthetic_image(c["id"])}) for c in FULL_TAROT_DECK]
+    cards = [_serialize_card_minimal(c) for c in FULL_TAROT_DECK]
     return {"cards": cards}
 
 @api_router.get("/card/{card_id}")
@@ -1956,7 +1845,6 @@ async def get_card_interpretation(req: CardInterpretationRequest):
     card = _get_card_by_id(req.card_id)
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
-    # Use enhanced fallback generator for a single card by reusing general function with 1 card
     tarot_card = TarotCard(**{
         "id": card["id"],
         "name": card["name"],
@@ -1970,7 +1858,6 @@ async def get_card_interpretation(req: CardInterpretationRequest):
         "is_reversed": bool(req.reversed),
     })
     try:
-        # Try AI via existing generator with one-card spread
         text = await generate_ai_interpretation(
             question=f"Толкование карты {card['name']}",
             category="general",
@@ -1981,6 +1868,10 @@ async def get_card_interpretation(req: CardInterpretationRequest):
         return {"interpretation": text}
     except Exception:
         return {"interpretation": _single_card_fallback_interpretation(card, bool(req.reversed))}
+
+@api_router.get("/")
+async def root():
+    return {"message": "TARO API - Древняя мудрость в современном исполнении"}
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -1993,13 +1884,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+@app.on_event("startup")
+async def startup_event():
+    """Логирование при запуске сервера"""
+    logger.info("🚀 Taro API сервер запускается...")
+    logger.info(f"📦 Версия Python: {os.sys.version}")
+    logger.info(f"🗄️ База данных: {db.name}")
+    
+    # Статус AI клиентов
+    ai_status = ai_client.get_status()
+    if ai_client.is_available():
+        available_apis = []
+        if ai_status['claude']['available']:
+            available_apis.append("Claude")
+        if ai_status['xai']['available']:
+            available_apis.append("XAI (Grok)")
+        logger.info(f"🤖 AI API доступны: {', '.join(available_apis)}")
+    else:
+        logger.warning("⚠️ AI API недоступны - будут использоваться fallback функции")
+    
+    logger.info("✅ Сервер готов к работе")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Закрытие подключений при остановке"""
+    logger.info("🛑 Остановка сервера...")
     client.close()
+    logger.info("✅ Подключения закрыты")

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚂 Развертывание Taro Backend на Railway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid #ffd700;
+        }
+        .step h2 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .step-number {
+            background: #ffd700;
+            color: #667eea;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .step ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        .code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .btn {
+            display: inline-block;
+            background: #ffd700;
+            color: #667eea;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+        }
+        .warning {
+            background: rgba(255, 165, 0, 0.2);
+            border-left: 5px solid #ffa500;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border-left: 5px solid #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .checklist {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .checklist-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚂 Развертывание Taro на Railway</h1>
+        <p class="subtitle">Простая пошаговая инструкция для деплоя backend</p>
+
+        <div class="step">
+            <h2><span class="step-number">1</span> Откройте Railway и создайте проект</h2>
+            <p>Нажмите кнопку ниже, чтобы открыть Railway:</p>
+            <div class="buttons-row">
+                <a href="https://railway.app/new" target="_blank" class="btn">🚀 Открыть Railway</a>
+            </div>
+            <ul>
+                <li>Нажмите <strong>"Deploy from GitHub repo"</strong></li>
+                <li>Выберите репозиторий <strong>AntonKuznetsov1911/Taro</strong></li>
+                <li>Railway автоматически определит Python проект</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h2><span class="step-number">2</span> Настройте переменные окружения</h2>
+            <p>В Railway проекте перейдите во вкладку <strong>Variables</strong> и добавьте:</p>
+
+            <div class="checklist">
+                <div class="checklist-item">
+                    <strong>OPENAI_API_KEY</strong>
+                    <div class="code">sk-ваш-openai-api-key</div>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" class="btn">Получить OpenAI Key</a>
+                </div>
+
+                <div class="checklist-item">
+                    <strong>MONGO_URL</strong>
+                    <div class="code">mongodb+srv://user:password@cluster.mongodb.net/</div>
+                    <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank" class="btn">Получить MongoDB</a>
+                </div>
+
+                <div class="checklist-item">
+                    <strong>DB_NAME</strong>
+                    <div class="code">taro</div>
+                </div>
+
+                <div class="checklist-item">
+                    <strong>PORT</strong>
+                    <div class="code">8000</div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ Важно:</strong> Если у вас нет MongoDB, вы можете добавить его прямо в Railway:
+                <ul style="margin-top: 10px;">
+                    <li>Нажмите <strong>"+ New"</strong> в вашем проекте</li>
+                    <li>Выберите <strong>"Database" → "MongoDB"</strong></li>
+                    <li>Railway автоматически создаст <code>MONGO_URL</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <h2><span class="step-number">3</span> Настройте команды сборки и запуска</h2>
+            <p>Перейдите в <strong>Settings</strong> вашего сервиса:</p>
+
+            <div class="code">
+                <strong>Root Directory:</strong> / (оставьте пустым)<br><br>
+                <strong>Build Command:</strong><br>
+                pip install -r backend/requirements.txt<br><br>
+                <strong>Start Command:</strong><br>
+                cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
+            </div>
+        </div>
+
+        <div class="step">
+            <h2><span class="step-number">4</span> Разверните проект</h2>
+            <ul>
+                <li>Нажмите <strong>"Deploy"</strong></li>
+                <li>Дождитесь завершения деплоя (2-5 минут)</li>
+                <li>Проверьте логи на наличие ошибок</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h2><span class="step-number">5</span> Получите URL backend</h2>
+            <p>После успешного деплоя:</p>
+            <ul>
+                <li>Перейдите в <strong>Settings → Networking</strong></li>
+                <li>Нажмите <strong>"Generate Domain"</strong></li>
+                <li>Скопируйте URL (например: <code>taro-production.up.railway.app</code>)</li>
+            </ul>
+
+            <div class="success">
+                <strong>✅ Проверьте работу API:</strong><br>
+                Откройте в браузере: <code>https://your-app.up.railway.app/api/</code><br>
+                Должно быть: <code>{"message": "Taro API is running"}</code>
+            </div>
+        </div>
+
+        <div class="step">
+            <h2><span class="step-number">6</span> Обновите frontend</h2>
+            <p>После того как получите Railway URL, вернитесь сюда и скажите мне URL - я обновлю frontend автоматически!</p>
+
+            <div class="code">
+                Я создам файл frontend/.env с вашим backend URL<br>
+                и запушу изменения на GitHub.<br>
+                GitHub Actions автоматически пересоберет приложение.
+            </div>
+        </div>
+
+        <div class="warning">
+            <h3>📋 Чек-лист перед деплоем</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Есть OpenAI API Key (с балансом > $0)</label><br>
+                <label><input type="checkbox"> Есть MongoDB connection string</label><br>
+                <label><input type="checkbox"> Залогинен в Railway</label><br>
+                <label><input type="checkbox"> Репозиторий AntonKuznetsov1911/Taro доступен</label><br>
+            </div>
+        </div>
+
+        <div class="success">
+            <h3>🎉 После успешного деплоя</h3>
+            <p>Ваше приложение будет полностью работать на:</p>
+            <div class="code">
+                Frontend: https://antonkuznetsov1911.github.io/Taro/<br>
+                Backend: https://your-app.up.railway.app/
+            </div>
+            <p style="margin-top: 15px;">Сообщите мне Railway URL, и я завершу настройку!</p>
+        </div>
+
+        <div class="buttons-row" style="margin-top: 30px;">
+            <a href="https://railway.app/new" target="_blank" class="btn">🚀 Начать деплой на Railway</a>
+            <a href="https://platform.openai.com/api-keys" target="_blank" class="btn">🔑 Получить OpenAI Key</a>
+            <a href="https://www.mongodb.com/cloud/atlas/register" target="_blank" class="btn">🗄️ Получить MongoDB</a>
+        </div>
+    </div>
+</body>
+</html>
