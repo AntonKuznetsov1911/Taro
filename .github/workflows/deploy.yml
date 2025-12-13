@@ -35,6 +35,11 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Create .env file
+        run: |
+          cd frontend
+          echo "EXPO_PUBLIC_BACKEND_URL=https://taro-production-619b.up.railway.app" > .env
+
       - name: Build Expo web
         run: |
           cd frontend
