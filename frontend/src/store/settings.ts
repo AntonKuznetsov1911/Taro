@@ -8,31 +8,31 @@ export type SettingsState = {
   notifications: boolean;
   autoSave: boolean;
   language: 'russian' | 'english';
-  setSoundEnabled: (val: boolean) =&gt; void;
-  setVibration: (val: boolean) =&gt; void;
-  setNotifications: (val: boolean) =&gt; void;
-  setAutoSave: (val: boolean) =&gt; void;
-  setLanguage: (val: 'russian' | 'english') =&gt; void;
+  setSoundEnabled: (val: boolean) => void;
+  setVibration: (val: boolean) => void;
+  setNotifications: (val: boolean) => void;
+  setAutoSave: (val: boolean) => void;
+  setLanguage: (val: 'russian' | 'english') => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) =&gt; ({
+    (set) => ({
       soundEnabled: true,
       vibration: true,
       notifications: true,
       autoSave: true,
       language: 'russian',
-      setSoundEnabled: (val) =&gt; set({ soundEnabled: val }),
-      setVibration: (val) =&gt; set({ vibration: val }),
-      setNotifications: (val) =&gt; set({ notifications: val }),
-      setAutoSave: (val) =&gt; set({ autoSave: val }),
-      setLanguage: (val) =&gt; set({ language: val }),
+      setSoundEnabled: (val) => set({ soundEnabled: val }),
+      setVibration: (val) => set({ vibration: val }),
+      setNotifications: (val) => set({ notifications: val }),
+      setAutoSave: (val) => set({ autoSave: val }),
+      setLanguage: (val) => set({ language: val }),
     }),
     {
       name: 'taro-settings',
-      getStorage: () =&gt; AsyncStorage,
-      partialize: (state) =&gt; ({
+      getStorage: () => AsyncStorage,
+      partialize: (state) => ({
         soundEnabled: state.soundEnabled,
         vibration: state.vibration,
         notifications: state.notifications,
