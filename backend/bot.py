@@ -371,4 +371,17 @@ def main():
 
 
 if __name__ == '__main__':
+    import asyncio
+    import sys
+
+    # Fix for Python 3.10+ on Windows
+    if sys.version_info >= (3, 10) and sys.platform.startswith('win'):
+        try:
+            # Try to get event loop, if none create one
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # Create and set a new event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
     main()
