@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CosmicBackground } from '../components/CosmicBackground';
-import { CONFIG } from '../src/config';
+import { CONFIG } from '../config';
 
 const EXPO_PUBLIC_BACKEND_URL = CONFIG.BACKEND_URL;
 

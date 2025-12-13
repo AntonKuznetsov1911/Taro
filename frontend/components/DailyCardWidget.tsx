@@ -17,7 +17,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { CONFIG } from '../src/config';
+import { CONFIG } from '../config';
 
 interface DailyCard {
   id: number;

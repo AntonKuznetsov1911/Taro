@@ -1,5 +1,5 @@
 import { checkNetworkConnection } from '../hooks/useNetworkStatus';
-import { CONFIG } from '../config';
+import { CONFIG } from '../../config';
 
 const EXPO_PUBLIC_BACKEND_URL = CONFIG.BACKEND_URL;
 
