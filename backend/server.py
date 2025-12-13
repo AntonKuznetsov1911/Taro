@@ -1890,7 +1890,11 @@ async def startup_event():
     """Логирование при запуске сервера"""
     logger.info("🚀 Taro API сервер запускается...")
     logger.info(f"📦 Версия Python: {os.sys.version}")
-    logger.info(f"🗄️ База данных: {db.name}")
+
+    if db is not None:
+        logger.info(f"🗄️ База данных: {db.name}")
+    else:
+        logger.info("🗄️ База данных: Не подключена (работаем без MongoDB)")
     
     # Статус AI клиентов
     ai_status = ai_client.get_status()
