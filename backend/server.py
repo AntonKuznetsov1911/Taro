@@ -55,26 +55,26 @@ except Exception as e:
     raise
 
 # MongoDB connection with error handling
+db = None
+client = None
 try:
     mongo_url = os.environ.get('MONGO_URL')
     if not mongo_url:
-        raise ValueError("MONGO_URL не установлена в переменных окружения")
-    logger.info("✅ MONGO_URL найдена")
-    
-    db_name = os.environ.get('DB_NAME')
-    if not db_name:
-        raise ValueError("DB_NAME не установлена в переменных окружения")
-    logger.info(f"✅ DB_NAME найдена: {db_name}")
-    
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[db_name]
-    logger.info("✅ MongoDB клиент инициализирован")
-except KeyError as e:
-    logger.error(f"❌ Отсутствует обязательная переменная окружения: {e}")
-    raise
+        logger.warning("⚠️ MONGO_URL не установлена - MongoDB функции недоступны")
+    else:
+        logger.info("✅ MONGO_URL найдена")
+
+        db_name = os.environ.get('DB_NAME', 'taro')
+        logger.info(f"✅ DB_NAME: {db_name}")
+
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[db_name]
+        logger.info("✅ MongoDB клиент инициализирован")
 except Exception as e:
     logger.error(f"❌ Ошибка подключения к MongoDB: {e}")
-    raise
+    logger.warning("⚠️ Продолжаем без MongoDB - функции с базой данных будут недоступны")
+    db = None
+    client = None
 
 # Create the main app without a prefix
 app = FastAPI()
