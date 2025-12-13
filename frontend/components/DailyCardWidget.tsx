@@ -17,7 +17,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { CONFIG } from '../config';
 
 interface DailyCard {
   id: number;
@@ -34,7 +33,7 @@ interface DailyCardWidgetProps {
   onViewDetails?: () => void;
 }
 
-const EXPO_PUBLIC_BACKEND_URL = CONFIG.BACKEND_URL;
+const EXPO_PUBLIC_BACKEND_URL = 'https://taro-production-619b.up.railway.app';
 
 export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails }) => {
   const [dailyCard, setDailyCard] = useState<DailyCard | null>(null);

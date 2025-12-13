@@ -10,9 +10,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CosmicBackground } from '../components/CosmicBackground';
-import { CONFIG } from '../config';
 
-const EXPO_PUBLIC_BACKEND_URL = CONFIG.BACKEND_URL;
+const EXPO_PUBLIC_BACKEND_URL = 'https://taro-production-619b.up.railway.app';
 
 interface TarotCard {
   id: number;
