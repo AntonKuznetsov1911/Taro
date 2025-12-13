@@ -1,6 +1,7 @@
 import { checkNetworkConnection } from '../hooks/useNetworkStatus';
+import Constants from 'expo-constants';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const EXPO_PUBLIC_BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 'https://taro-production-619b.up.railway.app';
 
 export class NetworkError extends Error {
   constructor(message: string) {
