@@ -1,8 +1,7 @@
 import { checkNetworkConnection } from '../hooks/useNetworkStatus';
 
-// Backend URL - жестко закодирован для всех платформ
-const BACKEND_URL_STRING = "https://taro-production-619b.up.railway.app";
-const EXPO_PUBLIC_BACKEND_URL = BACKEND_URL_STRING;
+// ВАЖНО: URL жестко закодирован - НЕ МЕНЯТЬ
+const EXPO_PUBLIC_BACKEND_URL = "https://taro-production-619b.up.railway.app" as const;
 
 export class NetworkError extends Error {
   constructor(message: string) {
