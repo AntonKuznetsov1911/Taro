@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StarryBackground } from '../components/StarryBackground';
+import { CosmicBackground } from '../components/CosmicBackground';
 import Constants from 'expo-constants';
 
 const EXPO_PUBLIC_BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
@@ -86,7 +86,7 @@ export default function CardTestScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
-          <StarryBackground />
+          <CosmicBackground />
           <Text style={styles.loadingText}>Загрузка карты...</Text>
         </LinearGradient>
       </SafeAreaView>
@@ -99,7 +99,7 @@ export default function CardTestScreen() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        <StarryBackground />
+        <CosmicBackground />
         
         <View style={styles.content}>
           <Text style={styles.title}>🔮 Тест Карты Таро</Text>

@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
-import { StarryBackground } from '../components/StarryBackground';
+import { CosmicBackground } from '../components/CosmicBackground';
 
 interface UserProfile {
   id: string;
@@ -174,7 +174,7 @@ export default function ProfileScreen() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        <StarryBackground />
+        <CosmicBackground />
         
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

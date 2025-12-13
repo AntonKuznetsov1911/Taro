@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Constants from 'expo-constants';
-import { StarryBackground } from '../components/StarryBackground';
+import { CosmicBackground } from '../components/CosmicBackground';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -122,7 +122,7 @@ export default function PalmistryScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
-          <StarryBackground />
+          <CosmicBackground />
           <StatusBar barStyle="light-content" backgroundColor="#000011" />
           
           <View style={styles.loadingContainer}>
@@ -170,7 +170,7 @@ export default function PalmistryScreen() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        <StarryBackground />
+        <CosmicBackground />
         
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}

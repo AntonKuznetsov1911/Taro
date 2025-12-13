@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
-import { StarryBackground } from '../components/StarryBackground';
+import { CosmicBackground } from '../components/CosmicBackground';
 
 interface HoroscopeResult {
   id: string;
@@ -110,7 +110,7 @@ export default function HoroscopeScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
-          <StarryBackground />
+          <CosmicBackground />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#9B59B6" />
             <Text style={styles.loadingTitle}>Составляю ваш гороскоп...</Text>
@@ -130,7 +130,7 @@ export default function HoroscopeScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
-          <StarryBackground />
+          <CosmicBackground />
           
           <View style={styles.header}>
             <TouchableOpacity 
@@ -195,7 +195,7 @@ export default function HoroscopeScreen() {
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
-        <StarryBackground />
+        <CosmicBackground />
         
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}
