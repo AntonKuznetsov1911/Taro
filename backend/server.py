@@ -1465,7 +1465,8 @@ async def analyze_palmistry(request: PalmistryRequest):
 
     return result
 
-async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:    """Generate deep astro-psychological personality analysis based on user answers"""
+async def generate_astro_personality_analysis(answers: List[AstroAnswer], name: Optional[str] = None) -> AstroPersonalityResult:
+    """Generate deep astro-psychological personality analysis based on user answers"""
 
     # Collect all keywords and arcanas from answers
     all_keywords = []
