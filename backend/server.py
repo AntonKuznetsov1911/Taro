@@ -372,15 +372,15 @@ async def generate_palmistry_analysis(image_base64: str, question: str) -> tuple
 Создай глубокое толкование по линиям руки, которое поможет человеку понять свою судьбу и потенциал!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1200,
-            temperature=0.8
-        )
-        interpretation = response.choices[0].message.content.strip()
+        ai_text = ai_complete([
+            {"role": "system", "content": "Ты мудрая гадалка Мария. Отвечай на русском, мистично и тепло."},
+            {"role": "user", "content": prompt},
+        ], max_tokens=1200, temperature=0.8)
+        if not ai_text:
+            raise RuntimeError("AI providers unavailable")
+        interpretation = ai_text.strip()
     except Exception as e:
-        logging.error(f"OpenAI API error: {e}")
+        logging.error(f"AI error (palmistry): {e}")
         interpretation = generate_fallback_palmistry_interpretation(question)
     
     return palm_lines, interpretation
