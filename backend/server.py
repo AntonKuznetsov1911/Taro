@@ -250,13 +250,13 @@ async def generate_compatibility_analysis(name1: str, name2: str) -> tuple[int, 
 Стиль настоящей мудрой гадалки с душой!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=600,
-            temperature=0.8
-        )
-        analysis = response.choices[0].message.content.strip()
+        ai_text = ai_complete([
+            {"role": "system", "content": "Ты мудрая гадалка Мария. Отвечай на русском, мистично и тепло."},
+            {"role": "user", "content": prompt},
+        ], max_tokens=800, temperature=0.8)
+        if not ai_text:
+            raise RuntimeError("AI providers unavailable")
+        analysis = ai_text.strip()
     except Exception as e:
         # Set quota flag if quota error detected  
         if "insufficient_quota" in str(e) or "429" in str(e):
