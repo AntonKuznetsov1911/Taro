@@ -1,0 +1,20 @@
+# Railway monorepo config for TARO
+[project]
+name = "taro-app"
+
+[services.api]
+root = "backend"
+start = "uvicorn server:app --host 0.0.0.0 --port 8001"
+healthcheckPath = "/api/health"
+
+[services.web]
+root = "frontend"
+start = "python3 -m http.server 3000"
+
+[deploy]
+# Set common env via Railway Dashboard:
+# - MONGO_URL
+# - DB_NAME
+# - XAI_API_KEY
+# - ANTHROPIC_API_KEY
+# - EXPO_PUBLIC_BACKEND_URL (for web) -> https://<api-service-domain>
