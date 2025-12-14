@@ -553,26 +553,19 @@ async def generate_horoscope(user_profile: UserProfile, target_date: str) -> Hor
 Создай вдохновляющий и точный гороскоп, который поможет человеку лучше понять энергии дня!"""
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=800,
-            temperature=0.8
-        )
-        full_horoscope = response.choices[0].message.content.strip()
-        
-        # Extract sections for different forecasts
+        ai_text = ai_complete([
+            {"role": "system", "content": "Ты мудрая астролог. Отвечай на русском, подробно и тепло."},
+            {"role": "user", "content": prompt},
+        ], max_tokens=900, temperature=0.8)
+        if not ai_text:
+            raise RuntimeError("AI providers unavailable")
+        full_horoscope = ai_text.strip()
+        # Простые дефолты секций, если не распарсили
         love_forecast = "Звезды благоволят романтическим встречам и глубоким разговорам с любимыми."
         career_forecast = "Планеты поддерживают ваши профессиональные начинания и новые проекты."
         health_forecast = "Космические энергии способствуют восстановлению сил и внутренней гармонии."
-        
     except Exception as e:
-        # Set quota flag if quota error detected
-        if "insufficient_quota" in str(e) or "429" in str(e):
-            OPENAI_QUOTA_EXCEEDED = True
-            logging.warning("OpenAI quota exceeded - switching to fallback mode for future requests")
-        else:
-            logging.error(f"OpenAI API error: {e}")
+        logging.error(f"AI error (horoscope): {e}")
         full_horoscope, love_forecast, career_forecast, health_forecast = generate_fallback_horoscope(user_profile, target_date, mood_rating)
     
     return HoroscopeResult(
