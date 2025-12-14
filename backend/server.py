@@ -14,6 +14,10 @@ import random
 import base64
 import requests
 from io import BytesIO
+import asyncio
+
+# AI providers (xAI, Claude)
+from ai_providers import ai_complete
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
