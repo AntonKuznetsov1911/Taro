@@ -22,9 +22,7 @@ from ai_providers import ai_complete
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# OpenAI configuration
-from openai import OpenAI
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# AI: Using xAI/Claude via ai_providers.ai_complete
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
