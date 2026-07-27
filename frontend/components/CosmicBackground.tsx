@@ -1,11 +1,17 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 
 /**
- * Реалистичный космический фон
- * Естественное мерцание звезд, редкие падающие звезды в случайных направлениях
+ * Реалистичный космический фон в стиле Млечного Пути
+ * Живое мерцание звёзд, редкие падающие звёзды
  */
 
-const STAR_COUNT = 180;
+const STAR_LAYERS = {
+  tiny: 400,      // Мелкие далёкие звёзды
+  small: 150,     // Небольшие звёзды
+  medium: 50,     // Средние звёзды
+  bright: 20,     // Яркие крупные звёзды
+};
+
 const SHOOTING_STAR_COUNT = 3;
 
 interface Star {
@@ -13,11 +19,11 @@ interface Star {
   x: number;
   y: number;
   size: number;
-  baseOpacity: number;
-  twinkleDuration: number;
-  twinkleDelay: number;
   color: string;
-  twinkleIntensity: number;
+  opacity: number;
+  twinkleSpeed: number;
+  twinkleDelay: number;
+  layer: 'tiny' | 'small' | 'medium' | 'bright';
 }
 
 interface ShootingStar {
@@ -25,48 +31,77 @@ interface ShootingStar {
   startX: number;
   startY: number;
   angle: number;
-  speed: number;
   delay: number;
-  length: number;
+  duration: number;
 }
 
-interface Planet {
-  id: string;
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  glowColor: string;
-  driftDuration: number;
-}
+const starColors = {
+  blue: ['#a8d4ff', '#7ec8e3', '#5dade2', '#85c1e9'],
+  white: ['#ffffff', '#f8f9fa', '#ecf0f1', '#fdfefe'],
+  yellow: ['#fff3cd', '#ffeaa7', '#f9e79f', '#fcf3cf'],
+  orange: ['#ffcc80', '#ffb74d', '#ffa726', '#fb8c00'],
+};
+
+const getRandomColor = (layer: string): string => {
+  const rand = Math.random();
+  if (layer === 'bright') {
+    if (rand < 0.4) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
+    if (rand < 0.7) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+    if (rand < 0.9) return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
+    return starColors.orange[Math.floor(Math.random() * starColors.orange.length)];
+  }
+  if (rand < 0.6) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+  if (rand < 0.85) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
+  return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
+};
 
 const generateStars = (): Star[] => {
   const stars: Star[] = [];
-  const starColors = [
-    '#FFFFFF',    // Белый
-    '#FFF8E7',    // Теплый белый
-    '#E6F0FF',    // Холодный белый
-    '#FFE4C4',    // Бледно-оранжевый
-    '#B0C4DE',    // Светло-стальной
-    '#FFFAF0',    // Цветочно-белый
-  ];
 
-  for (let i = 0; i < STAR_COUNT; i++) {
-    const size = Math.random();
-    const isBright = size > 0.85;
+  const createStarsForLayer = (count: number, layer: 'tiny' | 'small' | 'medium' | 'bright') => {
+    const sizeRanges = {
+      tiny: [0.3, 0.8],
+      small: [0.8, 1.5],
+      medium: [1.5, 2.5],
+      bright: [2.5, 4],
+    };
+    const opacityRanges = {
+      tiny: [0.2, 0.5],
+      small: [0.4, 0.7],
+      medium: [0.6, 0.9],
+      bright: [0.8, 1],
+    };
 
-    stars.push({
-      id: `star-${i}`,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: isBright ? Math.random() * 2 + 1.5 : Math.random() * 1.5 + 0.3,
-      baseOpacity: isBright ? Math.random() * 0.3 + 0.7 : Math.random() * 0.5 + 0.2,
-      twinkleDuration: Math.random() * 4 + 2, // 2-6 секунд
-      twinkleDelay: Math.random() * 8,
-      color: starColors[Math.floor(Math.random() * starColors.length)],
-      twinkleIntensity: isBright ? Math.random() * 0.4 + 0.3 : Math.random() * 0.3 + 0.1,
-    });
-  }
+    for (let i = 0; i < count; i++) {
+      const [minSize, maxSize] = sizeRanges[layer];
+      const [minOpacity, maxOpacity] = opacityRanges[layer];
+
+      // Концентрация звёзд к центру (Млечный Путь)
+      let y = Math.random() * 100;
+      const milkyWayBias = Math.random();
+      if (milkyWayBias < 0.4) {
+        // 40% звёзд ближе к центральной полосе
+        y = 35 + Math.random() * 30;
+      }
+
+      stars.push({
+        id: `${layer}-${i}`,
+        x: Math.random() * 100,
+        y,
+        size: Math.random() * (maxSize - minSize) + minSize,
+        color: getRandomColor(layer),
+        opacity: Math.random() * (maxOpacity - minOpacity) + minOpacity,
+        twinkleSpeed: Math.random() * 3 + 1.5,
+        twinkleDelay: Math.random() * 5,
+        layer,
+      });
+    }
+  };
+
+  createStarsForLayer(STAR_LAYERS.tiny, 'tiny');
+  createStarsForLayer(STAR_LAYERS.small, 'small');
+  createStarsForLayer(STAR_LAYERS.medium, 'medium');
+  createStarsForLayer(STAR_LAYERS.bright, 'bright');
 
   return stars;
 };
@@ -75,108 +110,65 @@ const generateShootingStars = (): ShootingStar[] => {
   const shootingStars: ShootingStar[] = [];
 
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
-    // Случайная начальная позиция по краям экрана
-    const side = Math.floor(Math.random() * 4);
-    let startX: number, startY: number;
-    let baseAngle: number;
-
-    switch (side) {
-      case 0: // Сверху
-        startX = Math.random() * 100;
-        startY = -5;
-        baseAngle = Math.random() * 60 + 110; // 110-170 градусов (вниз)
-        break;
-      case 1: // Справа
-        startX = 105;
-        startY = Math.random() * 60;
-        baseAngle = Math.random() * 60 + 170; // 170-230 градусов (влево-вниз)
-        break;
-      case 2: // Слева
-        startX = -5;
-        startY = Math.random() * 60;
-        baseAngle = Math.random() * 60 + 290; // 290-350 или -10-50 (вправо-вниз)
-        break;
-      default: // Сверху справа
-        startX = Math.random() * 40 + 60;
-        startY = -5;
-        baseAngle = Math.random() * 40 + 200; // 200-240 градусов (влево-вниз)
-    }
+    const startFromTop = Math.random() < 0.7;
 
     shootingStars.push({
       id: `shooting-${i}`,
-      startX,
-      startY,
-      angle: baseAngle,
-      speed: Math.random() * 1.5 + 0.8, // Скорость пролета
-      delay: Math.random() * 25 + i * 12, // Большие интервалы между звездами
-      length: Math.random() * 40 + 30,
+      startX: startFromTop ? Math.random() * 80 + 10 : (Math.random() < 0.5 ? -5 : 105),
+      startY: startFromTop ? -5 : Math.random() * 40,
+      angle: startFromTop ? Math.random() * 40 + 110 : (Math.random() < 0.5 ? Math.random() * 40 + 20 : Math.random() * 40 + 120),
+      delay: Math.random() * 20 + i * 15,
+      duration: Math.random() * 1.5 + 1,
     });
   }
 
   return shootingStars;
 };
 
-const generatePlanets = (): Planet[] => {
-  return [
-    {
-      id: 'planet-1',
-      x: 85,
-      y: 15,
-      size: 25,
-      color: '#8B4513',
-      glowColor: 'rgba(139, 69, 19, 0.2)',
-      driftDuration: 120,
-    },
-    {
-      id: 'planet-2',
-      x: 12,
-      y: 72,
-      size: 18,
-      color: '#CD853F',
-      glowColor: 'rgba(205, 133, 63, 0.15)',
-      driftDuration: 150,
-    },
-  ];
-};
-
 export const CosmicBackground: React.FC = () => {
   const stars = useMemo(() => generateStars(), []);
   const shootingStars = useMemo(() => generateShootingStars(), []);
-  const planets = useMemo(() => generatePlanets(), []);
 
   useEffect(() => {
-    const styleId = 'cosmic-background-styles';
+    const styleId = 'cosmic-milkyway-styles';
     if (!document.getElementById(styleId)) {
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent = `
-        @keyframes realisticTwinkle {
+        @keyframes twinkleTiny {
+          0%, 100% { opacity: var(--base-opacity); }
+          50% { opacity: calc(var(--base-opacity) * 0.3); }
+        }
+
+        @keyframes twinkleSmall {
+          0%, 100% { opacity: var(--base-opacity); transform: scale(1); }
+          25% { opacity: calc(var(--base-opacity) * 0.5); }
+          50% { opacity: var(--base-opacity); transform: scale(1.1); }
+          75% { opacity: calc(var(--base-opacity) * 0.6); }
+        }
+
+        @keyframes twinkleBright {
           0%, 100% {
             opacity: var(--base-opacity);
             transform: scale(1);
+            box-shadow: 0 0 var(--glow-size) var(--star-color);
           }
           25% {
-            opacity: calc(var(--base-opacity) - var(--twinkle-intensity) * 0.5);
-            transform: scale(0.95);
+            opacity: calc(var(--base-opacity) * 0.7);
+            transform: scale(0.9);
           }
           50% {
-            opacity: calc(var(--base-opacity) + var(--twinkle-intensity));
-            transform: scale(1.1);
+            opacity: 1;
+            transform: scale(1.2);
+            box-shadow: 0 0 calc(var(--glow-size) * 1.5) var(--star-color);
           }
           75% {
-            opacity: calc(var(--base-opacity) - var(--twinkle-intensity) * 0.3);
-            transform: scale(0.98);
+            opacity: calc(var(--base-opacity) * 0.8);
+            transform: scale(1.05);
           }
         }
 
-        @keyframes subtleTwinkle {
-          0%, 100% { opacity: var(--base-opacity); }
-          30% { opacity: calc(var(--base-opacity) * 0.7); }
-          60% { opacity: calc(var(--base-opacity) * 1.2); }
-          80% { opacity: calc(var(--base-opacity) * 0.85); }
-        }
-
-        @keyframes shootingStarFly {
+        @keyframes shootingStar {
           0% {
             transform: translate(0, 0) rotate(var(--angle));
             opacity: 0;
@@ -184,7 +176,7 @@ export const CosmicBackground: React.FC = () => {
           5% {
             opacity: 1;
           }
-          85% {
+          80% {
             opacity: 0.8;
           }
           100% {
@@ -193,62 +185,45 @@ export const CosmicBackground: React.FC = () => {
           }
         }
 
-        @keyframes planetDrift {
-          0%, 100% {
-            transform: translate(0, 0);
-          }
-          25% {
-            transform: translate(3px, -2px);
-          }
-          50% {
-            transform: translate(-1px, 4px);
-          }
-          75% {
-            transform: translate(-2px, -1px);
-          }
+        @keyframes nebulaGlow {
+          0%, 100% { opacity: 0.15; filter: blur(60px); }
+          50% { opacity: 0.25; filter: blur(70px); }
         }
 
-        @keyframes nebulaBreath {
-          0%, 100% {
-            opacity: 0.06;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.12;
-            transform: scale(1.05);
-          }
+        .star-tiny {
+          animation: twinkleTiny ease-in-out infinite;
         }
 
-        .realistic-star {
-          animation: realisticTwinkle ease-in-out infinite;
+        .star-small {
+          animation: twinkleSmall ease-in-out infinite;
         }
 
-        .subtle-star {
-          animation: subtleTwinkle ease-in-out infinite;
+        .star-medium {
+          animation: twinkleBright ease-in-out infinite;
         }
 
-        .shooting-star-element {
-          animation: shootingStarFly linear infinite;
+        .star-bright {
+          animation: twinkleBright ease-in-out infinite;
         }
 
-        .shooting-star-element::before {
+        .shooting-star {
+          animation: shootingStar linear infinite;
+        }
+
+        .shooting-star::before {
           content: '';
           position: absolute;
           width: var(--tail-length);
-          height: 1px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,0.3), transparent);
+          height: 1.5px;
+          background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.4), transparent);
           right: 100%;
           top: 50%;
           transform: translateY(-50%);
-          border-radius: 50%;
+          border-radius: 2px;
         }
 
-        .planet-element {
-          animation: planetDrift ease-in-out infinite;
-        }
-
-        .nebula-element {
-          animation: nebulaBreath ease-in-out infinite;
+        .nebula-cloud {
+          animation: nebulaGlow 15s ease-in-out infinite;
         }
       `;
       document.head.appendChild(style);
@@ -266,82 +241,90 @@ export const CosmicBackground: React.FC = () => {
         overflow: 'hidden',
         zIndex: 0,
         pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, #000005 0%, #0a0a15 30%, #0d0d1a 60%, #12101f 100%)',
+        background: 'linear-gradient(to bottom, #000000 0%, #050510 30%, #0a0a18 50%, #050510 70%, #000000 100%)',
       }}
     >
-      {/* Тонкие туманности */}
+      {/* Млечный Путь - центральная полоса */}
       <div
-        className="nebula-element"
+        style={{
+          position: 'absolute',
+          left: '-10%',
+          top: '30%',
+          width: '120%',
+          height: '40%',
+          background: `
+            radial-gradient(ellipse 100% 100% at 30% 50%, rgba(255, 220, 180, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse 100% 100% at 70% 50%, rgba(200, 180, 160, 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse 120% 80% at 50% 50%, rgba(180, 160, 140, 0.04) 0%, transparent 60%)
+          `,
+          filter: 'blur(30px)',
+          transform: 'rotate(-5deg)',
+        }}
+      />
+
+      {/* Тёмные пылевые полосы */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '0%',
+          top: '42%',
+          width: '100%',
+          height: '16%',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 20%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.4) 80%, transparent 100%)',
+          filter: 'blur(15px)',
+          transform: 'rotate(-3deg)',
+        }}
+      />
+
+      {/* Цветные туманности */}
+      <div
+        className="nebula-cloud"
         style={{
           position: 'absolute',
           left: '5%',
-          top: '10%',
-          width: '250px',
-          height: '250px',
+          top: '35%',
+          width: '200px',
+          height: '150px',
+          background: 'radial-gradient(ellipse, rgba(180, 100, 80, 0.2) 0%, transparent 70%)',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(100, 50, 120, 0.08) 0%, transparent 70%)',
-          filter: 'blur(40px)',
-          animationDuration: '35s',
         }}
       />
       <div
-        className="nebula-element"
+        className="nebula-cloud"
         style={{
           position: 'absolute',
           right: '10%',
-          bottom: '25%',
-          width: '300px',
-          height: '300px',
+          top: '40%',
+          width: '250px',
+          height: '180px',
+          background: 'radial-gradient(ellipse, rgba(200, 150, 100, 0.15) 0%, transparent 70%)',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(40, 60, 100, 0.06) 0%, transparent 70%)',
-          filter: 'blur(50px)',
-          animationDuration: '45s',
-          animationDelay: '10s',
+          animationDelay: '5s',
         }}
       />
       <div
-        className="nebula-element"
+        className="nebula-cloud"
         style={{
           position: 'absolute',
-          left: '40%',
-          top: '50%',
-          width: '200px',
-          height: '200px',
+          left: '30%',
+          top: '45%',
+          width: '180px',
+          height: '120px',
+          background: 'radial-gradient(ellipse, rgba(100, 80, 120, 0.12) 0%, transparent 70%)',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(80, 40, 80, 0.05) 0%, transparent 70%)',
-          filter: 'blur(35px)',
-          animationDuration: '55s',
-          animationDelay: '20s',
+          animationDelay: '10s',
         }}
       />
 
-      {/* Далекие планеты */}
-      {planets.map((planet) => (
-        <div
-          key={planet.id}
-          className="planet-element"
-          style={{
-            position: 'absolute',
-            left: `${planet.x}%`,
-            top: `${planet.y}%`,
-            width: planet.size,
-            height: planet.size,
-            borderRadius: '50%',
-            background: `radial-gradient(circle at 35% 35%, ${planet.color}90 0%, ${planet.color}60 50%, ${planet.color}30 100%)`,
-            boxShadow: `0 0 ${planet.size / 2}px ${planet.glowColor}`,
-            animationDuration: `${planet.driftDuration}s`,
-            opacity: 0.6,
-          }}
-        />
-      ))}
-
-      {/* Звезды с реалистичным мерцанием */}
+      {/* Звёзды по слоям */}
       {stars.map((star) => {
-        const isBright = star.size > 1.5;
+        const glowSize = star.layer === 'bright' ? star.size * 4 :
+                        star.layer === 'medium' ? star.size * 2 : star.size;
+
         return (
           <div
             key={star.id}
-            className={isBright ? 'realistic-star' : 'subtle-star'}
+            className={`star-${star.layer}`}
             style={{
               position: 'absolute',
               left: `${star.x}%`,
@@ -350,70 +333,52 @@ export const CosmicBackground: React.FC = () => {
               height: star.size,
               borderRadius: '50%',
               backgroundColor: star.color,
-              boxShadow: isBright
-                ? `0 0 ${star.size * 2}px ${star.color}80, 0 0 ${star.size}px ${star.color}`
-                : `0 0 ${star.size}px ${star.color}60`,
-              animationDuration: `${star.twinkleDuration}s`,
+              boxShadow: star.layer === 'bright' || star.layer === 'medium'
+                ? `0 0 ${glowSize}px ${star.color}`
+                : 'none',
+              animationDuration: `${star.twinkleSpeed}s`,
               animationDelay: `${star.twinkleDelay}s`,
-              '--base-opacity': star.baseOpacity,
-              '--twinkle-intensity': star.twinkleIntensity,
+              '--base-opacity': star.opacity,
+              '--star-color': star.color,
+              '--glow-size': `${glowSize}px`,
               pointerEvents: 'none',
             } as React.CSSProperties}
           />
         );
       })}
 
-      {/* Падающие звезды - редкие и в разных направлениях */}
+      {/* Падающие звёзды */}
       {shootingStars.map((star) => {
         const radians = (star.angle * Math.PI) / 180;
-        const travelDistance = 150;
+        const travelDistance = 120;
         const travelX = Math.cos(radians) * travelDistance;
         const travelY = Math.sin(radians) * travelDistance;
-        const duration = travelDistance / (star.speed * 50);
 
         return (
           <div
             key={star.id}
-            className="shooting-star-element"
+            className="shooting-star"
             style={{
               position: 'absolute',
               left: `${star.startX}%`,
               top: `${star.startY}%`,
-              width: 2,
-              height: 2,
+              width: 3,
+              height: 3,
               borderRadius: '50%',
-              backgroundColor: '#FFFFFF',
-              boxShadow: '0 0 4px #FFFFFF, 0 0 8px rgba(255,255,255,0.5)',
-              animationDuration: `${duration + 20}s`,
+              backgroundColor: '#ffffff',
+              boxShadow: '0 0 6px #ffffff, 0 0 12px rgba(255,255,255,0.5)',
+              animationDuration: `${star.duration + 25}s`,
               animationDelay: `${star.delay}s`,
               '--angle': `${star.angle - 180}deg`,
               '--travel-x': `${travelX}vw`,
               '--travel-y': `${travelY}vh`,
-              '--tail-length': `${star.length}px`,
+              '--tail-length': '50px',
               pointerEvents: 'none',
-              zIndex: 2,
+              zIndex: 5,
             } as React.CSSProperties}
           />
         );
       })}
-
-      {/* Очень далекие мелкие звезды - статичные */}
-      {[...Array(50)].map((_, i) => (
-        <div
-          key={`distant-${i}`}
-          style={{
-            position: 'absolute',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            width: 0.5,
-            height: 0.5,
-            borderRadius: '50%',
-            backgroundColor: '#FFFFFF',
-            opacity: Math.random() * 0.3 + 0.1,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
     </div>
   );
 };
