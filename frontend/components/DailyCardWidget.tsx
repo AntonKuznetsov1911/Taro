@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,84 +16,51 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack } from '../src/utils/offlineApi';
+import { TarotCard } from '../src/data/tarotCards';
 
-interface DailyCard {
-  id: number;
-  name: string;
-  type: string;
-  image?: string;
-  keywords: string[];
-  upright_meaning: string;
-  is_reversed: boolean;
+interface DailyCardData {
+  card: TarotCard;
   message: string;
+  is_reversed: boolean;
 }
 
 interface DailyCardWidgetProps {
   onViewDetails?: () => void;
 }
 
-const EXPO_PUBLIC_BACKEND_URL = 'https://taro-production-619b.up.railway.app';
-
 export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails }) => {
-  const [dailyCard, setDailyCard] = useState<DailyCard | null>(null);
+  const [dailyCard, setDailyCard] = useState<DailyCardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
-  const [lastFetchDate, setLastFetchDate] = useState<string | null>(null);
+  const [cardBackImage, setCardBackImage] = useState<string>('');
+  const [cardFrontImage, setCardFrontImage] = useState<string>('');
 
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
   const rotateY = useSharedValue(0);
 
   useEffect(() => {
-    checkAndFetchDailyCard();
+    loadDailyCard();
   }, []);
 
   useEffect(() => {
-    // Entrance animation
     scale.value = withSpring(1, { damping: 12, stiffness: 100 });
     opacity.value = withTiming(1, { duration: 500 });
   }, []);
 
-  const checkAndFetchDailyCard = async () => {
-    const today = new Date().toDateString();
-
-    // Check if we already have today's card in storage
-    // In a real app, you'd use AsyncStorage here
-    const storedDate = lastFetchDate;
-
-    if (storedDate === today && dailyCard) {
-      setRevealed(true);
-      setIsLoading(false);
-      return;
-    }
-
-    await fetchDailyCard();
-  };
-
-  const fetchDailyCard = async () => {
+  const loadDailyCard = async () => {
     try {
-      // In a real implementation, this would be a dedicated endpoint
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/daily-card`);
+      const cardBack = await getOfflineCardBack();
+      setCardBackImage(cardBack);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch daily card');
-      }
-
-      const data = await response.json();
+      const data = await getOfflineDailyCard();
       setDailyCard(data);
-      setLastFetchDate(new Date().toDateString());
+
+      const cardImage = generateTarotCardSVG(data.card, data.is_reversed);
+      setCardFrontImage(cardImage);
     } catch (error) {
-      console.error('Error fetching daily card:', error);
-      // Fallback to a random motivational message
-      setDailyCard({
-        id: 0,
-        name: 'Карта дня',
-        type: 'major',
-        keywords: ['вдохновение', 'рост', 'возможности'],
-        upright_meaning: 'Сегодня день полон возможностей',
-        is_reversed: false,
-        message: 'Доверьтесь процессу и будьте открыты новому!',
-      });
+      console.error('Ошибка загрузки карты дня:', error);
     } finally {
       setIsLoading(false);
     }
@@ -153,22 +119,30 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
         {!revealed ? (
           <TouchableOpacity onPress={handleReveal} activeOpacity={0.8}>
             <Animated.View style={[styles.cardPreview, cardStyle]}>
-              <LinearGradient
-                colors={['#2C3E50', '#34495E']}
-                style={styles.cardBack}
-              >
-                <Ionicons name="sparkles" size={40} color="#FFD700" />
-                <Text style={styles.revealText}>Нажмите, чтобы открыть</Text>
-                <Text style={styles.revealSubtext}>вашу карту дня</Text>
-              </LinearGradient>
+              {cardBackImage ? (
+                <Image
+                  source={{ uri: cardBackImage }}
+                  style={styles.cardBackImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#2C3E50', '#34495E']}
+                  style={styles.cardBack}
+                >
+                  <Ionicons name="sparkles" size={40} color="#FFD700" />
+                  <Text style={styles.revealText}>Нажмите, чтобы открыть</Text>
+                  <Text style={styles.revealSubtext}>вашу карту дня</Text>
+                </LinearGradient>
+              )}
             </Animated.View>
           </TouchableOpacity>
         ) : (
           <Animated.View style={cardStyle}>
             <View style={styles.revealedCard}>
-              {dailyCard.image ? (
+              {cardFrontImage ? (
                 <Image
-                  source={{ uri: dailyCard.image }}
+                  source={{ uri: cardFrontImage }}
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
@@ -177,20 +151,20 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
                   colors={['#9B59B6', '#8E44AD']}
                   style={styles.cardImageFallback}
                 >
-                  <Text style={styles.cardName}>{dailyCard.name}</Text>
+                  <Text style={styles.cardNameFallback}>{dailyCard.card.name}</Text>
                 </LinearGradient>
               )}
 
               <View style={styles.cardInfo}>
-                <Text style={styles.cardTitle}>{dailyCard.name}</Text>
+                <Text style={styles.cardTitle}>{dailyCard.card.name}</Text>
                 {dailyCard.is_reversed && (
-                  <Text style={styles.reversedText}>⚌ Перевёрнутая</Text>
+                  <Text style={styles.reversedText}>⟲ Перевёрнутая</Text>
                 )}
 
-                <Text style={styles.message}>{dailyCard.message || dailyCard.upright_meaning}</Text>
+                <Text style={styles.message}>{dailyCard.message}</Text>
 
                 <View style={styles.keywords}>
-                  {dailyCard.keywords.slice(0, 3).map((keyword, index) => (
+                  {dailyCard.card.keywords.slice(0, 3).map((keyword, index) => (
                     <View key={index} style={styles.keywordBadge}>
                       <Text style={styles.keywordText}>{keyword}</Text>
                     </View>
@@ -266,9 +240,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cardPreview: {
-    height: 140,
+    height: 160,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  cardBackImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   cardBack: {
     flex: 1,
@@ -291,19 +270,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardImage: {
-    width: 80,
-    height: 120,
+    width: 100,
+    height: 150,
     borderRadius: 8,
   },
   cardImageFallback: {
-    width: 80,
-    height: 120,
+    width: 100,
+    height: 150,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 8,
   },
-  cardName: {
+  cardNameFallback: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#FFF',
