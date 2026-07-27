@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -8,20 +8,17 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
-  Image,
+  Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { DailyCardWidget } from '../components/DailyCardWidget';
+import { CosmicBackground } from '../components/CosmicBackground';
 
-// Base64 изображения таро The Lovers
-const TAROT_LOVERS_BASE64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKRwqFyI0NDMrKy8vLzBAMD8/Pz8/QEA=';
-
-const { width } = Dimensions.get('window');
-
-// ВАРИАНТ 1: КОСМИЧЕСКИЙ МИСТИЦИЗМ
-// Элегантный дизайн с акцентом на космические элементы, звезды, туманности
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - 60) / 2;
 
 interface Category {
   id: string;
@@ -39,10 +36,10 @@ interface Spread {
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'love', name: 'Любовь', icon: '💫', color: '#FF6B9D', gradient: ['rgba(255, 107, 157, 0.4)', 'rgba(255, 142, 155, 0.5)', 'rgba(196, 69, 105, 0.6)'], description: 'Вопросы сердца' },
-  { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['rgba(78, 205, 196, 0.4)', 'rgba(69, 183, 209, 0.5)', 'rgba(38, 160, 180, 0.6)'], description: 'Профессиональный путь' },
-  { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['rgba(69, 183, 209, 0.4)', 'rgba(93, 173, 226, 0.5)', 'rgba(46, 134, 171, 0.6)'], description: 'Денежная энергия' },
-  { id: 'general', name: 'Общие', icon: '🌟', color: '#9B59B6', gradient: ['rgba(155, 89, 182, 0.4)', 'rgba(187, 107, 217, 0.5)', 'rgba(108, 52, 131, 0.6)'], description: 'Жизненные вопросы' }
+  { id: 'love', name: 'Любовь', icon: '💕', color: '#FF6B9D', gradient: ['rgba(255, 107, 157, 0.5)', 'rgba(255, 142, 155, 0.6)', 'rgba(196, 69, 105, 0.7)'], description: 'Вопросы сердца' },
+  { id: 'career', name: 'Карьера', icon: '⭐', color: '#4ECDC4', gradient: ['rgba(78, 205, 196, 0.5)', 'rgba(69, 183, 209, 0.6)', 'rgba(38, 160, 180, 0.7)'], description: 'Профессиональный путь' },
+  { id: 'finance', name: 'Финансы', icon: '✨', color: '#45B7D1', gradient: ['rgba(69, 183, 209, 0.5)', 'rgba(93, 173, 226, 0.6)', 'rgba(46, 134, 171, 0.7)'], description: 'Денежная энергия' },
+  { id: 'general', name: 'Общие', icon: '🔮', color: '#9B59B6', gradient: ['rgba(155, 89, 182, 0.5)', 'rgba(187, 107, 217, 0.6)', 'rgba(108, 52, 131, 0.7)'], description: 'Жизненные вопросы' }
 ];
 
 const SPREADS: Spread[] = [
@@ -51,80 +48,208 @@ const SPREADS: Spread[] = [
   { id: 'celtic_cross', name: 'Кельтский крест', description: 'Детальный анализ ситуации' }
 ];
 
+interface MysticFeature {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  route: string;
+  color: string;
+}
+
+const MYSTIC_FEATURES: MysticFeature[] = [
+  { id: 'compatibility', name: 'Гармония имен', icon: '💎', description: 'Звездная совместимость', route: '/compatibility', color: '#E74C3C' },
+  { id: 'palmistry', name: 'Хиромантия', icon: '🤲', description: 'Гадание по ладони', route: '/camera', color: '#45B7D1' },
+  { id: 'horoscope', name: 'Гороскоп', icon: '🌟', description: 'Прогноз на сегодня', route: '/horoscope', color: '#FFC107' },
+  { id: 'astro', name: 'Астропсихология', icon: '✨', description: 'Портрет личности', route: '/astro-personality', color: '#9B59B6' },
+  { id: 'runes', name: 'Руны', icon: 'ᚠ', description: 'Оракул викингов', route: '/runes', color: '#3498DB' },
+  { id: 'numerology', name: 'Нумерология', icon: '🔢', description: 'Число судьбы', route: '/numerology', color: '#2ECC71' },
+  { id: 'deck', name: 'Каталог колоды', icon: '🃏', description: 'Все 78 карт', route: '/deck', color: '#9B59B6' },
+];
+
+// Animated Category Card Component
+const CategoryCard = ({ category, isSelected, onPress, index }: {
+  category: Category;
+  isSelected: boolean;
+  onPress: () => void;
+  index: number;
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateYAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={[
+        styles.categoryCardWrapper,
+        {
+          opacity: opacityAnim,
+          transform: [{ scale: scaleAnim }, { translateY: translateYAnim }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <LinearGradient
+          colors={category.gradient as any}
+          style={styles.categoryGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.categoryContent}>
+            <Text style={styles.categoryIcon}>{category.icon}</Text>
+            <Text style={styles.categoryName}>{category.name}</Text>
+            <Text style={styles.categoryDescription}>{category.description}</Text>
+            {isSelected && (
+              <View style={styles.selectedIndicator}>
+                <Ionicons name="checkmark-circle" size={20} color="#FFD700" />
+              </View>
+            )}
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Animated Feature Button Component
+const FeatureButton = ({ feature, index }: { feature: MysticFeature; index: number }) => {
+  const router = useRouter();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const translateXAnim = useRef(new Animated.Value(-30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateXAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={{
+        opacity: opacityAnim,
+        transform: [{ scale: scaleAnim }, { translateX: translateXAnim }],
+      }}
+    >
+      <TouchableOpacity
+        style={styles.featureButton}
+        onPress={() => router.push(feature.route as any)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <LinearGradient
+          colors={[
+            'rgba(255, 255, 255, 0.15)',
+            'rgba(255, 255, 255, 0.05)',
+            `${feature.color}30`,
+          ]}
+          style={styles.featureGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.featureIcon}>{feature.icon}</Text>
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureName}>{feature.name}</Text>
+            <Text style={styles.featureDescription}>{feature.description}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export default function CosmicIndex() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
-  const CategoryCard = ({ category }: { category: Category }) => (
-    <TouchableOpacity
-      style={styles.categoryCard}
-      onPress={() => setSelectedCategory(category.id)}
-      activeOpacity={0.8}
-    >
-      <LinearGradient
-        colors={category.gradient}
-        style={styles.categoryGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-          <View style={styles.categoryBlur}>
-            <Text style={styles.categoryIcon}>{category.icon}</Text>
-            <Text style={styles.categoryName}>{category.name}</Text>
-            <Text style={styles.categoryDescription}>{category.description}</Text>
-            {selectedCategory === category.id && (
-              <View style={styles.selectedCategoryIndicator}>
-                <View style={styles.crystalGlassIndicator}>
-                  <LinearGradient
-                    colors={[
-                      'rgba(255, 255, 255, 0.6)',
-                      'rgba(255, 255, 255, 0.2)',
-                      'rgba(255, 255, 255, 0.4)',
-                    ]}
-                    style={styles.crystalGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  />
-                  <View style={styles.crystalReflection} />
-                </View>
-              </View>
-            )}
-          </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+  // Header animation
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleScale = useRef(new Animated.Value(0.8)).current;
 
-  const SpreadCard = ({ spread }: { spread: Spread }) => (
-    <TouchableOpacity
-      style={[styles.spreadCard, selectedSpread === spread.id && styles.selectedSpreadCard]}
-      onPress={() => setSelectedSpread(spread.id)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.spreadContent}>
-        <Text style={[styles.spreadName, selectedSpread === spread.id && styles.selectedSpreadName]}>
-          {spread.name}
-        </Text>
-        <Text style={styles.spreadDescription}>{spread.description}</Text>
-        {selectedSpread === spread.id && (
-          <View style={styles.selectedIndicator}>
-            <View style={styles.crystalGlassIndicator}>
-              <LinearGradient
-                colors={[
-                  'rgba(255, 255, 255, 0.6)',
-                  'rgba(255, 255, 255, 0.2)',
-                  'rgba(255, 255, 255, 0.4)',
-                ]}
-                style={styles.crystalGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <View style={styles.crystalReflection} />
-            </View>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(titleScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const startReading = () => {
     if (selectedCategory && selectedSpread) {
@@ -136,37 +261,53 @@ export default function CosmicIndex() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-      
-      <LinearGradient
-        colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
-        style={styles.background}
-      >
-        <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+
+      {/* Cosmic Background */}
+      <CosmicBackground />
+
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.cosmicTitleContainer}>
-              <Text style={styles.mainTitle}>ТARO</Text>
-              <View style={styles.cosmicSubtitle}>
-                <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
-              </View>
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                opacity: titleOpacity,
+                transform: [{ scale: titleScale }],
+              }
+            ]}
+          >
+            <Text style={styles.mainTitle}>ТARO</Text>
+            <View style={styles.subtitleContainer}>
+              <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
             </View>
-          </View>
+          </Animated.View>
 
           {/* Daily Card Widget */}
-          <DailyCardWidget />
+          <View style={styles.widgetContainer}>
+            <DailyCardWidget />
+          </View>
 
           {/* Category Selection */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Выберите область гадания</Text>
-              <Text style={styles.sectionSubtitle}>Звезды подскажут путь к ответам</Text>
-            </View>
-            
+            <Text style={styles.sectionTitle}>Выберите область гадания</Text>
+            <Text style={styles.sectionSubtitle}>Звезды подскажут путь к ответам</Text>
+
             <View style={styles.categoriesGrid}>
-              {CATEGORIES.map((category) => (
-                <CategoryCard key={category.id} category={category} />
+              {CATEGORIES.map((category, index) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  isSelected={selectedCategory === category.id}
+                  onPress={() => setSelectedCategory(category.id)}
+                  index={index}
+                />
               ))}
             </View>
           </View>
@@ -174,509 +315,217 @@ export default function CosmicIndex() {
           {/* Spread Selection */}
           {selectedCategory && (
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Выберите расклад</Text>
-                <Text style={styles.sectionSubtitle}>Различные способы получить ответы</Text>
-              </View>
-              
-              {SPREADS.map((spread) => (
-                <SpreadCard key={spread.id} spread={spread} />
+              <Text style={styles.sectionTitle}>Выберите расклад</Text>
+              <Text style={styles.sectionSubtitle}>Различные способы получить ответы</Text>
+
+              {SPREADS.map((spread, index) => (
+                <TouchableOpacity
+                  key={spread.id}
+                  style={[
+                    styles.spreadCard,
+                    selectedSpread === spread.id && styles.spreadCardSelected
+                  ]}
+                  onPress={() => setSelectedSpread(spread.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.spreadContent}>
+                    <Text style={[
+                      styles.spreadName,
+                      selectedSpread === spread.id && styles.spreadNameSelected
+                    ]}>
+                      {spread.name}
+                    </Text>
+                    <Text style={styles.spreadDescription}>{spread.description}</Text>
+                  </View>
+                  {selectedSpread === spread.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#9B59B6" />
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Main Reading Button */}
+          {/* Start Reading Button */}
           {selectedCategory && selectedSpread && (
-            <View style={styles.quickSection}>
-              <TouchableOpacity style={styles.mainReadingButton} onPress={startReading}>
+            <View style={styles.actionSection}>
+              <TouchableOpacity
+                style={styles.startButton}
+                onPress={startReading}
+                activeOpacity={0.8}
+              >
                 <LinearGradient
-                  colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)', 'rgba(41, 128, 185, 1)']}
-                  style={styles.quickButtonGradient}
+                  colors={['#9B59B6', '#8E44AD', '#6C3483']}
+                  style={styles.startButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                 >
                   <Ionicons name="sparkles" size={24} color="#FFF" />
-                  <Text style={styles.quickButtonText}>Начать гадание</Text>
-                  <Text style={styles.quickButtonSubtext}>Получить полное толкование</Text>
+                  <Text style={styles.startButtonText}>Начать гадание</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Cosmic Compatibility */}
-          <View style={styles.compatibilitySection}>
-            <Text style={styles.compatibilityTitle}>Мистические практики</Text>
-            
-            {/* Name Harmony Button */}
-            <TouchableOpacity 
-              style={styles.compatibilityButton} 
-              onPress={() => router.push('/compatibility')}
-            >
-              <View style={styles.diamondGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(231, 76, 60, 0.2)'
-                  ]}
-                  style={styles.diamondGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>💎</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Гармония имен</Text>
-                    <Text style={styles.compatibilitySubtext}>Звездная совместимость по именам</Text>
-                  </View>
-                </LinearGradient>
-                
-                {/* Алмазные грани - reflections */}
-                <View style={styles.diamondFacet1} />
-                <View style={styles.diamondFacet2} />
-                <View style={styles.diamondFacet3} />
-                <View style={styles.diamondFacet4} />
-                
-                {/* Центральный бриллиантовый блик */}
-                <View style={styles.diamondSparkle}>
-                  <LinearGradient
-                    colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.3)']}
-                    style={styles.sparkleGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
+          {/* Mystic Features */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Мистические практики</Text>
 
-            {/* Palmistry Button */}
-            <TouchableOpacity 
-              style={[styles.compatibilityButton, styles.palmistryButton]} 
-              onPress={() => router.push('/camera')}
-            >
-              <View style={styles.palmistryGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(69, 183, 209, 0.2)'
-                  ]}
-                  style={styles.palmistryGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>🤲</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Хиромантия</Text>
-                    <Text style={styles.compatibilitySubtext}>Гадание по линиям ладони</Text>
-                  </View>
-                </LinearGradient>
-                
-                {/* Мистические линии как у ладони */}
-                <View style={styles.palmLine1} />
-                <View style={styles.palmLine2} />
-                <View style={styles.palmLine3} />
-                <View style={styles.palmLine4} />
-                
-                {/* Центральный мистический символ */}
-                <View style={styles.palmSymbol}>
-                  <LinearGradient
-                    colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 0.6)']}
-                    style={styles.palmSymbolGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Horoscope Button */}
-            <TouchableOpacity 
-              style={[styles.compatibilityButton, styles.horoscopeButton]} 
-              onPress={() => router.push('/horoscope')}
-            >
-              <View style={styles.horoscopeGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(255, 193, 7, 0.2)'
-                  ]}
-                  style={styles.horoscopeGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>🌟</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Гороскоп</Text>
-                    <Text style={styles.compatibilitySubtext}>Персональный прогноз на сегодня</Text>
-                  </View>
-                </LinearGradient>
-                
-                {/* Звездные созвездия */}
-                <View style={styles.star1} />
-                <View style={styles.star2} />
-                <View style={styles.star3} />
-                <View style={styles.star4} />
-                <View style={styles.star5} />
-                
-                {/* Центральная звезда */}
-                <View style={styles.centerStar}>
-                  <LinearGradient
-                    colors={['rgba(255, 193, 7, 0.9)', 'rgba(255, 152, 0, 0.6)']}
-                    style={styles.centerStarGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Astro-Personality Button */}
-            <TouchableOpacity
-              style={[styles.compatibilityButton, { marginTop: 15 }]}
-              onPress={() => router.push('/astro-personality')}
-            >
-              <View style={styles.astroGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(155, 89, 182, 0.2)'
-                  ]}
-                  style={styles.astroGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>✨</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Астропсихология</Text>
-                    <Text style={styles.compatibilitySubtext}>Уникальный портрет личности</Text>
-                  </View>
-                </LinearGradient>
-
-                <View style={styles.cosmicOrb1} />
-                <View style={styles.cosmicOrb2} />
-                <View style={styles.cosmicOrb3} />
-                <View style={styles.centerCosmicGlow}>
-                  <LinearGradient
-                    colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 0.6)']}
-                    style={styles.cosmicGlowGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Runes Button */}
-            <TouchableOpacity
-              style={[styles.compatibilityButton, { marginTop: 15 }]}
-              onPress={() => router.push('/runes')}
-            >
-              <View style={styles.runesGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(52, 152, 219, 0.2)'
-                  ]}
-                  style={styles.runesGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>ᚠ</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Руны</Text>
-                    <Text style={styles.compatibilitySubtext}>Древний оракул викингов</Text>
-                  </View>
-                </LinearGradient>
-                <View style={styles.runeSymbol1} />
-                <View style={styles.runeSymbol2} />
-                <View style={styles.runeSymbol3} />
-              </View>
-            </TouchableOpacity>
-
-            {/* Numerology Button */}
-            <TouchableOpacity
-              style={[styles.compatibilityButton, { marginTop: 15 }]}
-              onPress={() => router.push('/numerology')}
-            >
-              <View style={styles.numerologyGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(46, 204, 113, 0.2)'
-                  ]}
-                  style={styles.numerologyGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>🔢</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Нумерология</Text>
-                    <Text style={styles.compatibilitySubtext}>Тайна вашего числа судьбы</Text>
-                  </View>
-                </LinearGradient>
-
-                <View style={styles.number1} />
-                <View style={styles.number2} />
-                <View style={styles.number3} />
-                <View style={styles.centerNumber}>
-                  <LinearGradient
-                    colors={['rgba(46, 204, 113, 0.9)', 'rgba(39, 174, 96, 0.6)']}
-                    style={styles.numberGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Deck Catalog Button */}
-            <TouchableOpacity
-              style={[styles.compatibilityButton, { marginTop: 15 }]}
-              onPress={() => router.push('/deck')}
-            >
-              <View style={styles.diamondGlassContainer}>
-                <LinearGradient
-                  colors={[
-                    'rgba(255, 255, 255, 0.25)',
-                    'rgba(255, 255, 255, 0.1)',
-                    'rgba(255, 255, 255, 0.05)',
-                    'rgba(155, 89, 182, 0.2)'
-                  ]}
-                  style={styles.diamondGlassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.compatibilityIcon}>🃏</Text>
-                  <View>
-                    <Text style={styles.compatibilityText}>Каталог колоды</Text>
-                    <Text style={styles.compatibilitySubtext}>Все 78 карт, поиск и фильтры</Text>
-                  </View>
-                </LinearGradient>
-
-                <View style={styles.diamondFacet1} />
-                <View style={styles.diamondFacet2} />
-                <View style={styles.diamondFacet3} />
-                <View style={styles.diamondFacet4} />
-                <View style={styles.diamondSparkle}>
-                  <LinearGradient
-                    colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.3)']}
-                    style={styles.sparkleGradient}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-
+            {MYSTIC_FEATURES.map((feature, index) => (
+              <FeatureButton key={feature.id} feature={feature} index={index} />
+            ))}
           </View>
 
-          {/* Cosmic Quote */}
+          {/* Quote */}
           <View style={styles.quoteSection}>
-            <View style={styles.quoteContainer}>
-              <Text style={styles.quoteText}>
-                "В бесконечности космоса скрыты ответы на все вопросы души"
-              </Text>
-            </View>
+            <Text style={styles.quoteText}>
+              "В бесконечности космоса скрыты ответы на все вопросы души"
+            </Text>
           </View>
+
+          {/* Bottom Padding */}
+          <View style={{ height: 50 }} />
         </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000011',
   },
-  background: {
+  safeArea: {
     flex: 1,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 30,
+  },
   header: {
     alignItems: 'center',
     paddingTop: 40,
-    paddingBottom: 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    position: 'relative',
-  },
-  cosmicTitleContainer: {
-    alignItems: 'center',
   },
   mainTitle: {
     fontSize: 56,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    letterSpacing: 8,
-    textShadow: '0px 0px 20px #9B59B6',
-    marginBottom: 10,
+    letterSpacing: 12,
+    textShadowColor: '#9B59B6',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 30,
+    marginBottom: 15,
   },
-  cosmicSubtitle: {
-    backgroundColor: 'rgba(155, 89, 182, 0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+  subtitleContainer: {
+    backgroundColor: 'rgba(155, 89, 182, 0.25)',
+    borderRadius: 25,
+    paddingHorizontal: 25,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   subtitle: {
     fontSize: 14,
     color: '#E8E8E8',
     textAlign: 'center',
-    fontWeight: '300',
+    fontWeight: '400',
+    letterSpacing: 1,
   },
-  floatingSettingsButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  settingsButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  planetButton: {
-    position: 'absolute',
-    top: 10,
-    right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    elevation: 10,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)'
-  },
-  planetEmoji: {
-    fontSize: 22,
-  },
-
-    borderRadius: 25,
-  },
-  particlesContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: 400,
-    zIndex: 1,
-    pointerEvents: 'none',
-  },
-  particle: {
-    position: 'absolute',
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.3)',
+  widgetContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   section: {
     paddingHorizontal: 20,
     paddingVertical: 20,
-    zIndex: 2,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#E8E8E8',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
+    textShadowColor: 'rgba(155, 89, 182, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#B8B8B8',
+    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     fontStyle: 'italic',
+    marginBottom: 20,
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 15,
+  },
+  categoryCardWrapper: {
+    width: CARD_WIDTH,
+    marginBottom: 5,
   },
   categoryCard: {
-    width: (width - 55) / 2,
-    height: 140,
+    width: '100%',
+    height: 130,
     borderRadius: 20,
     overflow: 'hidden',
-    elevation: 8,
-    boxShadow: '0px 4px 10px rgba(155, 89, 182, 0.4)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  categoryCardSelected: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
   },
   categoryGradient: {
     flex: 1,
-  },
-  categoryBlur: {
-    flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  categoryContent: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
   categoryIcon: {
-    fontSize: 32,
+    fontSize: 36,
     marginBottom: 8,
   },
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 4,
   },
   categoryDescription: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
   },
-  quickSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  quickButtonGradient: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 30,
-  },
-  quickButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFF',
-    marginTop: 5,
-  },
-  quickButtonSubtext: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
-  },
-  mainReadingButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
+  selectedIndicator: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
   },
   spreadCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 15,
     padding: 18,
     marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  selectedSpreadCard: {
-    borderColor: '#9B59B6',
+  spreadCardSelected: {
     backgroundColor: 'rgba(155, 89, 182, 0.2)',
+    borderColor: '#9B59B6',
   },
   spreadContent: {
     flex: 1,
@@ -685,569 +534,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  selectedSpreadName: {
+  spreadNameSelected: {
     color: '#BB6BD9',
   },
   spreadDescription: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
+  actionSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  selectedCategoryIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
+  startButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#9B59B6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
-  crystalGlassIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+  startButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 30,
+    gap: 10,
+  },
+  startButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  featureButton: {
+    marginBottom: 12,
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.3)',
-    elevation: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  crystalGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 5,
-  },
-  crystalReflection: {
-    position: 'absolute',
-    top: 1,
-    left: 1,
-    width: 8,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 4,
-  },
-  compatibilitySection: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  compatibilityTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  compatibilityButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 10,
-    position: 'relative',
-  },
-  diamondGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(255, 255, 255, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  diamondGlassGradient: {
+  featureGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
-  // Алмазные грани для создания эффекта огранки
-  diamondFacet1: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 60,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 1,
-    transform: 'rotate(15deg)',
-  },
-  diamondFacet2: {
-    position: 'absolute',
-    top: 5,
-    right: 0,
-    width: 40,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 1,
-    transform: 'rotate(-25deg)',
-  },
-  diamondFacet3: {
-    position: 'absolute',
-    bottom: 8,
-    left: 15,
-    width: 30,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 1,
-    transform: 'rotate(45deg)',
-  },
-  diamondFacet4: {
-    position: 'absolute',
-    bottom: 0,
-    right: 20,
-    width: 25,
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 1,
-    transform: 'rotate(-35deg)',
-  },
-  // Центральный бриллиантовый блик
-  diamondSparkle: {
-    position: 'absolute',
-    top: 8,
-    left: 15,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  sparkleGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 6,
-  },
-  compatibilityIcon: {
-    fontSize: 24,
+  featureIcon: {
+    fontSize: 28,
     marginRight: 15,
   },
-  compatibilityText: {
+  featureTextContainer: {
+    flex: 1,
+  },
+  featureName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  compatibilitySubtext: {
+  featureDescription: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
-  },
-  // Palmistry Button Styles
-  palmistryButton: {
-    marginTop: 15,
-  },
-  palmistryGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(69, 183, 209, 0.4)',
-    backgroundColor: 'rgba(69, 183, 209, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(69, 183, 209, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  palmistryGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  // Мистические линии ладони
-  palmLine1: {
-    position: 'absolute',
-    top: 8,
-    left: 20,
-    width: 50,
-    height: 1.5,
-    backgroundColor: 'rgba(69, 183, 209, 0.6)',
-    borderRadius: 1,
-    transform: [{ rotate: '10deg' }],
-  },
-  palmLine2: {
-    position: 'absolute',
-    top: 15,
-    left: 25,
-    width: 40,
-    height: 1,
-    backgroundColor: 'rgba(52, 152, 219, 0.5)',
-    borderRadius: 1,
-    transform: [{ rotate: '-5deg' }],
-  },
-  palmLine3: {
-    position: 'absolute',
-    bottom: 12,
-    left: 30,
-    width: 35,
-    height: 1.5,
-    backgroundColor: 'rgba(69, 183, 209, 0.7)',
-    borderRadius: 1,
-    transform: [{ rotate: '20deg' }],
-  },
-  palmLine4: {
-    position: 'absolute',
-    bottom: 5,
-    right: 25,
-    width: 30,
-    height: 1,
-    backgroundColor: 'rgba(52, 152, 219, 0.4)',
-    borderRadius: 1,
-    transform: [{ rotate: '-15deg' }],
-  },
-  // Центральный мистический символ
-  palmSymbol: {
-    position: 'absolute',
-    top: 10,
-    right: 15,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  palmSymbolGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 5,
-  },
-  // Horoscope Button Styles
-  horoscopeButton: {
-    marginTop: 15,
-  },
-  horoscopeGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 193, 7, 0.4)',
-    backgroundColor: 'rgba(255, 193, 7, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(255, 193, 7, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  horoscopeGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  // Созвездия звезд
-  star1: {
-    position: 'absolute',
-    top: 8,
-    left: 20,
-    width: 4,
-    height: 4,
-    backgroundColor: 'rgba(255, 193, 7, 0.8)',
-    borderRadius: 2,
-  },
-  star2: {
-    position: 'absolute',
-    top: 15,
-    left: 35,
-    width: 3,
-    height: 3,
-    backgroundColor: 'rgba(255, 152, 0, 0.7)',
-    borderRadius: 1.5,
-  },
-  star3: {
-    position: 'absolute',
-    top: 10,
-    right: 30,
-    width: 3,
-    height: 3,
-    backgroundColor: 'rgba(255, 193, 7, 0.6)',
-    borderRadius: 1.5,
-  },
-  star4: {
-    position: 'absolute',
-    bottom: 10,
-    left: 25,
-    width: 2,
-    height: 2,
-    backgroundColor: 'rgba(255, 152, 0, 0.5)',
-    borderRadius: 1,
-  },
-  star5: {
-    position: 'absolute',
-    bottom: 15,
-    right: 40,
-    width: 2,
-    height: 2,
-    backgroundColor: 'rgba(255, 193, 7, 0.6)',
-    borderRadius: 1,
-  },
-  // Центральная звезда
-  centerStar: {
-    position: 'absolute',
-    top: 12,
-    right: 15,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  centerStarGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 4,
-  },
-  // Palmistry Button Styles
-  palmistryButton: {
-    marginTop: 15,
-  },
-  palmistryGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(69, 183, 209, 0.4)',
-    backgroundColor: 'rgba(69, 183, 209, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(69, 183, 209, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  palmistryGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  // Мистические линии ладони
-  palmLine1: {
-    position: 'absolute',
-    top: 8,
-    left: 20,
-    width: 50,
-    height: 1.5,
-    backgroundColor: 'rgba(69, 183, 209, 0.6)',
-    borderRadius: 1,
-    transform: 'rotate(10deg)',
-  },
-  palmLine2: {
-    position: 'absolute',
-    top: 15,
-    left: 25,
-    width: 40,
-    height: 1,
-    backgroundColor: 'rgba(52, 152, 219, 0.5)',
-    borderRadius: 1,
-    transform: 'rotate(-5deg)',
-  },
-  palmLine3: {
-    position: 'absolute',
-    bottom: 12,
-    left: 30,
-    width: 35,
-    height: 1.5,
-    backgroundColor: 'rgba(69, 183, 209, 0.7)',
-    borderRadius: 1,
-    transform: 'rotate(20deg)',
-  },
-  palmLine4: {
-    position: 'absolute',
-    bottom: 5,
-    right: 25,
-    width: 30,
-    height: 1,
-    backgroundColor: 'rgba(52, 152, 219, 0.4)',
-    borderRadius: 1,
-    transform: 'rotate(-15deg)',
-  },
-  // Центральный мистический символ
-  palmSymbol: {
-    position: 'absolute',
-    top: 10,
-    right: 15,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  palmSymbolGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 5,
-  },
-  // Astro-Personality Button Styles
-  astroGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(155, 89, 182, 0.4)',
-    backgroundColor: 'rgba(155, 89, 182, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(155, 89, 182, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  astroGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  cosmicOrb1: {
-    position: 'absolute',
-    top: 10,
-    left: 25,
-    width: 6,
-    height: 6,
-    backgroundColor: 'rgba(155, 89, 182, 0.7)',
-    borderRadius: 3,
-  },
-  cosmicOrb2: {
-    position: 'absolute',
-    top: 8,
-    right: 30,
-    width: 4,
-    height: 4,
-    backgroundColor: 'rgba(142, 68, 173, 0.6)',
-    borderRadius: 2,
-  },
-  cosmicOrb3: {
-    position: 'absolute',
-    bottom: 12,
-    left: 40,
-    width: 5,
-    height: 5,
-    backgroundColor: 'rgba(155, 89, 182, 0.5)',
-    borderRadius: 2.5,
-  },
-  centerCosmicGlow: {
-    position: 'absolute',
-    top: 12,
-    right: 15,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  cosmicGlowGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 5,
-  },
-  // Numerology Button Styles
-  numerologyGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(46, 204, 113, 0.4)',
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(46, 204, 113, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  numerologyGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  number1: {
-    position: 'absolute',
-    top: 8,
-    left: 20,
-    width: 20,
-    height: 2,
-    backgroundColor: 'rgba(46, 204, 113, 0.6)',
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
-  },
-  number2: {
-    position: 'absolute',
-    top: 15,
-    right: 25,
-    width: 15,
-    height: 2,
-    backgroundColor: 'rgba(39, 174, 96, 0.5)',
-    borderRadius: 1,
-    transform: [{ rotate: '-30deg' }],
-  },
-  number3: {
-    position: 'absolute',
-    bottom: 10,
-    left: 35,
-    width: 18,
-    height: 2,
-    backgroundColor: 'rgba(46, 204, 113, 0.7)',
-    borderRadius: 1,
-    transform: [{ rotate: '20deg' }],
-  },
-  centerNumber: {
-    position: 'absolute',
-    top: 10,
-    right: 15,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  numberGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 6,
-  },
-  // Runes Button Styles
-  runesGlassContainer: {
-    position: 'relative',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(52, 152, 219, 0.4)',
-    backgroundColor: 'rgba(52, 152, 219, 0.08)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3), inset 0px 1px 0px rgba(52, 152, 219, 0.3)',
-    backdropFilter: 'blur(15px)',
-  },
-  runesGlassGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 25,
-    borderRadius: 18,
-  },
-  runeSymbol1: {
-    position: 'absolute',
-    top: 10,
-    left: 25,
-    width: 15,
-    height: 2,
-    backgroundColor: 'rgba(52, 152, 219, 0.6)',
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
-  },
-  runeSymbol2: {
-    position: 'absolute',
-    top: 8,
-    right: 30,
-    width: 12,
-    height: 2,
-    backgroundColor: 'rgba(41, 128, 185, 0.5)',
-    borderRadius: 1,
-    transform: [{ rotate: '-30deg' }],
-  },
-  runeSymbol3: {
-    position: 'absolute',
-    bottom: 10,
-    left: 35,
-    width: 18,
-    height: 2,
-    backgroundColor: 'rgba(52, 152, 219, 0.7)',
-    borderRadius: 1,
-    transform: [{ rotate: '20deg' }],
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   quoteSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     paddingVertical: 30,
     alignItems: 'center',
   },
-  quoteContainer: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
   quoteText: {
-    fontSize: 14,
-    color: '#E8E8E8',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: 24,
   },
 });
