@@ -2,17 +2,17 @@ import React, { useEffect, useMemo } from 'react';
 
 /**
  * Реалистичный космический фон в стиле Млечного Пути
- * Живое мерцание звёзд, редкие падающие звёзды
+ * Мелкие мерцающие звёзды, падающие звёзды с хвостами
  */
 
 const STAR_LAYERS = {
-  tiny: 400,      // Мелкие далёкие звёзды
-  small: 150,     // Небольшие звёзды
-  medium: 50,     // Средние звёзды
-  bright: 20,     // Яркие крупные звёзды
+  tiny: 500,      // Очень мелкие далёкие звёзды
+  small: 200,     // Небольшие звёзды
+  medium: 40,     // Средние звёзды
+  bright: 12,     // Яркие крупные звёзды
 };
 
-const SHOOTING_STAR_COUNT = 3;
+const SHOOTING_STAR_COUNT = 4;
 
 interface Star {
   id: string;
@@ -33,43 +33,44 @@ interface ShootingStar {
   angle: number;
   delay: number;
   duration: number;
+  tailLength: number;
+  hasTail: boolean;
 }
 
 const starColors = {
-  blue: ['#a8d4ff', '#7ec8e3', '#5dade2', '#85c1e9'],
-  white: ['#ffffff', '#f8f9fa', '#ecf0f1', '#fdfefe'],
-  yellow: ['#fff3cd', '#ffeaa7', '#f9e79f', '#fcf3cf'],
-  orange: ['#ffcc80', '#ffb74d', '#ffa726', '#fb8c00'],
+  blue: ['#c8e4ff', '#a8d4ff', '#7ec8e3'],
+  white: ['#ffffff', '#f8f9fa', '#ecf0f1'],
+  yellow: ['#fff8e7', '#fff3cd', '#ffeaa7'],
+  orange: ['#ffe4c4', '#ffd9b3'],
 };
 
 const getRandomColor = (layer: string): string => {
   const rand = Math.random();
   if (layer === 'bright') {
     if (rand < 0.4) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
-    if (rand < 0.7) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
-    if (rand < 0.9) return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
-    return starColors.orange[Math.floor(Math.random() * starColors.orange.length)];
+    if (rand < 0.75) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+    return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
   }
-  if (rand < 0.6) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
-  if (rand < 0.85) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
-  return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
+  if (rand < 0.7) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+  return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
 };
 
 const generateStars = (): Star[] => {
   const stars: Star[] = [];
 
   const createStarsForLayer = (count: number, layer: 'tiny' | 'small' | 'medium' | 'bright') => {
+    // Уменьшенные размеры звёзд
     const sizeRanges = {
-      tiny: [0.3, 0.8],
-      small: [0.8, 1.5],
-      medium: [1.5, 2.5],
-      bright: [2.5, 4],
+      tiny: [0.2, 0.5],
+      small: [0.5, 1.0],
+      medium: [1.0, 1.8],
+      bright: [1.8, 2.8],
     };
     const opacityRanges = {
-      tiny: [0.2, 0.5],
-      small: [0.4, 0.7],
-      medium: [0.6, 0.9],
-      bright: [0.8, 1],
+      tiny: [0.15, 0.4],
+      small: [0.3, 0.6],
+      medium: [0.5, 0.85],
+      bright: [0.75, 1],
     };
 
     for (let i = 0; i < count; i++) {
@@ -79,8 +80,7 @@ const generateStars = (): Star[] => {
       // Концентрация звёзд к центру (Млечный Путь)
       let y = Math.random() * 100;
       const milkyWayBias = Math.random();
-      if (milkyWayBias < 0.4) {
-        // 40% звёзд ближе к центральной полосе
+      if (milkyWayBias < 0.35) {
         y = 35 + Math.random() * 30;
       }
 
@@ -91,8 +91,8 @@ const generateStars = (): Star[] => {
         size: Math.random() * (maxSize - minSize) + minSize,
         color: getRandomColor(layer),
         opacity: Math.random() * (maxOpacity - minOpacity) + minOpacity,
-        twinkleSpeed: Math.random() * 3 + 1.5,
-        twinkleDelay: Math.random() * 5,
+        twinkleSpeed: Math.random() * 3 + 2,
+        twinkleDelay: Math.random() * 6,
         layer,
       });
     }
@@ -110,15 +110,27 @@ const generateShootingStars = (): ShootingStar[] => {
   const shootingStars: ShootingStar[] = [];
 
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
-    const startFromTop = Math.random() < 0.7;
+    // Падающие звёзды всегда начинаются сверху и падают вниз
+    const startX = Math.random() * 90 + 5; // 5-95% по горизонтали
+    const startY = Math.random() * 20 - 5; // -5 до 15% (начинают сверху)
+
+    // Угол падения: 60-120 градусов (вниз с небольшим отклонением)
+    // 90 = строго вниз, 60-90 = вправо-вниз, 90-120 = влево-вниз
+    const angle = Math.random() * 60 + 60;
+
+    // У некоторых звёзд есть хвост
+    const hasTail = Math.random() < 0.7; // 70% с хвостом
+    const tailLength = hasTail ? Math.random() * 30 + 20 : 0; // 20-50px хвост
 
     shootingStars.push({
       id: `shooting-${i}`,
-      startX: startFromTop ? Math.random() * 80 + 10 : (Math.random() < 0.5 ? -5 : 105),
-      startY: startFromTop ? -5 : Math.random() * 40,
-      angle: startFromTop ? Math.random() * 40 + 110 : (Math.random() < 0.5 ? Math.random() * 40 + 20 : Math.random() * 40 + 120),
-      delay: Math.random() * 20 + i * 15,
-      duration: Math.random() * 1.5 + 1,
+      startX,
+      startY,
+      angle,
+      delay: Math.random() * 15 + i * 12, // Разные интервалы
+      duration: Math.random() * 0.8 + 0.6, // 0.6-1.4 секунды (быстрее)
+      tailLength,
+      hasTail,
     });
   }
 
@@ -130,7 +142,7 @@ export const CosmicBackground: React.FC = () => {
   const shootingStars = useMemo(() => generateShootingStars(), []);
 
   useEffect(() => {
-    const styleId = 'cosmic-milkyway-styles';
+    const styleId = 'cosmic-milkyway-styles-v2';
     if (!document.getElementById(styleId)) {
       const style = document.createElement('style');
       style.id = styleId;
@@ -141,89 +153,83 @@ export const CosmicBackground: React.FC = () => {
         }
 
         @keyframes twinkleSmall {
-          0%, 100% { opacity: var(--base-opacity); transform: scale(1); }
-          25% { opacity: calc(var(--base-opacity) * 0.5); }
-          50% { opacity: var(--base-opacity); transform: scale(1.1); }
-          75% { opacity: calc(var(--base-opacity) * 0.6); }
+          0%, 100% { opacity: var(--base-opacity); }
+          30% { opacity: calc(var(--base-opacity) * 0.4); }
+          60% { opacity: calc(var(--base-opacity) * 1.1); }
+          80% { opacity: calc(var(--base-opacity) * 0.6); }
         }
 
         @keyframes twinkleBright {
           0%, 100% {
             opacity: var(--base-opacity);
             transform: scale(1);
-            box-shadow: 0 0 var(--glow-size) var(--star-color);
           }
-          25% {
-            opacity: calc(var(--base-opacity) * 0.7);
-            transform: scale(0.9);
+          30% {
+            opacity: calc(var(--base-opacity) * 0.6);
+            transform: scale(0.95);
           }
           50% {
             opacity: 1;
-            transform: scale(1.2);
-            box-shadow: 0 0 calc(var(--glow-size) * 1.5) var(--star-color);
+            transform: scale(1.15);
           }
-          75% {
-            opacity: calc(var(--base-opacity) * 0.8);
-            transform: scale(1.05);
+          70% {
+            opacity: calc(var(--base-opacity) * 0.75);
+            transform: scale(1);
           }
         }
 
-        @keyframes shootingStar {
+        @keyframes fallingStarWithTail {
           0% {
-            transform: translate(0, 0) rotate(var(--angle));
+            transform: translate(0, 0);
             opacity: 0;
           }
-          5% {
+          3% {
             opacity: 1;
           }
-          80% {
-            opacity: 0.8;
+          85% {
+            opacity: 0.9;
           }
           100% {
-            transform: translate(var(--travel-x), var(--travel-y)) rotate(var(--angle));
+            transform: translate(var(--travel-x), var(--travel-y));
             opacity: 0;
           }
         }
 
         @keyframes nebulaGlow {
-          0%, 100% { opacity: 0.15; filter: blur(60px); }
-          50% { opacity: 0.25; filter: blur(70px); }
+          0%, 100% { opacity: 0.12; }
+          50% { opacity: 0.2; }
         }
 
-        .star-tiny {
-          animation: twinkleTiny ease-in-out infinite;
+        .star-tiny { animation: twinkleTiny ease-in-out infinite; }
+        .star-small { animation: twinkleSmall ease-in-out infinite; }
+        .star-medium { animation: twinkleBright ease-in-out infinite; }
+        .star-bright { animation: twinkleBright ease-in-out infinite; }
+
+        .falling-star {
+          animation: fallingStarWithTail linear infinite;
         }
 
-        .star-small {
-          animation: twinkleSmall ease-in-out infinite;
-        }
-
-        .star-medium {
-          animation: twinkleBright ease-in-out infinite;
-        }
-
-        .star-bright {
-          animation: twinkleBright ease-in-out infinite;
-        }
-
-        .shooting-star {
-          animation: shootingStar linear infinite;
-        }
-
-        .shooting-star::before {
+        /* Хвост падающей звезды */
+        .falling-star::after {
           content: '';
           position: absolute;
           width: var(--tail-length);
-          height: 1.5px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.4), transparent);
+          height: 1px;
+          background: linear-gradient(to left,
+            rgba(255,255,255,0.9) 0%,
+            rgba(255,255,255,0.5) 20%,
+            rgba(255,255,255,0.2) 50%,
+            transparent 100%
+          );
           right: 100%;
           top: 50%;
-          transform: translateY(-50%);
-          border-radius: 2px;
+          transform: translateY(-50%) rotate(calc(var(--angle) - 180deg));
+          transform-origin: right center;
+          border-radius: 1px;
         }
 
         .nebula-cloud {
-          animation: nebulaGlow 15s ease-in-out infinite;
+          animation: nebulaGlow 20s ease-in-out infinite;
         }
       `;
       document.head.appendChild(style);
@@ -241,7 +247,7 @@ export const CosmicBackground: React.FC = () => {
         overflow: 'hidden',
         zIndex: 0,
         pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, #000000 0%, #050510 30%, #0a0a18 50%, #050510 70%, #000000 100%)',
+        background: 'linear-gradient(to bottom, #000000 0%, #030308 30%, #050510 50%, #030308 70%, #000000 100%)',
       }}
     >
       {/* Млечный Путь - центральная полоса */}
@@ -249,15 +255,15 @@ export const CosmicBackground: React.FC = () => {
         style={{
           position: 'absolute',
           left: '-10%',
-          top: '30%',
+          top: '32%',
           width: '120%',
-          height: '40%',
+          height: '36%',
           background: `
-            radial-gradient(ellipse 100% 100% at 30% 50%, rgba(255, 220, 180, 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse 100% 100% at 70% 50%, rgba(200, 180, 160, 0.06) 0%, transparent 50%),
-            radial-gradient(ellipse 120% 80% at 50% 50%, rgba(180, 160, 140, 0.04) 0%, transparent 60%)
+            radial-gradient(ellipse 100% 100% at 30% 50%, rgba(255, 220, 180, 0.06) 0%, transparent 50%),
+            radial-gradient(ellipse 100% 100% at 70% 50%, rgba(200, 180, 160, 0.04) 0%, transparent 50%),
+            radial-gradient(ellipse 120% 80% at 50% 50%, rgba(180, 160, 140, 0.03) 0%, transparent 60%)
           `,
-          filter: 'blur(30px)',
+          filter: 'blur(40px)',
           transform: 'rotate(-5deg)',
         }}
       />
@@ -267,11 +273,11 @@ export const CosmicBackground: React.FC = () => {
         style={{
           position: 'absolute',
           left: '0%',
-          top: '42%',
+          top: '44%',
           width: '100%',
-          height: '16%',
-          background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 20%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.4) 80%, transparent 100%)',
-          filter: 'blur(15px)',
+          height: '12%',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.3) 80%, transparent 100%)',
+          filter: 'blur(20px)',
           transform: 'rotate(-3deg)',
         }}
       />
@@ -282,11 +288,12 @@ export const CosmicBackground: React.FC = () => {
         style={{
           position: 'absolute',
           left: '5%',
-          top: '35%',
-          width: '200px',
-          height: '150px',
-          background: 'radial-gradient(ellipse, rgba(180, 100, 80, 0.2) 0%, transparent 70%)',
+          top: '38%',
+          width: '180px',
+          height: '120px',
+          background: 'radial-gradient(ellipse, rgba(160, 80, 60, 0.15) 0%, transparent 70%)',
           borderRadius: '50%',
+          filter: 'blur(30px)',
         }}
       />
       <div
@@ -294,32 +301,20 @@ export const CosmicBackground: React.FC = () => {
         style={{
           position: 'absolute',
           right: '10%',
-          top: '40%',
-          width: '250px',
-          height: '180px',
-          background: 'radial-gradient(ellipse, rgba(200, 150, 100, 0.15) 0%, transparent 70%)',
+          top: '42%',
+          width: '200px',
+          height: '140px',
+          background: 'radial-gradient(ellipse, rgba(180, 130, 80, 0.1) 0%, transparent 70%)',
           borderRadius: '50%',
-          animationDelay: '5s',
-        }}
-      />
-      <div
-        className="nebula-cloud"
-        style={{
-          position: 'absolute',
-          left: '30%',
-          top: '45%',
-          width: '180px',
-          height: '120px',
-          background: 'radial-gradient(ellipse, rgba(100, 80, 120, 0.12) 0%, transparent 70%)',
-          borderRadius: '50%',
-          animationDelay: '10s',
+          filter: 'blur(35px)',
+          animationDelay: '7s',
         }}
       />
 
       {/* Звёзды по слоям */}
       {stars.map((star) => {
-        const glowSize = star.layer === 'bright' ? star.size * 4 :
-                        star.layer === 'medium' ? star.size * 2 : star.size;
+        const glowSize = star.layer === 'bright' ? star.size * 3 :
+                        star.layer === 'medium' ? star.size * 1.5 : 0;
 
         return (
           <div
@@ -333,14 +328,10 @@ export const CosmicBackground: React.FC = () => {
               height: star.size,
               borderRadius: '50%',
               backgroundColor: star.color,
-              boxShadow: star.layer === 'bright' || star.layer === 'medium'
-                ? `0 0 ${glowSize}px ${star.color}`
-                : 'none',
+              boxShadow: glowSize > 0 ? `0 0 ${glowSize}px ${star.color}` : 'none',
               animationDuration: `${star.twinkleSpeed}s`,
               animationDelay: `${star.twinkleDelay}s`,
               '--base-opacity': star.opacity,
-              '--star-color': star.color,
-              '--glow-size': `${glowSize}px`,
               pointerEvents: 'none',
             } as React.CSSProperties}
           />
@@ -350,29 +341,29 @@ export const CosmicBackground: React.FC = () => {
       {/* Падающие звёзды */}
       {shootingStars.map((star) => {
         const radians = (star.angle * Math.PI) / 180;
-        const travelDistance = 120;
+        const travelDistance = 80 + Math.random() * 40; // 80-120vh
         const travelX = Math.cos(radians) * travelDistance;
         const travelY = Math.sin(radians) * travelDistance;
 
         return (
           <div
             key={star.id}
-            className="shooting-star"
+            className="falling-star"
             style={{
               position: 'absolute',
               left: `${star.startX}%`,
               top: `${star.startY}%`,
-              width: 3,
-              height: 3,
+              width: 2,
+              height: 2,
               borderRadius: '50%',
               backgroundColor: '#ffffff',
-              boxShadow: '0 0 6px #ffffff, 0 0 12px rgba(255,255,255,0.5)',
-              animationDuration: `${star.duration + 25}s`,
+              boxShadow: '0 0 4px #ffffff',
+              animationDuration: `${star.duration + 20}s`,
               animationDelay: `${star.delay}s`,
-              '--angle': `${star.angle - 180}deg`,
-              '--travel-x': `${travelX}vw`,
+              '--travel-x': `${travelX}vh`,
               '--travel-y': `${travelY}vh`,
-              '--tail-length': '50px',
+              '--tail-length': `${star.tailLength}px`,
+              '--angle': `${star.angle}deg`,
               pointerEvents: 'none',
               zIndex: 5,
             } as React.CSSProperties}

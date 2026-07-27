@@ -14,13 +14,13 @@ import Animated, {
 const { width, height } = Dimensions.get('window');
 
 const STAR_LAYERS = {
-  tiny: 300,
-  small: 100,
-  medium: 35,
-  bright: 15,
+  tiny: 400,
+  small: 150,
+  medium: 30,
+  bright: 10,
 };
 
-const SHOOTING_STAR_COUNT = 2;
+const SHOOTING_STAR_COUNT = 3;
 
 interface Star {
   id: string;
@@ -38,30 +38,26 @@ interface ShootingStar {
   id: string;
   startX: number;
   startY: number;
-  endX: number;
-  endY: number;
+  angle: number;
   duration: number;
   delay: number;
 }
 
 const starColors = {
-  blue: ['#a8d4ff', '#7ec8e3', '#5dade2', '#85c1e9'],
-  white: ['#ffffff', '#f8f9fa', '#ecf0f1', '#fdfefe'],
-  yellow: ['#fff3cd', '#ffeaa7', '#f9e79f'],
-  orange: ['#ffcc80', '#ffb74d', '#ffa726'],
+  blue: ['#c8e4ff', '#a8d4ff', '#7ec8e3'],
+  white: ['#ffffff', '#f8f9fa', '#ecf0f1'],
+  yellow: ['#fff8e7', '#fff3cd'],
 };
 
 const getRandomColor = (layer: string): string => {
   const rand = Math.random();
   if (layer === 'bright') {
     if (rand < 0.4) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
-    if (rand < 0.7) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
-    if (rand < 0.9) return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
-    return starColors.orange[Math.floor(Math.random() * starColors.orange.length)];
+    if (rand < 0.8) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+    return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
   }
-  if (rand < 0.6) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
-  if (rand < 0.85) return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
-  return starColors.yellow[Math.floor(Math.random() * starColors.yellow.length)];
+  if (rand < 0.7) return starColors.white[Math.floor(Math.random() * starColors.white.length)];
+  return starColors.blue[Math.floor(Math.random() * starColors.blue.length)];
 };
 
 const generateStars = (): Star[] => {
@@ -69,16 +65,16 @@ const generateStars = (): Star[] => {
 
   const createStarsForLayer = (count: number, layer: 'tiny' | 'small' | 'medium' | 'bright') => {
     const sizeRanges = {
-      tiny: [0.3, 0.8],
-      small: [0.8, 1.5],
-      medium: [1.5, 2.5],
-      bright: [2.5, 4],
+      tiny: [0.2, 0.5],
+      small: [0.5, 1.0],
+      medium: [1.0, 1.8],
+      bright: [1.8, 2.8],
     };
     const opacityRanges = {
-      tiny: [0.2, 0.5],
-      small: [0.4, 0.7],
-      medium: [0.6, 0.9],
-      bright: [0.8, 1],
+      tiny: [0.15, 0.4],
+      small: [0.3, 0.6],
+      medium: [0.5, 0.85],
+      bright: [0.75, 1],
     };
 
     for (let i = 0; i < count; i++) {
@@ -87,7 +83,7 @@ const generateStars = (): Star[] => {
 
       let y = Math.random() * height;
       const milkyWayBias = Math.random();
-      if (milkyWayBias < 0.4) {
+      if (milkyWayBias < 0.35) {
         y = height * 0.35 + Math.random() * height * 0.3;
       }
 
@@ -98,8 +94,8 @@ const generateStars = (): Star[] => {
         size: Math.random() * (maxSize - minSize) + minSize,
         color: getRandomColor(layer),
         baseOpacity: Math.random() * (maxOpacity - minOpacity) + minOpacity,
-        twinkleSpeed: Math.random() * 2000 + 1500,
-        twinkleDelay: Math.random() * 3000,
+        twinkleSpeed: Math.random() * 2000 + 2000,
+        twinkleDelay: Math.random() * 4000,
         layer,
       });
     }
@@ -117,30 +113,17 @@ const generateShootingStars = (): ShootingStar[] => {
   const shootingStars: ShootingStar[] = [];
 
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
-    const startFromTop = Math.random() < 0.7;
-    let startX: number, startY: number, endX: number, endY: number;
-
-    if (startFromTop) {
-      startX = Math.random() * width * 0.8 + width * 0.1;
-      startY = -20;
-      endX = startX + (Math.random() - 0.5) * width * 0.5;
-      endY = height * 0.6 + Math.random() * height * 0.3;
-    } else {
-      const fromLeft = Math.random() < 0.5;
-      startX = fromLeft ? -20 : width + 20;
-      startY = Math.random() * height * 0.4;
-      endX = fromLeft ? width * 0.6 : width * 0.4;
-      endY = height * 0.5 + Math.random() * height * 0.4;
-    }
+    const startX = Math.random() * width * 0.9 + width * 0.05;
+    const startY = -20;
+    const angle = Math.random() * 60 + 60; // 60-120 градусов (вниз)
 
     shootingStars.push({
       id: `shooting-${i}`,
       startX,
       startY,
-      endX,
-      endY,
-      duration: Math.random() * 1500 + 1000,
-      delay: Math.random() * 20000 + 15000 + i * 15000,
+      angle,
+      duration: Math.random() * 800 + 600, // 600-1400ms
+      delay: Math.random() * 15000 + i * 12000,
     });
   }
 
@@ -157,23 +140,23 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
 
   useEffect(() => {
     const minOpacity = star.layer === 'tiny' ? star.baseOpacity * 0.3 :
-                       star.layer === 'small' ? star.baseOpacity * 0.5 :
-                       star.baseOpacity * 0.7;
+                       star.layer === 'small' ? star.baseOpacity * 0.4 :
+                       star.baseOpacity * 0.6;
 
     opacity.value = withDelay(
       star.twinkleDelay,
       withRepeat(
         withSequence(
           withTiming(minOpacity, {
-            duration: star.twinkleSpeed * 0.4,
+            duration: star.twinkleSpeed * 0.35,
             easing: Easing.inOut(Easing.sine),
           }),
-          withTiming(star.baseOpacity, {
+          withTiming(star.baseOpacity * 1.1, {
             duration: star.twinkleSpeed * 0.3,
             easing: Easing.inOut(Easing.sine),
           }),
-          withTiming(star.baseOpacity * 0.8, {
-            duration: star.twinkleSpeed * 0.3,
+          withTiming(star.baseOpacity * 0.7, {
+            duration: star.twinkleSpeed * 0.35,
             easing: Easing.inOut(Easing.sine),
           })
         ),
@@ -187,16 +170,16 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
         star.twinkleDelay,
         withRepeat(
           withSequence(
-            withTiming(0.9, {
-              duration: star.twinkleSpeed * 0.4,
+            withTiming(0.95, {
+              duration: star.twinkleSpeed * 0.35,
               easing: Easing.inOut(Easing.sine),
             }),
-            withTiming(1.2, {
+            withTiming(1.15, {
               duration: star.twinkleSpeed * 0.3,
               easing: Easing.inOut(Easing.sine),
             }),
             withTiming(1, {
-              duration: star.twinkleSpeed * 0.3,
+              duration: star.twinkleSpeed * 0.35,
               easing: Easing.inOut(Easing.sine),
             })
           ),
@@ -223,10 +206,10 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
           height: star.size,
           backgroundColor: star.color,
           shadowColor: star.color,
-          shadowRadius: star.layer === 'bright' ? star.size * 2 :
+          shadowRadius: star.layer === 'bright' ? star.size * 1.5 :
                        star.layer === 'medium' ? star.size : 0,
-          shadowOpacity: star.layer === 'bright' ? 1 :
-                        star.layer === 'medium' ? 0.8 : 0,
+          shadowOpacity: star.layer === 'bright' ? 0.9 :
+                        star.layer === 'medium' ? 0.6 : 0,
         },
         animatedStyle,
       ]}
@@ -244,44 +227,37 @@ const ShootingStarComponent: React.FC<ShootingStarComponentProps> = ({ star }) =
   const opacity = useSharedValue(0);
 
   const animateShootingStar = () => {
-    const startFromTop = Math.random() < 0.7;
-    let newStartX: number, newStartY: number, newEndX: number, newEndY: number;
+    const startX = Math.random() * width * 0.9 + width * 0.05;
+    const startY = -20;
+    const angle = Math.random() * 60 + 60;
+    const radians = (angle * Math.PI) / 180;
+    const distance = height * 0.7 + Math.random() * height * 0.3;
 
-    if (startFromTop) {
-      newStartX = Math.random() * width * 0.8 + width * 0.1;
-      newStartY = -20;
-      newEndX = newStartX + (Math.random() - 0.5) * width * 0.5;
-      newEndY = height * 0.6 + Math.random() * height * 0.3;
-    } else {
-      const fromLeft = Math.random() < 0.5;
-      newStartX = fromLeft ? -20 : width + 20;
-      newStartY = Math.random() * height * 0.4;
-      newEndX = fromLeft ? width * 0.6 : width * 0.4;
-      newEndY = height * 0.5 + Math.random() * height * 0.4;
-    }
+    translateX.value = startX;
+    translateY.value = startY;
 
-    translateX.value = newStartX;
-    translateY.value = newStartY;
+    const endX = startX + Math.cos(radians) * distance;
+    const endY = startY + Math.sin(radians) * distance;
 
-    const duration = Math.random() * 1500 + 1000;
+    const duration = Math.random() * 800 + 600;
 
     opacity.value = withSequence(
-      withTiming(1, { duration: 80 }),
-      withTiming(1, { duration: duration - 200 }),
-      withTiming(0, { duration: 120 })
+      withTiming(1, { duration: 50 }),
+      withTiming(0.9, { duration: duration - 100 }),
+      withTiming(0, { duration: 50 })
     );
 
-    translateX.value = withTiming(newEndX, {
+    translateX.value = withTiming(endX, {
       duration,
       easing: Easing.out(Easing.quad),
     });
 
-    translateY.value = withTiming(newEndY, {
+    translateY.value = withTiming(endY, {
       duration,
       easing: Easing.out(Easing.quad),
     }, (finished) => {
       if (finished) {
-        const nextDelay = Math.random() * 20000 + 18000;
+        const nextDelay = Math.random() * 18000 + 15000;
         runOnJS(setTimeout)(animateShootingStar, nextDelay);
       }
     });
@@ -310,13 +286,13 @@ export const StarryBackground: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Млечный Путь - фоновое свечение */}
+      {/* Млечный Путь */}
       <View style={styles.milkyWay} />
       <View style={styles.dustLane} />
 
       {/* Туманности */}
-      <View style={[styles.nebula, { left: '5%', top: '35%', backgroundColor: 'rgba(180, 100, 80, 0.08)' }]} />
-      <View style={[styles.nebula, { right: '10%', top: '40%', backgroundColor: 'rgba(200, 150, 100, 0.06)', width: 200, height: 150 }]} />
+      <View style={[styles.nebula, { left: '5%', top: '38%', backgroundColor: 'rgba(160, 80, 60, 0.06)' }]} />
+      <View style={[styles.nebula, { right: '10%', top: '42%', backgroundColor: 'rgba(180, 130, 80, 0.04)', width: 160, height: 110 }]} />
 
       {/* Звёзды */}
       {starsRef.current.map((star) => (
@@ -344,28 +320,28 @@ const styles = StyleSheet.create({
   milkyWay: {
     position: 'absolute',
     left: -width * 0.1,
-    top: height * 0.3,
+    top: height * 0.32,
     width: width * 1.2,
-    height: height * 0.4,
-    backgroundColor: 'rgba(200, 180, 160, 0.03)',
+    height: height * 0.36,
+    backgroundColor: 'rgba(180, 160, 140, 0.02)',
     borderRadius: 999,
     transform: [{ rotate: '-5deg' }],
   },
   dustLane: {
     position: 'absolute',
     left: 0,
-    top: height * 0.42,
+    top: height * 0.44,
     width: width,
-    height: height * 0.16,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    height: height * 0.12,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
     transform: [{ rotate: '-3deg' }],
   },
   nebula: {
     position: 'absolute',
-    width: 150,
-    height: 100,
+    width: 140,
+    height: 90,
     borderRadius: 999,
-    opacity: 0.5,
+    opacity: 0.6,
   },
   star: {
     position: 'absolute',
@@ -374,13 +350,13 @@ const styles = StyleSheet.create({
   },
   shootingStar: {
     position: 'absolute',
-    width: 3,
-    height: 3,
+    width: 2,
+    height: 2,
     borderRadius: 50,
     backgroundColor: '#FFFFFF',
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 6,
+    shadowRadius: 4,
   },
 });
