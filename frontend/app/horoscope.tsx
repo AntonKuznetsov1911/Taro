@@ -14,8 +14,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Constants from 'expo-constants';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { api } from '../src/utils/api';
 
 interface HoroscopeResult {
   id: string;
@@ -47,22 +47,16 @@ export default function HoroscopeScreen() {
   const loadHoroscope = async () => {
     try {
       setIsLoading(true);
-      const apiUrl = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL;
-      
-      const response = await fetch(`${apiUrl}/api/horoscope`);
-      
-      if (response.ok) {
-        const horoscopeData = await response.json();
-        setHoroscope(horoscopeData);
-        setHasProfile(true);
-      } else if (response.status === 404) {
+      const horoscopeData = await api.get<HoroscopeResult>('/api/horoscope');
+      setHoroscope(horoscopeData);
+      setHasProfile(true);
+    } catch (error: any) {
+      console.error('Error loading horoscope:', error);
+      if (error?.statusCode === 404) {
         setHasProfile(false);
       } else {
         Alert.alert('Ошибка', 'Не удалось загрузить гороскоп');
       }
-    } catch (error) {
-      console.error('Error loading horoscope:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить гороскоп');
     } finally {
       setIsLoading(false);
     }

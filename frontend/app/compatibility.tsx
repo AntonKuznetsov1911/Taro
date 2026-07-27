@@ -15,8 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { api } from '../src/utils/api';
 
 interface CompatibilityResult {
   name1: string;
@@ -40,24 +39,12 @@ export default function CompatibilityScreen() {
     }
 
     setIsLoading(true);
-    
+
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/compatibility`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name1: name1.trim(),
-          name2: name2.trim()
-        }),
+      const data = await api.post<CompatibilityResult>('/api/compatibility', {
+        name1: name1.trim(),
+        name2: name2.trim()
       });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
       setResult(data);
     } catch (error) {
       console.error('Error analyzing compatibility:', error);

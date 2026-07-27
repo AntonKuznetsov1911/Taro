@@ -17,8 +17,8 @@ import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
 import { ReadingInterpretation } from '../components/ReadingInterpretation';
 import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { api } from '../src/utils/api';
+import { getOfflineCardBack } from '../src/utils/offlineApi';
 
 interface TarotCard {
   id: number;
@@ -62,25 +62,21 @@ export default function ReadingScreen() {
 
   const loadCardBack = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card-back`);
-      const data = await response.json();
-      setCardBackImage(data.card_back);
+      const cardBack = await getOfflineCardBack();
+      setCardBackImage(cardBack);
     } catch (error) {
       console.error('Error loading card back:', error);
-      // Fallback card back
-      setCardBackImage("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmFja0dyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMkMzRTUwO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMzNDQ5NUU7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzAwIiBmaWxsPSJ1cmwoI2JhY2tHcmFkKSIgcng9IjE1Ii8+CiAgICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSIxNTAiIHI9IjQwIiBmaWxsPSJub25lIiBzdHJva2U9ImdvbGQiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iMC44Ii8+CiAgICA8dGV4dCB4PSIxMDAiIHk9IjE2MCIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjMyIiBmaWxsPSJnb2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn4yZPC90ZXh0PgogICAgPHRleHQgeD0iMTAwIiB5PSIyODAiIGZvbnQtZmFtaWx5PSJzZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9ImdvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIG9wYWNpdHk9IjAuOCI+VEFSTZQV0ZXh0Pgo8L3N2Zz4=");
+      setCardBackImage("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMDA0MCIgcng9IjE1Ii8+PHRleHQgeD0iMTAwIiB5PSIxNjAiIGZvbnQtc2l6ZT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfjK48L3RleHQ+PC9zdmc+");
     }
   };
 
   const createReading = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/reading`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, spread_type: spread, question }),
+      const data = await api.post<TarotReading>('/api/reading', {
+        category,
+        spread_type: spread,
+        question
       });
-      if (!response.ok) throw new Error('Network response was not ok');
-      const data = await response.json();
       setReading(data);
       setCardsRevealed(new Array(data.cards.length).fill(false));
     } catch (error) {
