@@ -64,30 +64,8 @@ function generateDetailedInterpretation(cards: TarotCard[], question?: string): 
  * Получить изображение рубашки карты (SVG)
  */
 export async function getOfflineCardBack(): Promise<string> {
-  return `data:image/svg+xml;base64,${btoa(`
-    <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="cosmicGrad" cx="50%" cy="50%" r="70%">
-          <stop offset="0%" style="stop-color:#1a0040;stop-opacity:1" />
-          <stop offset="30%" style="stop-color:#2d1b69;stop-opacity:1" />
-          <stop offset="70%" style="stop-color:#0f0f23;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#000011;stop-opacity:1" />
-        </radialGradient>
-        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-          <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="300" fill="url(#cosmicGrad)" rx="18"/>
-      <rect x="4" y="4" width="192" height="292" fill="none" stroke="url(#goldGrad)" stroke-width="2" rx="15"/>
-      <circle cx="100" cy="150" r="50" fill="none" stroke="#9B59B6" stroke-width="2"/>
-      <circle cx="100" cy="150" r="35" fill="none" stroke="#BB6BD9" stroke-width="1.5"/>
-      <text x="100" y="160" font-family="serif" font-size="32" fill="#FFD700" text-anchor="middle">🔮</text>
-      <text x="100" y="35" font-family="serif" font-size="14" font-weight="bold" fill="#FFD700" text-anchor="middle" opacity="0.9">✦ ТАРО ✦</text>
-      <text x="100" y="280" font-family="serif" font-size="10" fill="#9B59B6" text-anchor="middle" opacity="0.7">Мистическая мудрость</text>
-    </svg>
-  `)}`;
+  const svg = `<svg width="200" height="300" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="cosmicGrad" cx="50%" cy="50%" r="70%"><stop offset="0%" style="stop-color:#1a0040;stop-opacity:1"/><stop offset="30%" style="stop-color:#2d1b69;stop-opacity:1"/><stop offset="70%" style="stop-color:#0f0f23;stop-opacity:1"/><stop offset="100%" style="stop-color:#000011;stop-opacity:1"/></radialGradient><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFD700;stop-opacity:1"/><stop offset="50%" style="stop-color:#FFA500;stop-opacity:1"/><stop offset="100%" style="stop-color:#FFD700;stop-opacity:1"/></linearGradient></defs><rect width="200" height="300" fill="url(#cosmicGrad)" rx="18"/><rect x="4" y="4" width="192" height="292" fill="none" stroke="url(#goldGrad)" stroke-width="2" rx="15"/><circle cx="100" cy="150" r="50" fill="none" stroke="#9B59B6" stroke-width="2"/><circle cx="100" cy="150" r="35" fill="none" stroke="#BB6BD9" stroke-width="1.5"/><text x="100" y="160" font-family="serif" font-size="32" fill="#FFD700" text-anchor="middle">🔮</text><text x="100" y="35" font-family="serif" font-size="14" font-weight="bold" fill="#FFD700" text-anchor="middle" opacity="0.9">✦ ТАРО ✦</text><text x="100" y="280" font-family="serif" font-size="10" fill="#9B59B6" text-anchor="middle" opacity="0.7">Мистическая мудрость</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -131,7 +109,7 @@ export function generateTarotCardSVG(card: TarotCard, isReversed: boolean = fals
     </svg>
   `;
 
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /**
