@@ -1,15 +1,21 @@
+// GitHub Pages base path - set to repo name for GitHub Pages deployment
+const GITHUB_PAGES_BASE = process.env.GITHUB_PAGES === 'true' ? '/Taro' : '';
+
 export default {
   expo: {
     name: 'Taro - Mystic Tarot App',
     slug: 'Taro',
-    version: '1.1.0',
+    version: '1.2.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'taro',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     extra: {
-      EXPO_PUBLIC_BACKEND_URL: process.env.EXPO_PUBLIC_BACKEND_URL || 'https://taro-production-619b.up.railway.app',
+      // For GitHub Pages, we use offline mode (no backend needed)
+      EXPO_PUBLIC_BACKEND_URL: process.env.EXPO_PUBLIC_BACKEND_URL || '',
+      EXPO_PUBLIC_OFFLINE_MODE: process.env.GITHUB_PAGES === 'true' ? 'true' : 'false',
+      GITHUB_PAGES: process.env.GITHUB_PAGES || 'false',
     },
     ios: {
       supportsTablet: true,
@@ -27,6 +33,8 @@ export default {
       bundler: 'metro',
       output: 'static',
       favicon: './assets/images/favicon.png',
+      // Base path for GitHub Pages
+      basePath: GITHUB_PAGES_BASE,
     },
     plugins: [
       'expo-router',
@@ -42,6 +50,7 @@ export default {
     ],
     experiments: {
       typedRoutes: true,
+      baseUrl: GITHUB_PAGES_BASE,
     },
   },
 };

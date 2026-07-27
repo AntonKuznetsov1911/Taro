@@ -1,9 +1,10 @@
-name: Deploy to GitHub Pages
+name: Deploy Taro to GitHub Pages
 
 on:
   push:
     branches:
       - main
+      - claude/fix-railway-deployment-*
   workflow_dispatch:
 
 permissions:
@@ -35,20 +36,21 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Create .env file
-        run: |
-          cd frontend
-          echo "EXPO_PUBLIC_BACKEND_URL=https://taro-production-619b.up.railway.app" > .env
-
-      - name: Build Expo web
+      - name: Build Expo web for GitHub Pages
+        env:
+          GITHUB_PAGES: 'true'
+          EXPO_PUBLIC_OFFLINE_MODE: 'true'
+          EXPO_PUBLIC_BACKEND_URL: ''
         run: |
           cd frontend
           npx expo export --platform web
 
-      - name: Create .nojekyll
+      - name: Create .nojekyll and 404.html for SPA routing
         run: |
           cd frontend/dist
           touch .nojekyll
+          # Copy index.html to 404.html for SPA routing on GitHub Pages
+          cp index.html 404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

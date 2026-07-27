@@ -1,12 +1,17 @@
 {
-  "name": "frontend",
+  "name": "taro-tarot-app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.2.0",
+  "homepage": "https://antonkuznetsov1911.github.io/Taro",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "expo export -p web",
+    "build:gh-pages": "GITHUB_PAGES=true expo export -p web",
+    "predeploy": "npm run build:gh-pages",
+    "deploy": "gh-pages -d dist",
     "test": "jest --watchAll"
   },
   "jest": {
