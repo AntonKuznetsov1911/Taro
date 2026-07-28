@@ -151,15 +151,15 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
         withSequence(
           withTiming(minOpacity, {
             duration: star.twinkleSpeed * 0.35,
-            easing: Easing.inOut(Easing.sine),
+            easing: Easing.inOut(Easing.sin),
           }),
           withTiming(star.baseOpacity * 1.1, {
             duration: star.twinkleSpeed * 0.3,
-            easing: Easing.inOut(Easing.sine),
+            easing: Easing.inOut(Easing.sin),
           }),
           withTiming(star.baseOpacity * 0.7, {
             duration: star.twinkleSpeed * 0.35,
-            easing: Easing.inOut(Easing.sine),
+            easing: Easing.inOut(Easing.sin),
           })
         ),
         -1,
@@ -174,15 +174,15 @@ const StarComponent: React.FC<StarComponentProps> = ({ star }) => {
           withSequence(
             withTiming(0.95, {
               duration: star.twinkleSpeed * 0.35,
-              easing: Easing.inOut(Easing.sine),
+              easing: Easing.inOut(Easing.sin),
             }),
             withTiming(1.15, {
               duration: star.twinkleSpeed * 0.3,
-              easing: Easing.inOut(Easing.sine),
+              easing: Easing.inOut(Easing.sin),
             }),
             withTiming(1, {
               duration: star.twinkleSpeed * 0.35,
-              easing: Easing.inOut(Easing.sine),
+              easing: Easing.inOut(Easing.sin),
             })
           ),
           -1,
