@@ -20,7 +20,7 @@ const STAR_LAYERS = {
   bright: 10,
 };
 
-const SHOOTING_STAR_COUNT = 0;
+const SHOOTING_STAR_COUNT = 2;
 
 interface Star {
   id: string;
@@ -115,15 +115,17 @@ const generateShootingStars = (): ShootingStar[] => {
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
     const startX = Math.random() * width * 0.9 + width * 0.05;
     const startY = -20;
-    const angle = Math.random() * 60 + 60; // 60-120 градусов (вниз)
+    // Разные углы падения (65-115 градусов)
+    const angle = Math.random() * 50 + 65;
 
     shootingStars.push({
       id: `shooting-${i}`,
       startX,
       startY,
       angle,
-      duration: Math.random() * 800 + 600, // 600-1400ms
-      delay: Math.random() * 15000 + i * 12000,
+      duration: Math.random() * 150 + 100, // 100-250ms (в 3 раза быстрее)
+      // Хаотичные интервалы
+      delay: Math.random() * 25000 + Math.random() * 20000 + i * 18000,
     });
   }
 

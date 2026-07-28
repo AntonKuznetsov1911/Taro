@@ -12,7 +12,7 @@ const STAR_LAYERS = {
   bright: 12,     // Яркие крупные звёзды
 };
 
-const SHOOTING_STAR_COUNT = 2;
+const SHOOTING_STAR_COUNT = 3;
 
 interface Star {
   id: string;
@@ -110,23 +110,24 @@ const generateShootingStars = (): ShootingStar[] => {
   const shootingStars: ShootingStar[] = [];
 
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
-    // Маленькие быстрые падающие звёзды сверху вниз
-    const startX = Math.random() * 80 + 10;
-    const startY = -2;
+    // Случайная позиция старта
+    const startX = Math.random() * 90 + 5;
+    const startY = -3;
 
-    // Почти вертикально вниз с небольшим углом (80-100 градусов)
-    const angle = Math.random() * 20 + 80;
+    // Разные углы падения (65-115 градусов) - хаотично
+    const angle = Math.random() * 50 + 65;
 
-    // Маленький хвостик
-    const tailLength = Math.random() * 15 + 10; // 10-25px
+    // Маленький хвостик сверху
+    const tailLength = Math.random() * 20 + 15;
 
     shootingStars.push({
       id: `shooting-${i}`,
       startX,
       startY,
       angle,
-      delay: Math.random() * 20 + i * 18,
-      duration: Math.random() * 0.3 + 0.3, // 0.3-0.6 сек (очень быстро)
+      // Хаотичные интервалы - разное время появления
+      delay: Math.random() * 30 + Math.random() * 25 + i * 20,
+      duration: Math.random() * 0.1 + 0.1, // 0.1-0.2 сек (в 3 раза быстрее)
       tailLength,
       hasTail: true,
     });
@@ -207,22 +208,22 @@ export const CosmicBackground: React.FC = () => {
           animation: fallingStarWithTail linear infinite;
         }
 
-        /* Хвост падающей звезды */
+        /* Хвост падающей звезды - сверху, тянется за звездой */
         .falling-star::after {
           content: '';
           position: absolute;
-          width: var(--tail-length);
-          height: 1px;
-          background: linear-gradient(to left,
-            rgba(255,255,255,0.9) 0%,
-            rgba(255,255,255,0.5) 20%,
-            rgba(255,255,255,0.2) 50%,
+          width: 1px;
+          height: var(--tail-length);
+          background: linear-gradient(to top,
+            rgba(255,255,255,0.8) 0%,
+            rgba(255,255,255,0.4) 30%,
+            rgba(255,255,255,0.1) 70%,
             transparent 100%
           );
-          right: 100%;
-          top: 50%;
-          transform: translateY(-50%) rotate(calc(var(--angle) - 180deg));
-          transform-origin: right center;
+          left: 50%;
+          bottom: 100%;
+          transform: translateX(-50%) rotate(calc(var(--angle) - 90deg));
+          transform-origin: bottom center;
           border-radius: 1px;
         }
 
