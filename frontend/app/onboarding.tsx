@@ -13,13 +13,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { userProfileStore } from '../src/stores/userProfileStore';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { ZODIAC_SIGNS } from '../src/utils/astrology';
 
 type Step = 'welcome' | 'name' | 'gender' | 'birthdate' | 'birthtime' | 'complete';
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { saveProfile } = useUserProfile();
   const [step, setStep] = useState<Step>('welcome');
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(null);
@@ -47,7 +48,7 @@ export default function OnboardingScreen() {
         }
         break;
       case 'birthtime':
-        await saveProfile();
+        await handleSaveProfile();
         setStep('complete');
         break;
       case 'complete':
@@ -56,23 +57,27 @@ export default function OnboardingScreen() {
     }
   };
 
-  const saveProfile = async () => {
-    const birthDate = new Date(
-      parseInt(birthYear),
-      parseInt(birthMonth) - 1,
-      parseInt(birthDay)
-    ).toISOString();
+  const handleSaveProfile = async () => {
+    try {
+      const birthDate = new Date(
+        parseInt(birthYear),
+        parseInt(birthMonth) - 1,
+        parseInt(birthDay)
+      ).toISOString();
 
-    const birthTime = knowsBirthTime && birthHour && birthMinute
-      ? `${birthHour.padStart(2, '0')}:${birthMinute.padStart(2, '0')}`
-      : undefined;
+      const birthTime = knowsBirthTime && birthHour && birthMinute
+        ? `${birthHour.padStart(2, '0')}:${birthMinute.padStart(2, '0')}`
+        : undefined;
 
-    await userProfileStore.saveProfile({
-      name: name.trim(),
-      gender: gender!,
-      birthDate,
-      birthTime,
-    });
+      await saveProfile({
+        name: name.trim(),
+        gender: gender!,
+        birthDate,
+        birthTime,
+      });
+    } catch (error) {
+      console.error('Ошибка сохранения профиля:', error);
+    }
   };
 
   const getZodiacPreview = () => {
