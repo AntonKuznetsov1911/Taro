@@ -10,12 +10,14 @@ import {
   Dimensions,
   Animated,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { DailyCardWidget } from '../components/DailyCardWidget';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 60) / 2;
@@ -228,8 +230,16 @@ const FeatureButton = ({ feature, index }: { feature: MysticFeature; index: numb
 
 export default function CosmicIndex() {
   const router = useRouter();
+  const { profile, isLoading, hasProfile, getGreeting, isBirthday } = useUserProfile();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
+
+  // Редирект на онбординг для новых пользователей
+  useEffect(() => {
+    if (!isLoading && !hasProfile) {
+      router.replace('/onboarding');
+    }
+  }, [isLoading, hasProfile]);
 
   // Header animation
   const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -260,6 +270,15 @@ export default function CosmicIndex() {
     }
   };
 
+  // Показываем загрузку пока проверяем профиль
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#9B59B6" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
@@ -273,7 +292,7 @@ export default function CosmicIndex() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Header */}
+          {/* Header with personalized greeting */}
           <Animated.View
             style={[
               styles.header,
@@ -283,9 +302,21 @@ export default function CosmicIndex() {
               }
             ]}
           >
+            {profile?.name && (
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+            )}
+            {isBirthday() && (
+              <Text style={styles.birthdayText}>🎂 С Днём Рождения! 🎂</Text>
+            )}
             <Text style={styles.mainTitle}>ТARO</Text>
             <View style={styles.subtitleContainer}>
-              <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
+              {profile?.sunSign ? (
+                <Text style={styles.subtitle}>
+                  {profile.sunSign.symbol} {profile.sunSign.nameRu} • Древняя мудрость звезд
+                </Text>
+              ) : (
+                <Text style={styles.subtitle}>✨ Древняя мудрость звезд ✨</Text>
+              )}
             </View>
           </Animated.View>
 
@@ -394,6 +425,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000011',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#000011',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 16,
+    color: '#9B59B6',
+    marginBottom: 5,
+    fontWeight: '500',
+  },
+  birthdayText: {
+    fontSize: 18,
+    color: '#FFD700',
+    marginBottom: 10,
+    fontWeight: 'bold',
   },
   safeArea: {
     flex: 1,
