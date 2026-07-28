@@ -17,8 +17,7 @@ import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
 import { ReadingInterpretation } from '../components/ReadingInterpretation';
 import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
-import { api } from '../src/utils/api';
-import { getOfflineCardBack } from '../src/utils/offlineApi';
+import { getOfflineCardBack, generateOfflineTarotReading, generateTarotCardSVG } from '../src/utils/offlineApi';
 
 interface TarotCard {
   id: number;
@@ -72,11 +71,31 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
-      const data = await api.post<TarotReading>('/api/reading', {
-        category,
-        spread_type: spread,
-        question
-      });
+      const cardCount = spread === 'single' ? 1 : spread === 'three' ? 3 : 10;
+      const positions = cardCount === 1 ? ['Ответ'] :
+                        cardCount === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
+                        ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
+
+      const offlineResult = await generateOfflineTarotReading(question, cardCount);
+
+      const cardsWithImages = offlineResult.cards.map(card => ({
+        ...card,
+        name_en: card.name,
+        is_reversed: Math.random() < 0.3,
+        image: generateTarotCardSVG(card, Math.random() < 0.3)
+      }));
+
+      const data: TarotReading = {
+        id: Date.now().toString(),
+        question: question || 'Общий расклад',
+        category: category || 'general',
+        spread_type: spread || 'three',
+        cards: cardsWithImages,
+        positions: positions.slice(0, cardCount),
+        interpretation: offlineResult.interpretation,
+        created_at: new Date().toISOString()
+      };
+
       setReading(data);
       setCardsRevealed(new Array(data.cards.length).fill(false));
     } catch (error) {
