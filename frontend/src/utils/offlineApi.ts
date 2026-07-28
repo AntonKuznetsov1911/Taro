@@ -1,5 +1,7 @@
 // Offline API - Полная офлайн функциональность для GitHub Pages
 import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, TarotCard, getCardById } from '../data/tarotCards';
+import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology } from './astrology';
+import { generateMysticalTarotSVG, generateMysticalCardBack } from './tarotCardImages';
 
 export interface OfflineReadingResult {
   cards: TarotCard[];
@@ -26,18 +28,32 @@ export async function generateOfflineTarotReading(question?: string, cardCount: 
 }
 
 /**
- * Генерация детальной интерпретации карт
+ * Генерация детальной интерпретации карт с астрологическим контекстом
  */
 function generateDetailedInterpretation(cards: TarotCard[], question?: string): string {
   const positions = cards.length === 1 ? ['Ответ'] :
                     cards.length === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
                     ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
 
+  const astrology = getDailyAstrology();
+  const retrograde = getRetrogradePlanets();
+
   let interpretation = `🔮 **Мистическое Гадание на Таро**\n\n`;
 
   if (question) {
     interpretation += `*Ваш вопрос: "${question}"*\n\n`;
   }
+
+  // Астрологический контекст
+  interpretation += `---\n`;
+  interpretation += `### ${astrology.moon.emoji} Космический Контекст\n\n`;
+  interpretation += `**Луна:** ${astrology.moon.phaseNameRu} в ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n`;
+  interpretation += `**Лунный день:** ${astrology.moon.lunarDay} | **Освещённость:** ${astrology.moon.illumination}%\n`;
+  interpretation += `**День:** ${astrology.dayOfWeekRu} — день ${astrology.rulingPlanetRu}\n`;
+  if (retrograde.length > 0) {
+    interpretation += `⚠️ **Ретроград:** ${retrograde.join(', ')}\n`;
+  }
+  interpretation += `\n---\n\n`;
 
   interpretation += `Дорогой искатель, карты раскрывают глубокую мудрость для вашего пути...\n\n`;
 
@@ -53,8 +69,11 @@ function generateDetailedInterpretation(cards: TarotCard[], question?: string): 
 
   interpretation += `---\n\n`;
   interpretation += `## 💫 **Итог**\n\n`;
+  interpretation += `${astrology.energyDescription}\n\n`;
   interpretation += `Карты несут для вас важное послание. Доверяйте своей интуиции и следуйте мудрости, открывшейся здесь. `;
   interpretation += `Помните, что именно вы держите ключ к своей судьбе.\n\n`;
+  interpretation += `🍀 **Счастливые числа:** ${astrology.luckyNumbers.join(', ')}\n`;
+  interpretation += `🎨 **Счастливые цвета:** ${astrology.luckyColors.join(', ')}\n\n`;
   interpretation += `*Пусть звёзды освещают ваш путь!* ⭐\n`;
 
   return interpretation;
@@ -64,52 +83,14 @@ function generateDetailedInterpretation(cards: TarotCard[], question?: string): 
  * Получить изображение рубашки карты (SVG)
  */
 export async function getOfflineCardBack(): Promise<string> {
-  const svg = `<svg width="200" height="300" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="cosmicGrad" cx="50%" cy="50%" r="70%"><stop offset="0%" style="stop-color:#1a0040;stop-opacity:1"/><stop offset="30%" style="stop-color:#2d1b69;stop-opacity:1"/><stop offset="70%" style="stop-color:#0f0f23;stop-opacity:1"/><stop offset="100%" style="stop-color:#000011;stop-opacity:1"/></radialGradient><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#FFD700;stop-opacity:1"/><stop offset="50%" style="stop-color:#FFA500;stop-opacity:1"/><stop offset="100%" style="stop-color:#FFD700;stop-opacity:1"/></linearGradient></defs><rect width="200" height="300" fill="url(#cosmicGrad)" rx="18"/><rect x="4" y="4" width="192" height="292" fill="none" stroke="url(#goldGrad)" stroke-width="2" rx="15"/><circle cx="100" cy="150" r="50" fill="none" stroke="#9B59B6" stroke-width="2"/><circle cx="100" cy="150" r="35" fill="none" stroke="#BB6BD9" stroke-width="1.5"/><text x="100" y="160" font-family="serif" font-size="32" fill="#FFD700" text-anchor="middle">🔮</text><text x="100" y="35" font-family="serif" font-size="14" font-weight="bold" fill="#FFD700" text-anchor="middle" opacity="0.9">✦ ТАРО ✦</text><text x="100" y="280" font-family="serif" font-size="10" fill="#9B59B6" text-anchor="middle" opacity="0.7">Мистическая мудрость</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  return generateMysticalCardBack();
 }
 
 /**
  * Получить SVG изображение карты Таро
  */
 export function generateTarotCardSVG(card: TarotCard, isReversed: boolean = false): string {
-  const arcanaSymbols: { [key: string]: string } = {
-    'Дурак': '🃏', 'Маг': '🎭', 'Верховная Жрица': '🌙', 'Императрица': '👑',
-    'Император': '⚔️', 'Иерофант': '📿', 'Влюблённые': '💕', 'Колесница': '🏇',
-    'Сила': '🦁', 'Отшельник': '🔦', 'Колесо Фортуны': '🎡', 'Справедливость': '⚖️',
-    'Повешенный': '🔄', 'Смерть': '💀', 'Умеренность': '⚗️', 'Дьявол': '😈',
-    'Башня': '🏰', 'Звезда': '⭐', 'Луна': '🌙', 'Солнце': '☀️',
-    'Суд': '📯', 'Мир': '🌍'
-  };
-
-  const symbol = arcanaSymbols[card.name] || '🔮';
-  const bgColor = card.type === 'major' ? '#2d1b69' : '#1a3a5c';
-  const accentColor = card.type === 'major' ? '#9B59B6' : '#3498db';
-
-  const svg = `
-    <svg width="200" height="300" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:${bgColor};stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#0a0a15;stop-opacity:1" />
-        </linearGradient>
-        <linearGradient id="goldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-          <stop offset="50%" style="stop-color:#FFA500;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="300" fill="url(#cardBg)" rx="15"/>
-      <rect x="3" y="3" width="194" height="294" fill="none" stroke="url(#goldBorder)" stroke-width="2" rx="13"/>
-      <rect x="15" y="50" width="170" height="180" fill="rgba(0,0,0,0.3)" rx="10"/>
-      <text x="100" y="150" font-size="60" text-anchor="middle" dominant-baseline="middle">${symbol}</text>
-      <text x="100" y="30" font-family="serif" font-size="11" font-weight="bold" fill="#FFD700" text-anchor="middle">${card.name}</text>
-      <text x="100" y="255" font-family="sans-serif" font-size="8" fill="${accentColor}" text-anchor="middle" opacity="0.9">${card.keywords.slice(0, 2).join(' • ')}</text>
-      <text x="100" y="275" font-family="sans-serif" font-size="7" fill="#888" text-anchor="middle">${card.type === 'major' ? 'Старший Аркан' : 'Младший Аркан'}</text>
-      ${isReversed ? '<text x="100" y="290" font-size="10" fill="#FFD700" text-anchor="middle">⟲ Перевёрнутая</text>' : ''}
-    </svg>
-  `;
-
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  return generateMysticalTarotSVG(card, isReversed);
 }
 
 /**
@@ -127,32 +108,42 @@ export async function getOfflineCardById(id: number): Promise<TarotCard | null> 
 }
 
 /**
- * Получить карту дня
+ * Получить карту дня с астрологическим контекстом
  */
 export async function getOfflineDailyCard(): Promise<{
   card: TarotCard;
   message: string;
   is_reversed: boolean;
+  astrology: DailyAstrology;
 }> {
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  // Используем дату для стабильности карты в течение дня
   const today = new Date();
-  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate()) % MAJOR_ARCANA.length;
+  const astrology = getDailyAstrology(today);
+
+  // Используем дату и фазу луны для выбора карты
+  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate() + Math.floor(astrology.moon.phase * 10)) % MAJOR_ARCANA.length;
   const card = MAJOR_ARCANA[dayIndex];
-  const isReversed = (today.getDate() % 3) === 0;
+
+  // Перевёрнутость зависит от фазы луны и лунного дня
+  const isReversed = astrology.moon.lunarDay === 9 || astrology.moon.lunarDay === 15 || astrology.moon.lunarDay === 29;
+
+  const moonContext = astrology.moon.isWaxing
+    ? 'Растущая луна усиливает энергию карты'
+    : 'Убывающая луна призывает к рефлексии';
 
   const messages = [
-    `Сегодня ${card.name} направляет вас. ${card.keywords[0]} — ключ к успеху этого дня.`,
-    `Энергия ${card.name} освещает ваш путь. Прислушайтесь к ${card.keywords[1]}.`,
-    `${card.name} несёт важное послание: обратите внимание на ${card.keywords[0]} и ${card.keywords[1]}.`,
-    `Карта ${card.name} говорит о ${card.keywords.slice(0, 2).join(' и ')}. Пусть это направляет ваши действия.`
+    `${astrology.moon.emoji} ${moonContext}. ${card.name} направляет вас сегодня. ${card.keywords[0]} — ключ к успеху.`,
+    `${astrology.moon.emoji} ${astrology.moon.phaseNameRu}. Энергия ${card.name} освещает ваш путь.`,
+    `${astrology.moon.emoji} Луна в ${astrology.moon.moonSign.nameRu}. ${card.name} несёт важное послание.`,
+    `${astrology.moon.emoji} ${moonContext}. ${card.name} говорит о ${card.keywords.slice(0, 2).join(' и ')}.`
   ];
 
   return {
     card,
     message: messages[today.getDay() % messages.length],
-    is_reversed: isReversed
+    is_reversed: isReversed,
+    astrology
   };
 }
 
@@ -207,20 +198,34 @@ ${cards[0].keywords[0]} и ${cards[1].keywords[0]} — развивайте эт
 }
 
 /**
- * Генерация офлайн гороскопа
+ * Генерация офлайн гороскопа с реальными астрологическими данными
  */
 export async function generateOfflineHoroscope(sign: string): Promise<string> {
   await new Promise(resolve => setTimeout(resolve, 600));
 
   const card = getRandomCards(1)[0];
+  const astrology = getDailyAstrology();
+  const retrograde = getRetrogradePlanets();
   const today = new Date().toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const moodRating = Math.floor(Math.random() * 3) + 7;
-  const luckyNumbers = Array.from({length: 5}, () => Math.floor(Math.random() * 49) + 1);
-  const colors = ['фиолетовый', 'золотой', 'серебряный', 'синий', 'зелёный', 'розовый'];
-  const luckyColor = colors[Math.floor(Math.random() * colors.length)];
+
+  const moodRating = astrology.overallEnergy === 'high' ? 9 : astrology.overallEnergy === 'medium' ? 7 : 5;
 
   return `🌟 **Ежедневный гороскоп для ${sign}**
 *${today}*
+
+---
+
+### ${astrology.moon.emoji} **Лунный календарь**
+
+**Фаза:** ${astrology.moon.phaseNameRu} (${astrology.moon.illumination}%)
+**Лунный день:** ${astrology.moon.lunarDay}
+**Луна в:** ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}
+**Стихия луны:** ${astrology.moon.moonSign.elementRu}
+
+### ☀️ **Солнце в ${astrology.sunSign.nameRu}** ${astrology.sunSign.symbol}
+
+**Управляющая планета дня:** ${astrology.rulingPlanetRu}
+${retrograde.length > 0 ? `\n⚠️ **Ретроградные планеты:** ${retrograde.join(', ')}` : ''}
 
 ---
 
@@ -232,24 +237,32 @@ ${card.upright_meaning}
 
 ### ✨ **Прогноз на сегодня**
 
-**Настроение:** ${'⭐'.repeat(moodRating)}${'☆'.repeat(10 - moodRating)} (${moodRating}/10)
+**Энергия дня:** ${'⭐'.repeat(moodRating)}${'☆'.repeat(10 - moodRating)} (${moodRating}/10)
 
-Энергия ${card.name} влияет на ваш день, принося темы ${card.keywords.slice(0, 3).join(', ')}. Сейчас время проявить ${card.keywords[0]} во всех сферах жизни.
+${astrology.energyDescription}
+
+Энергия ${card.name} влияет на ваш день, принося темы ${card.keywords.slice(0, 3).join(', ')}. ${astrology.moon.isWaxing ? 'Растущая луна благоприятствует новым начинаниям.' : 'Убывающая луна способствует завершению дел и очищению.'}
+
+### ✅ **Благоприятно сегодня**
+${astrology.favorableActivities.slice(0, 3).map(a => `• ${a}`).join('\n')}
+
+### ⛔ **Лучше отложить**
+${astrology.unfavorableActivities.map(a => `• ${a}`).join('\n')}
 
 ### 💕 **Любовь и отношения**
-${card.keywords.includes('любовь') || card.keywords.includes('гармония')
-  ? 'Романтика витает в воздухе! Открыто выражайте свои чувства сегодня.'
+${astrology.moon.moonSign.element === 'water' || astrology.moon.moonSign.element === 'fire'
+  ? 'Эмоции обострены. Романтика витает в воздухе! Открыто выражайте свои чувства сегодня.'
   : 'Сосредоточьтесь на любви к себе и внутренней гармонии. Правильные связи последуют.'}
 
 ### 💼 **Карьера и цели**
-${card.keywords.includes('успех') || card.keywords.includes('сила')
+${astrology.overallEnergy === 'high'
   ? 'Профессиональный успех в центре внимания. Действуйте смело в своих проектах.'
   : 'Терпение и планирование будут вам полезны. Закладывайте фундамент для будущего успеха.'}
 
 ### 🍀 **Счастливые элементы**
-- **Числа:** ${luckyNumbers.join(', ')}
-- **Цвет:** ${luckyColor}
-- **Лучшее время:** ${Math.floor(Math.random() * 12) + 1}:00
+- **Числа:** ${astrology.luckyNumbers.join(', ')}
+- **Цвета:** ${astrology.luckyColors.join(', ')}
+- **Лучшее время:** ${10 + Math.floor(moodRating / 3)}:00
 
 ---
 
@@ -404,6 +417,10 @@ lifePathNumber === 2 ? 'потребностей других с вашими с
 
 💫 *Ваши числа рассказывают историю безграничного потенциала. Живите своей правдой!*`;
 }
+
+// Re-export astrology types for convenience
+export { getDailyAstrology, getMoonData, getRetrogradePlanets, formatAstrologyForReading } from './astrology';
+export type { DailyAstrology, MoonData, ZodiacSign } from './astrology';
 
 /**
  * Проверка доступности бэкенда

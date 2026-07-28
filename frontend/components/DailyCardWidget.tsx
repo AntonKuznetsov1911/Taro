@@ -17,13 +17,14 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
-import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack } from '../src/utils/offlineApi';
+import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack, DailyAstrology } from '../src/utils/offlineApi';
 import { TarotCard } from '../src/data/tarotCards';
 
 interface DailyCardData {
   card: TarotCard;
   message: string;
   is_reversed: boolean;
+  astrology: DailyAstrology;
 }
 
 interface DailyCardWidgetProps {
@@ -122,13 +123,16 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Ionicons name="sunny" size={18} color="#FFD700" />
+            <Text style={styles.moonEmoji}>{dailyCard.astrology?.moon.emoji || '🌙'}</Text>
             <Text style={styles.title}>Карта дня</Text>
           </View>
-          <Text style={styles.date}>{new Date().toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-          })}</Text>
+          <View style={styles.headerRight}>
+            <Text style={styles.moonPhase}>{dailyCard.astrology?.moon.phaseNameRu || ''}</Text>
+            <Text style={styles.date}>{new Date().toLocaleDateString('ru-RU', {
+              day: 'numeric',
+              month: 'long',
+            })}</Text>
+          </View>
         </View>
 
         <TouchableOpacity onPress={handleReveal} activeOpacity={0.9}>
@@ -175,7 +179,12 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
                   {dailyCard.is_reversed && (
                     <Text style={styles.reversedText}>⟲ Перевёрнутая</Text>
                   )}
-                  <Text style={styles.message} numberOfLines={3}>{dailyCard.message}</Text>
+                  {dailyCard.astrology && (
+                    <Text style={styles.moonInfo}>
+                      {dailyCard.astrology.moon.moonSign.symbol} Луна в {dailyCard.astrology.moon.moonSign.nameRu}
+                    </Text>
+                  )}
+                  <Text style={styles.message} numberOfLines={2}>{dailyCard.message}</Text>
                   <View style={styles.keywords}>
                     {dailyCard.card.keywords.slice(0, 2).map((keyword, index) => (
                       <View key={index} style={styles.keywordBadge}>
@@ -227,10 +236,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
+  moonEmoji: {
+    fontSize: 18,
+  },
   title: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#E8E8E8',
+  },
+  moonPhase: {
+    fontSize: 10,
+    color: '#9B59B6',
+    fontWeight: '500',
   },
   date: {
     fontSize: 11,
@@ -312,7 +332,12 @@ const styles = StyleSheet.create({
   reversedText: {
     fontSize: 10,
     color: '#FFD700',
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  moonInfo: {
+    fontSize: 9,
+    color: '#9B59B6',
+    marginBottom: 3,
   },
   message: {
     fontSize: 11,
