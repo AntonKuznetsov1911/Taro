@@ -12,7 +12,7 @@ const STAR_LAYERS = {
   bright: 12,     // Яркие крупные звёзды
 };
 
-const SHOOTING_STAR_COUNT = 4;
+const SHOOTING_STAR_COUNT = 0;
 
 interface Star {
   id: string;

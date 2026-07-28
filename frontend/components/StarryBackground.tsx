@@ -20,7 +20,7 @@ const STAR_LAYERS = {
   bright: 10,
 };
 
-const SHOOTING_STAR_COUNT = 3;
+const SHOOTING_STAR_COUNT = 0;
 
 interface Star {
   id: string;
