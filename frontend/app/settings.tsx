@@ -17,10 +17,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useSettings } from '../src/contexts/SettingsContext';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettings();
+  const { profile, clearProfile } = useUserProfile();
 
   const [trackWidth, setTrackWidth] = useState(1);
   const thumbLeft = Math.max(0, Math.min(trackWidth - 20, trackWidth * settings.effectsVolume - 10));
@@ -160,6 +162,58 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.content}>
+            {/* Профиль пользователя */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>👤 Ваш профиль</Text>
+              <View style={styles.sectionContent}>
+                {profile?.isComplete ? (
+                  <View style={styles.profileCard}>
+                    <LinearGradient
+                      colors={['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.1)']}
+                      style={styles.profileCardGradient}
+                    >
+                      <View style={styles.profileInfo}>
+                        <Text style={styles.profileName}>{profile.name}</Text>
+                        <View style={styles.profileZodiac}>
+                          <Text style={styles.profileZodiacSymbol}>{profile.sunSign?.symbol}</Text>
+                          <Text style={styles.profileZodiacName}>{profile.sunSign?.nameRu}</Text>
+                        </View>
+                        <Text style={styles.profileBirthDate}>
+                          {new Date(profile.birthDate).toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </Text>
+                      </View>
+                      <View style={styles.profileActions}>
+                        <TouchableOpacity
+                          style={styles.profileEditButton}
+                          onPress={() => router.push('/onboarding')}
+                        >
+                          <Ionicons name="pencil" size={16} color="#BB6BD9" />
+                          <Text style={styles.profileEditText}>Изменить</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </LinearGradient>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.createProfileButton}
+                    onPress={() => router.push('/onboarding')}
+                  >
+                    <LinearGradient
+                      colors={['#9B59B6', '#8E44AD']}
+                      style={styles.createProfileGradient}
+                    >
+                      <Ionicons name="person-add" size={20} color="#FFF" />
+                      <Text style={styles.createProfileText}>Создать профиль</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🌍 Язык интерфейса</Text>
               <View style={styles.sectionContent}>
@@ -196,19 +250,6 @@ export default function SettingsScreen() {
               <Text style={styles.sectionTitle}>💾 Данные</Text>
               <View style={styles.sectionContent}>
                 <SettingRow icon="save" title="Автосохранение" subtitle="Автоматически сохранять результаты гаданий" value={settings.autoSave} onToggle={() => toggle('autoSave')} />
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>👤 Профиль</Text>
-              <View style={styles.sectionContent}>
-                <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
-                  <LinearGradient colors={["rgba(69, 183, 209, 0.9)", "rgba(52, 152, 219, 1)"]} style={styles.profileButtonGradient}>
-                    <Ionicons name="person" size={20} color="#FFF" />
-                    <Text style={styles.profileButtonText}>Редактировать профиль</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#FFF" />
-                  </LinearGradient>
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -269,6 +310,20 @@ const styles = StyleSheet.create({
   profileButton: { borderRadius: 15, overflow: 'hidden', elevation: 5 },
   profileButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 10 },
   profileButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF', flex: 1, textAlign: 'center' },
+  profileCard: { borderRadius: 15, overflow: 'hidden' },
+  profileCardGradient: { padding: 16, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(155, 89, 182, 0.3)' },
+  profileInfo: { alignItems: 'center', marginBottom: 12 },
+  profileName: { fontSize: 20, fontWeight: 'bold', color: '#E8E8E8', marginBottom: 8 },
+  profileZodiac: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  profileZodiacSymbol: { fontSize: 24 },
+  profileZodiacName: { fontSize: 16, color: '#BB6BD9', fontWeight: '600' },
+  profileBirthDate: { fontSize: 13, color: 'rgba(255, 255, 255, 0.6)' },
+  profileActions: { alignItems: 'center' },
+  profileEditButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(155, 89, 182, 0.2)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  profileEditText: { fontSize: 14, color: '#BB6BD9', fontWeight: '500' },
+  createProfileButton: { borderRadius: 15, overflow: 'hidden' },
+  createProfileGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 10 },
+  createProfileText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
   resetButton: { borderRadius: 15, overflow: 'hidden', elevation: 5 },
   resetButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 10 },
   resetButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
