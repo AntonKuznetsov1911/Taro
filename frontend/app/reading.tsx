@@ -71,7 +71,7 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
-      const cardCount = spread === 'single' ? 1 : spread === 'three' ? 3 : 10;
+      const cardCount = spread === 'one_card' ? 1 : spread === 'three_cards' ? 3 : 10;
       const positions = cardCount === 1 ? ['Ответ'] :
                         cardCount === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
                         ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
