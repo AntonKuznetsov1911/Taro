@@ -1,7 +1,13 @@
 // Offline API - Полная офлайн функциональность для GitHub Pages
 import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, TarotCard, getCardById } from '../data/tarotCards';
-import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology } from './astrology';
+import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology, ZodiacSign, getZodiacCompatibility } from './astrology';
 import { generateMysticalTarotSVG, generateMysticalCardBack } from './tarotCardImages';
+import { UserProfile } from '../stores/userProfileStore';
+
+// Тип для опционального профиля пользователя в функциях
+export interface PersonalizationContext {
+  profile?: UserProfile | null;
+}
 
 export interface OfflineReadingResult {
   cards: TarotCard[];
@@ -13,11 +19,15 @@ export interface OfflineReadingResult {
 /**
  * Генерация офлайн гадания на картах Таро
  */
-export async function generateOfflineTarotReading(question?: string, cardCount: number = 3): Promise<OfflineReadingResult> {
+export async function generateOfflineTarotReading(
+  question?: string,
+  cardCount: number = 3,
+  context?: PersonalizationContext
+): Promise<OfflineReadingResult> {
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const cards = getRandomCards(cardCount);
-  const interpretation = generateDetailedInterpretation(cards, question);
+  const interpretation = generateDetailedInterpretation(cards, question, context?.profile);
 
   return {
     cards,
@@ -30,7 +40,7 @@ export async function generateOfflineTarotReading(question?: string, cardCount: 
 /**
  * Генерация детальной интерпретации карт с астрологическим контекстом
  */
-function generateDetailedInterpretation(cards: TarotCard[], question?: string): string {
+function generateDetailedInterpretation(cards: TarotCard[], question?: string, profile?: UserProfile | null): string {
   const positions = cards.length === 1 ? ['Ответ'] :
                     cards.length === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
                     ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
@@ -38,24 +48,38 @@ function generateDetailedInterpretation(cards: TarotCard[], question?: string): 
   const astrology = getDailyAstrology();
   const retrograde = getRetrogradePlanets();
 
+  // Персонализированное приветствие
+  const greeting = profile?.name ? `Дорогой(ая) ${profile.name}` : 'Дорогой искатель';
+
   let interpretation = `🔮 **Мистическое Гадание на Таро**\n\n`;
 
   if (question) {
     interpretation += `*Ваш вопрос: "${question}"*\n\n`;
   }
 
-  // Астрологический контекст
+  // Персонализированный астрологический контекст
   interpretation += `---\n`;
   interpretation += `### ${astrology.moon.emoji} Космический Контекст\n\n`;
+
+  if (profile?.sunSign) {
+    interpretation += `**Ваш знак:** ${profile.sunSign.nameRu} ${profile.sunSign.symbol}\n`;
+    const compatibility = getZodiacCompatibility(profile.sunSign, astrology.moon.moonSign);
+    interpretation += `**Гармония с Луной:** ${compatibility.score}%\n\n`;
+  }
+
   interpretation += `**Луна:** ${astrology.moon.phaseNameRu} в ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n`;
   interpretation += `**Лунный день:** ${astrology.moon.lunarDay} | **Освещённость:** ${astrology.moon.illumination}%\n`;
   interpretation += `**День:** ${astrology.dayOfWeekRu} — день ${astrology.rulingPlanetRu}\n`;
+
   if (retrograde.length > 0) {
     interpretation += `⚠️ **Ретроград:** ${retrograde.join(', ')}\n`;
+    if (profile?.sunSign) {
+      interpretation += `*Влияние на ${profile.sunSign.nameRu}: будьте внимательны в коммуникации*\n`;
+    }
   }
   interpretation += `\n---\n\n`;
 
-  interpretation += `Дорогой искатель, карты раскрывают глубокую мудрость для вашего пути...\n\n`;
+  interpretation += `${greeting}, карты раскрывают глубокую мудрость для вашего пути...\n\n`;
 
   cards.forEach((card, index) => {
     const position = positions[index] || `Карта ${index + 1}`;
