@@ -12,7 +12,7 @@ const STAR_LAYERS = {
   bright: 12,     // Яркие крупные звёзды
 };
 
-const SHOOTING_STAR_COUNT = 0;
+const SHOOTING_STAR_COUNT = 2;
 
 interface Star {
   id: string;
@@ -110,27 +110,25 @@ const generateShootingStars = (): ShootingStar[] => {
   const shootingStars: ShootingStar[] = [];
 
   for (let i = 0; i < SHOOTING_STAR_COUNT; i++) {
-    // Падающие звёзды всегда начинаются сверху и падают вниз
-    const startX = Math.random() * 90 + 5; // 5-95% по горизонтали
-    const startY = Math.random() * 20 - 5; // -5 до 15% (начинают сверху)
+    // Маленькие быстрые падающие звёзды сверху вниз
+    const startX = Math.random() * 80 + 10;
+    const startY = -2;
 
-    // Угол падения: 60-120 градусов (вниз с небольшим отклонением)
-    // 90 = строго вниз, 60-90 = вправо-вниз, 90-120 = влево-вниз
-    const angle = Math.random() * 60 + 60;
+    // Почти вертикально вниз с небольшим углом (80-100 градусов)
+    const angle = Math.random() * 20 + 80;
 
-    // У некоторых звёзд есть хвост
-    const hasTail = Math.random() < 0.7; // 70% с хвостом
-    const tailLength = hasTail ? Math.random() * 30 + 20 : 0; // 20-50px хвост
+    // Маленький хвостик
+    const tailLength = Math.random() * 15 + 10; // 10-25px
 
     shootingStars.push({
       id: `shooting-${i}`,
       startX,
       startY,
       angle,
-      delay: Math.random() * 15 + i * 12, // Разные интервалы
-      duration: Math.random() * 0.8 + 0.6, // 0.6-1.4 секунды (быстрее)
+      delay: Math.random() * 20 + i * 18,
+      duration: Math.random() * 0.3 + 0.3, // 0.3-0.6 сек (очень быстро)
       tailLength,
-      hasTail,
+      hasTail: true,
     });
   }
 
@@ -341,7 +339,7 @@ export const CosmicBackground: React.FC = () => {
       {/* Падающие звёзды */}
       {shootingStars.map((star) => {
         const radians = (star.angle * Math.PI) / 180;
-        const travelDistance = 80 + Math.random() * 40; // 80-120vh
+        const travelDistance = 60;
         const travelX = Math.cos(radians) * travelDistance;
         const travelY = Math.sin(radians) * travelDistance;
 
@@ -353,12 +351,12 @@ export const CosmicBackground: React.FC = () => {
               position: 'absolute',
               left: `${star.startX}%`,
               top: `${star.startY}%`,
-              width: 2,
-              height: 2,
+              width: 1.5,
+              height: 1.5,
               borderRadius: '50%',
               backgroundColor: '#ffffff',
-              boxShadow: '0 0 4px #ffffff',
-              animationDuration: `${star.duration + 20}s`,
+              boxShadow: '0 0 2px #ffffff',
+              animationDuration: `${star.duration + 25}s`,
               animationDelay: `${star.delay}s`,
               '--travel-x': `${travelX}vh`,
               '--travel-y': `${travelY}vh`,

@@ -13,8 +13,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withSequence,
   withTiming,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack } from '../src/utils/offlineApi';
 import { TarotCard } from '../src/data/tarotCards';
@@ -37,8 +38,8 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   const [cardFrontImage, setCardFrontImage] = useState<string>('');
 
   const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const rotateY = useSharedValue(0);
+  const containerOpacity = useSharedValue(0);
+  const flipProgress = useSharedValue(0);
 
   useEffect(() => {
     loadDailyCard();
@@ -46,7 +47,7 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
 
   useEffect(() => {
     scale.value = withSpring(1, { damping: 12, stiffness: 100 });
-    opacity.value = withTiming(1, { duration: 500 });
+    containerOpacity.value = withTiming(1, { duration: 500 });
   }, []);
 
   const loadDailyCard = async () => {
@@ -67,24 +68,38 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   };
 
   const handleReveal = () => {
-    setRevealed(true);
-    rotateY.value = withSequence(
-      withTiming(90, { duration: 250 }),
-      withTiming(180, { duration: 250 })
-    );
+    if (!revealed) {
+      setRevealed(true);
+      flipProgress.value = withTiming(1, { duration: 600 });
+    }
   };
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    opacity: containerOpacity.value,
   }));
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 1000 },
-      { rotateY: `${rotateY.value}deg` },
-    ],
-  }));
+  // Анимация рубашки карты (исчезает при перевороте)
+  const backCardStyle = useAnimatedStyle(() => {
+    const rotateY = interpolate(flipProgress.value, [0, 0.5, 1], [0, 90, 90], Extrapolation.CLAMP);
+    const opacity = interpolate(flipProgress.value, [0, 0.5], [1, 0], Extrapolation.CLAMP);
+    return {
+      transform: [{ perspective: 1000 }, { rotateY: `${rotateY}deg` }],
+      opacity,
+      backfaceVisibility: 'hidden' as const,
+    };
+  });
+
+  // Анимация лицевой стороны карты (появляется при перевороте)
+  const frontCardStyle = useAnimatedStyle(() => {
+    const rotateY = interpolate(flipProgress.value, [0, 0.5, 1], [-90, -90, 0], Extrapolation.CLAMP);
+    const opacity = interpolate(flipProgress.value, [0.5, 1], [0, 1], Extrapolation.CLAMP);
+    return {
+      transform: [{ perspective: 1000 }, { rotateY: `${rotateY}deg` }],
+      opacity,
+      backfaceVisibility: 'hidden' as const,
+    };
+  });
 
   if (isLoading) {
     return (
@@ -102,12 +117,12 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
       <LinearGradient
-        colors={['rgba(155, 89, 182, 0.15)', 'rgba(155, 89, 182, 0.05)']}
+        colors={['rgba(155, 89, 182, 0.08)', 'rgba(155, 89, 182, 0.02)']}
         style={styles.gradient}
       >
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Ionicons name="sunny" size={20} color="#FFD700" />
+            <Ionicons name="sunny" size={18} color="#FFD700" />
             <Text style={styles.title}>Карта дня</Text>
           </View>
           <Text style={styles.date}>{new Date().toLocaleDateString('ru-RU', {
@@ -116,9 +131,10 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
           })}</Text>
         </View>
 
-        {!revealed ? (
-          <TouchableOpacity onPress={handleReveal} activeOpacity={0.8}>
-            <Animated.View style={[styles.cardPreview, cardStyle]}>
+        <TouchableOpacity onPress={handleReveal} activeOpacity={0.9}>
+          <View style={styles.cardContainer}>
+            {/* Рубашка карты */}
+            <Animated.View style={[styles.cardFace, styles.cardBack, backCardStyle]}>
               {cardBackImage ? (
                 <Image
                   source={{ uri: cardBackImage }}
@@ -128,68 +144,50 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
               ) : (
                 <LinearGradient
                   colors={['#2C3E50', '#34495E']}
-                  style={styles.cardBack}
+                  style={styles.cardBackFallback}
                 >
-                  <Ionicons name="sparkles" size={40} color="#FFD700" />
-                  <Text style={styles.revealText}>Нажмите, чтобы открыть</Text>
-                  <Text style={styles.revealSubtext}>вашу карту дня</Text>
+                  <Ionicons name="sparkles" size={32} color="#FFD700" />
+                  <Text style={styles.tapText}>Нажмите</Text>
                 </LinearGradient>
               )}
             </Animated.View>
-          </TouchableOpacity>
-        ) : (
-          <Animated.View style={cardStyle}>
-            <View style={styles.revealedCard}>
-              {cardFrontImage ? (
-                <Image
-                  source={{ uri: cardFrontImage }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <LinearGradient
-                  colors={['#9B59B6', '#8E44AD']}
-                  style={styles.cardImageFallback}
-                >
-                  <Text style={styles.cardNameFallback}>{dailyCard.card.name}</Text>
-                </LinearGradient>
-              )}
 
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardTitle}>{dailyCard.card.name}</Text>
-                {dailyCard.is_reversed && (
-                  <Text style={styles.reversedText}>⟲ Перевёрнутая</Text>
+            {/* Лицевая сторона */}
+            <Animated.View style={[styles.cardFace, styles.cardFront, frontCardStyle]}>
+              <View style={styles.revealedContent}>
+                {cardFrontImage ? (
+                  <Image
+                    source={{ uri: cardFrontImage }}
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={['#9B59B6', '#8E44AD']}
+                    style={styles.cardImageFallback}
+                  >
+                    <Text style={styles.cardNameFallback}>{dailyCard.card.name}</Text>
+                  </LinearGradient>
                 )}
 
-                <Text style={styles.message}>{dailyCard.message}</Text>
-
-                <View style={styles.keywords}>
-                  {dailyCard.card.keywords.slice(0, 3).map((keyword, index) => (
-                    <View key={index} style={styles.keywordBadge}>
-                      <Text style={styles.keywordText}>{keyword}</Text>
-                    </View>
-                  ))}
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{dailyCard.card.name}</Text>
+                  {dailyCard.is_reversed && (
+                    <Text style={styles.reversedText}>⟲ Перевёрнутая</Text>
+                  )}
+                  <Text style={styles.message} numberOfLines={3}>{dailyCard.message}</Text>
+                  <View style={styles.keywords}>
+                    {dailyCard.card.keywords.slice(0, 2).map((keyword, index) => (
+                      <View key={index} style={styles.keywordBadge}>
+                        <Text style={styles.keywordText}>{keyword}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-
-                {onViewDetails && (
-                  <TouchableOpacity style={styles.detailsButton} onPress={onViewDetails}>
-                    <Text style={styles.detailsButtonText}>Подробнее</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#9B59B6" />
-                  </TouchableOpacity>
-                )}
               </View>
-            </View>
-          </Animated.View>
-        )}
-
-        {revealed && (
-          <View style={styles.footer}>
-            <Ionicons name="information-circle-outline" size={14} color="#888" />
-            <Text style={styles.footerText}>
-              Медитируйте на эту карту в течение дня
-            </Text>
+            </Animated.View>
           </View>
-        )}
+        </TouchableOpacity>
       </LinearGradient>
     </Animated.View>
   );
@@ -198,15 +196,15 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 20,
-    marginVertical: 16,
-    borderRadius: 16,
+    marginVertical: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   gradient: {
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.3)',
-    borderRadius: 16,
+    borderColor: 'rgba(155, 89, 182, 0.15)',
+    borderRadius: 14,
   },
   loadingContainer: {
     padding: 20,
@@ -222,133 +220,120 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#E8E8E8',
   },
   date: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#888',
     fontWeight: '500',
   },
-  cardPreview: {
-    height: 160,
-    borderRadius: 12,
+  cardContainer: {
+    height: 140,
+    position: 'relative',
+  },
+  cardFace: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 10,
     overflow: 'hidden',
+  },
+  cardBack: {
+    zIndex: 2,
+  },
+  cardFront: {
+    zIndex: 1,
   },
   cardBackImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 10,
   },
-  cardBack: {
+  cardBackFallback: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  revealText: {
-    fontSize: 15,
-    fontWeight: '600',
+  tapText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#E8E8E8',
-    marginTop: 8,
   },
-  revealSubtext: {
-    fontSize: 12,
-    color: '#B8B8B8',
-  },
-  revealedCard: {
+  revealedContent: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    padding: 8,
+    backgroundColor: 'rgba(30, 30, 30, 0.6)',
+    borderRadius: 10,
   },
   cardImage: {
-    width: 100,
-    height: 150,
-    borderRadius: 8,
+    width: 85,
+    height: '100%',
+    borderRadius: 6,
   },
   cardImageFallback: {
-    width: 100,
-    height: 150,
-    borderRadius: 8,
+    width: 85,
+    height: '100%',
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
+    padding: 6,
   },
   cardNameFallback: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#FFF',
     textAlign: 'center',
   },
   cardInfo: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#E8E8E8',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   reversedText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#FFD700',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   message: {
-    fontSize: 13,
-    color: '#D0D0D0',
-    lineHeight: 20,
-    marginBottom: 8,
+    fontSize: 11,
+    color: '#C0C0C0',
+    lineHeight: 16,
+    marginBottom: 6,
   },
   keywords: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  keywordBadge: {
-    backgroundColor: 'rgba(155, 89, 182, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  keywordText: {
-    fontSize: 11,
-    color: '#E8E8E8',
-    fontWeight: '500',
-  },
-  detailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 4,
   },
-  detailsButtonText: {
-    fontSize: 13,
-    color: '#9B59B6',
-    fontWeight: '600',
+  keywordBadge: {
+    backgroundColor: 'rgba(155, 89, 182, 0.25)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(155, 89, 182, 0.2)',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#888',
-    fontStyle: 'italic',
+  keywordText: {
+    fontSize: 9,
+    color: '#E8E8E8',
+    fontWeight: '500',
   },
 });
