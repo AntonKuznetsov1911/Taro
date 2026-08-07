@@ -36,14 +36,14 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Build Expo web for GitHub Pages
+      - name: Build Expo web with PWA support
         env:
           GITHUB_PAGES: 'true'
           EXPO_PUBLIC_OFFLINE_MODE: 'true'
           EXPO_PUBLIC_BACKEND_URL: ''
         run: |
           cd frontend
-          npx expo export --platform web
+          npm run build:gh-pages
 
       - name: Create .nojekyll and 404.html for SPA routing
         run: |
