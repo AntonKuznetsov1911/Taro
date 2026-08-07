@@ -23,12 +23,19 @@ const pwaHead = `
     <meta name="apple-mobile-web-app-title" content="Таро">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Таро">
-    <meta name="msapplication-TileColor" content="#9B59B6">
+    <meta name="msapplication-TileColor" content="#1a0a2e">
     <meta name="msapplication-TileImage" content="${BASE_PATH}/icon-192.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="${BASE_PATH}/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="${BASE_PATH}/icon-192.png">
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="${BASE_PATH}/manifest.json">
-    <link rel="apple-touch-icon" href="${BASE_PATH}/icon-192.png">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="${BASE_PATH}/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="${BASE_PATH}/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="192x192" href="${BASE_PATH}/icon-192.png">
     <link rel="apple-touch-icon" sizes="512x512" href="${BASE_PATH}/icon-512.png">
 
@@ -86,7 +93,7 @@ function copyPWAFiles() {
   console.log('📦 Copying PWA files to dist...');
 
   const publicPath = path.join(__dirname, '..', 'public');
-  const filesToCopy = ['manifest.json', 'sw.js', 'register-sw.js', 'icon-192.png', 'icon-512.png'];
+  const filesToCopy = ['manifest.json', 'sw.js', 'register-sw.js', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon.ico'];
 
   filesToCopy.forEach(file => {
     const src = path.join(publicPath, file);
