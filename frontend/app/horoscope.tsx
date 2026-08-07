@@ -8,63 +8,208 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { CosmicBackground } from '../components/CosmicBackground';
-import { api } from '../src/utils/api';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
+import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, ZodiacSign } from '../src/utils/astrology';
+import { getRandomCards } from '../src/data/tarotCards';
 
-interface HoroscopeResult {
-  id: string;
-  user_profile_id: string;
+interface HoroscopeData {
+  zodiacSign: ZodiacSign;
   date: string;
-  zodiac_sign: string;
-  horoscope_text: string;
-  mood_rating: number;
-  love_forecast: string;
-  career_forecast: string;
-  health_forecast: string;
-  lucky_numbers: number[];
-  lucky_color: string;
-  created_at: string;
+  moodRating: number;
+  horoscopeText: string;
+  loveForecast: string;
+  careerForecast: string;
+  healthForecast: string;
+  luckyNumbers: number[];
+  luckyColors: string[];
+  moonPhase: string;
+  moonSign: string;
+  dayEnergy: string;
+  favorableActivities: string[];
+  unfavorableActivities: string[];
+  retrograde: string[];
 }
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Тексты гороскопов для каждого знака
+const HOROSCOPE_TEXTS: { [key: string]: string[] } = {
+  aries: [
+    "Сегодня ваша энергия на пике! Смело беритесь за новые проекты. Звезды благоприятствуют активным действиям и решительным шагам.",
+    "День полон возможностей для проявления лидерских качеств. Ваша харизма привлекает нужных людей. Действуйте интуитивно.",
+    "Импульсивность может привести к неожиданным результатам — как положительным, так и нет. Прежде чем действовать, сделайте паузу.",
+  ],
+  taurus: [
+    "Практичность — ваш главный козырь сегодня. Финансовые вопросы решаются в вашу пользу. Доверяйте своему чутью в денежных делах.",
+    "День благоприятен для творчества и наслаждения красотой. Позвольте себе маленькие радости — они зарядят вас энергией.",
+    "Стабильность важна, но не бойтесь небольших перемен. Они могут привести к приятным сюрпризам.",
+  ],
+  gemini: [
+    "Общение — ключ к успеху сегодня. Новые знакомства могут перерасти в важные связи. Будьте открыты к диалогу.",
+    "Ваш острый ум поможет найти нестандартные решения. Не бойтесь высказывать свои идеи — их оценят по достоинству.",
+    "Информация приходит со всех сторон. Фильтруйте важное от второстепенного. Сосредоточьтесь на главном.",
+  ],
+  cancer: [
+    "Интуиция обострена. Прислушивайтесь к внутреннему голосу — он не обманет. Семья и близкие нуждаются в вашем внимании.",
+    "Эмоции могут быть интенсивными. Найдите способ выразить их творчески. Дом — ваше убежище сегодня.",
+    "Заботьтесь о себе так же, как заботитесь о других. Ваше благополучие — основа для помощи близким.",
+  ],
+  leo: [
+    "Сияйте! Сегодня вы в центре внимания, и это заслуженно. Творческая энергия бьет ключом. Не скрывайте свои таланты.",
+    "Щедрость души привлекает к вам людей. Но не забывайте о собственных границах. Благородство не значит самопожертвование.",
+    "Лидерство требует мудрости. Слушайте советы, но принимайте решения самостоятельно. Ваша уверенность вдохновляет других.",
+  ],
+  virgo: [
+    "Детали важны, но не теряйте общую картину. Ваша аналитичность поможет разобраться в сложной ситуации.",
+    "Здоровье требует внимания. Маленькие изменения в режиме дня принесут большие результаты. Начните с малого.",
+    "Перфекционизм может стать препятствием. Иногда 'достаточно хорошо' — это действительно достаточно.",
+  ],
+  libra: [
+    "Гармония в отношениях — ваш приоритет. Найдите баланс между своими желаниями и потребностями партнера.",
+    "Эстетика и красота вдохновляют вас сегодня. Окружите себя приятными вещами. Это не прихоть — это необходимость.",
+    "Решения даются непросто, но откладывать их нельзя. Доверьтесь своему чувству справедливости.",
+  ],
+  scorpio: [
+    "Трансформация продолжается. То, что казалось проблемой, становится возможностью. Примите перемены.",
+    "Глубокие эмоции требуют выхода. Найдите безопасный способ их выразить. Творчество или физическая активность помогут.",
+    "Интуиция острая как никогда. Вы видите скрытое от других. Используйте это знание мудро.",
+  ],
+  sagittarius: [
+    "Оптимизм — ваша суперсила сегодня. Даже в сложных ситуациях вы найдете повод для улыбки. Заражайте других позитивом.",
+    "Тяга к приключениям сильна. Если не можете путешествовать физически — исследуйте новые идеи и концепции.",
+    "Философские размышления приносят важные инсайты. Поделитесь своей мудростью с теми, кто готов слушать.",
+  ],
+  capricorn: [
+    "Дисциплина и упорство приносят плоды. Ваши долгосрочные планы начинают реализовываться. Не сбавляйте темп.",
+    "Карьерные вопросы требуют внимания. Покажите свою компетентность. Ваш профессионализм не останется незамеченным.",
+    "Ответственность — это не бремя, а привилегия. Те, кто доверяет вам, знают цену вашему слову.",
+  ],
+  aquarius: [
+    "Оригинальные идеи приходят легко. Не бойтесь быть другим — именно это делает вас особенным.",
+    "Социальные связи укрепляются. Ваши друзья — ваша сила. Вместе вы можете изменить мир к лучшему.",
+    "Свобода мысли важна, но не забывайте о практических аспектах. Мечты нуждаются в фундаменте.",
+  ],
+  pisces: [
+    "Творческая энергия на подъеме. Музыка, искусство, поэзия — все формы самовыражения благоприятны сегодня.",
+    "Интуиция и сны несут важные послания. Ведите дневник сновидений — там могут быть ответы на ваши вопросы.",
+    "Эмпатия — ваш дар, но защищайте свои границы. Не все проблемы других — ваша ответственность.",
+  ],
+};
+
+const LOVE_FORECASTS = [
+  "Романтика витает в воздухе. Открытое сердце притягивает любовь.",
+  "Укрепляйте существующие связи. Маленькие знаки внимания значат много.",
+  "Время для честного разговора с партнером. Искренность укрепит отношения.",
+  "Самолюбие — основа здоровых отношений. Позаботьтесь о себе.",
+  "Неожиданная встреча может изменить вашу личную жизнь.",
+];
+
+const CAREER_FORECASTS = [
+  "Профессиональный рост на горизонте. Покажите свои лучшие качества.",
+  "Новые проекты требуют внимания. Ваша инициатива будет оценена.",
+  "Коммуникация с коллегами важна. Командная работа принесет успех.",
+  "Финансовые вопросы решаются в вашу пользу. Будьте внимательны к деталям.",
+  "Время для обучения и развития. Инвестируйте в свои навыки.",
+];
+
+const HEALTH_FORECASTS = [
+  "Энергия в балансе. Поддерживайте режим сна и питания.",
+  "Физическая активность поднимет настроение. Прогулка на свежем воздухе полезна.",
+  "Стресс может накапливаться. Найдите время для релаксации.",
+  "Интуитивное питание — ваш друг сегодня. Слушайте тело.",
+  "Ментальное здоровье так же важно, как физическое. Медитация поможет.",
+];
+
 export default function HoroscopeScreen() {
   const router = useRouter();
+  const { profile, isLoading: profileLoading } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
-  const [horoscope, setHoroscope] = useState<HoroscopeResult | null>(null);
-  const [hasProfile, setHasProfile] = useState(true);
+  const [horoscope, setHoroscope] = useState<HoroscopeData | null>(null);
 
   useEffect(() => {
-    loadHoroscope();
-  }, []);
-
-  const loadHoroscope = async () => {
-    try {
-      setIsLoading(true);
-      const horoscopeData = await api.get<HoroscopeResult>('/api/horoscope');
-      setHoroscope(horoscopeData);
-      setHasProfile(true);
-    } catch (error: any) {
-      console.error('Error loading horoscope:', error);
-      if (error?.statusCode === 404) {
-        setHasProfile(false);
-      } else {
-        Alert.alert('Ошибка', 'Не удалось загрузить гороскоп');
-      }
-    } finally {
-      setIsLoading(false);
+    if (!profileLoading) {
+      generateHoroscope();
     }
+  }, [profileLoading, profile]);
+
+  const generateHoroscope = async () => {
+    setIsLoading(true);
+
+    // Имитация загрузки
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Определяем знак зодиака из профиля или по текущей дате
+    let zodiacSign: ZodiacSign;
+    if (profile?.birthDate) {
+      const birthDate = new Date(profile.birthDate);
+      zodiacSign = getZodiacSign(birthDate);
+    } else {
+      // Если нет профиля, используем текущий солнечный знак
+      const astrology = getDailyAstrology();
+      zodiacSign = astrology.sunSign;
+    }
+
+    const astrology = getDailyAstrology();
+    const retrograde = getRetrogradePlanets();
+    const card = getRandomCards(1)[0];
+
+    // Выбираем тексты на основе даты для консистентности в течение дня
+    const today = new Date();
+    const dayIndex = today.getDate() % 3;
+    const forecastIndex = (today.getDate() + today.getMonth()) % 5;
+
+    const signKey = zodiacSign.name.toLowerCase();
+    const horoscopeTexts = HOROSCOPE_TEXTS[signKey] || HOROSCOPE_TEXTS['aries'];
+
+    // Персонализированный текст
+    let personalizedText = horoscopeTexts[dayIndex];
+    if (profile?.name) {
+      personalizedText = `${profile.name}, ${personalizedText.charAt(0).toLowerCase()}${personalizedText.slice(1)}`;
+    }
+
+    // Добавляем контекст карты Таро
+    personalizedText += `\n\n🎴 Карта дня — ${card.name} — усиливает энергии ${card.keywords.slice(0, 2).join(' и ')}.`;
+
+    // Рассчитываем рейтинг настроения на основе астрологии
+    let moodRating = 7;
+    if (astrology.overallEnergy === 'high') moodRating = 9;
+    else if (astrology.overallEnergy === 'low') moodRating = 5;
+    if (retrograde.length > 0) moodRating -= 1;
+    if (astrology.moon.isWaxing) moodRating += 1;
+    moodRating = Math.min(10, Math.max(1, moodRating));
+
+    const horoscopeData: HoroscopeData = {
+      zodiacSign,
+      date: today.toISOString(),
+      moodRating,
+      horoscopeText: personalizedText,
+      loveForecast: LOVE_FORECASTS[forecastIndex],
+      careerForecast: CAREER_FORECASTS[forecastIndex],
+      healthForecast: HEALTH_FORECASTS[forecastIndex],
+      luckyNumbers: astrology.luckyNumbers,
+      luckyColors: astrology.luckyColors,
+      moonPhase: astrology.moon.phaseNameRu,
+      moonSign: astrology.moon.moonSign.nameRu,
+      dayEnergy: astrology.energyDescription,
+      favorableActivities: astrology.favorableActivities,
+      unfavorableActivities: astrology.unfavorableActivities,
+      retrograde,
+    };
+
+    setHoroscope(horoscopeData);
+    setIsLoading(false);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('ru-RU', {
+      weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -79,25 +224,7 @@ export default function HoroscopeScreen() {
     return '😕';
   };
 
-  const getZodiacEmoji = (sign: string) => {
-    const emojiMap: { [key: string]: string } = {
-      'Овен': '♈',
-      'Телец': '♉',
-      'Близнецы': '♊',
-      'Рак': '♋',
-      'Лев': '♌',
-      'Дева': '♍',
-      'Весы': '♎',
-      'Скорпион': '♏',
-      'Стрелец': '♐',
-      'Козерог': '♑',
-      'Водолей': '♒',
-      'Рыбы': '♓',
-    };
-    return emojiMap[sign] || '✨';
-  };
-
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
@@ -109,53 +236,8 @@ export default function HoroscopeScreen() {
             <ActivityIndicator size="large" color="#9B59B6" />
             <Text style={styles.loadingTitle}>Составляю ваш гороскоп...</Text>
             <Text style={styles.loadingSubtext}>
-              Звезды шепчут о вашем дне
+              Звёзды шепчут о вашем дне
             </Text>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
-    );
-  }
-
-  if (!hasProfile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
-          style={styles.background}
-        >
-          <CosmicBackground />
-          
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Гороскоп</Text>
-            <View style={styles.placeholder} />
-          </View>
-
-          <View style={styles.noProfileContainer}>
-            <Text style={styles.noProfileIcon}>🔮</Text>
-            <Text style={styles.noProfileTitle}>Создайте профиль</Text>
-            <Text style={styles.noProfileText}>
-              Для персонализированного гороскопа необходимо указать ваши данные рождения
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.createProfileButton}
-              onPress={() => router.push('/profile')}
-            >
-              <LinearGradient
-                colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
-                style={styles.createProfileButtonGradient}
-              >
-                <Ionicons name="person-add" size={20} color="#FFF" />
-                <Text style={styles.createProfileButtonText}>Создать профиль</Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -171,8 +253,8 @@ export default function HoroscopeScreen() {
         >
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={80} color="#E74C3C" />
-            <Text style={styles.errorText}>Не удалось загрузить гороскоп</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadHoroscope}>
+            <Text style={styles.errorText}>Не удалось составить гороскоп</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={generateHoroscope}>
               <Text style={styles.retryButtonText}>Попробовать снова</Text>
             </TouchableOpacity>
           </View>
@@ -184,26 +266,26 @@ export default function HoroscopeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-      
+
       <LinearGradient
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
         <CosmicBackground />
-        
+
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Гороскоп</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.settingsButton}
-              onPress={() => router.push('/profile')}
+              onPress={() => router.push('/onboarding')}
             >
               <Ionicons name="person" size={24} color="#E8E8E8" />
             </TouchableOpacity>
@@ -212,33 +294,65 @@ export default function HoroscopeScreen() {
           {/* Horoscope Header */}
           <View style={styles.horoscopeHeader}>
             <View style={styles.zodiacSection}>
-              <Text style={styles.zodiacEmoji}>{getZodiacEmoji(horoscope.zodiac_sign)}</Text>
-              <Text style={styles.zodiacSign}>{horoscope.zodiac_sign}</Text>
+              <Text style={styles.zodiacEmoji}>{horoscope.zodiacSign.symbol}</Text>
+              <Text style={styles.zodiacSign}>{horoscope.zodiacSign.nameRu}</Text>
               <Text style={styles.horoscopeDate}>{formatDate(horoscope.date)}</Text>
+              {profile?.name && (
+                <Text style={styles.userName}>для {profile.name}</Text>
+              )}
             </View>
 
             <View style={styles.moodSection}>
-              <Text style={styles.moodEmoji}>{getMoodEmoji(horoscope.mood_rating)}</Text>
-              <Text style={styles.moodText}>Настроение дня</Text>
-              <Text style={styles.moodRating}>{horoscope.mood_rating}/10</Text>
+              <Text style={styles.moodEmoji}>{getMoodEmoji(horoscope.moodRating)}</Text>
+              <Text style={styles.moodText}>Энергия дня</Text>
+              <Text style={styles.moodRating}>{horoscope.moodRating}/10</Text>
             </View>
+          </View>
+
+          {/* Moon Info */}
+          <View style={styles.moonSection}>
+            <LinearGradient
+              colors={['rgba(155, 89, 182, 0.15)', 'rgba(142, 68, 173, 0.25)']}
+              style={styles.moonGradient}
+            >
+              <Text style={styles.moonTitle}>🌙 Лунный календарь</Text>
+              <View style={styles.moonRow}>
+                <View style={styles.moonItem}>
+                  <Text style={styles.moonLabel}>Фаза</Text>
+                  <Text style={styles.moonValue}>{horoscope.moonPhase}</Text>
+                </View>
+                <View style={styles.moonItem}>
+                  <Text style={styles.moonLabel}>Луна в</Text>
+                  <Text style={styles.moonValue}>{horoscope.moonSign}</Text>
+                </View>
+              </View>
+              {horoscope.retrograde.length > 0 && (
+                <View style={styles.retrogradeSection}>
+                  <Text style={styles.retrogradeText}>
+                    ⚠️ Ретроград: {horoscope.retrograde.join(', ')}
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
           </View>
 
           {/* Lucky Elements */}
           <View style={styles.luckySection}>
-            <Text style={styles.luckySectionTitle}>🍀 Счастливые символы дня</Text>
-            
+            <Text style={styles.luckySectionTitle}>🍀 Счастливые символы</Text>
+
             <View style={styles.luckyRow}>
               <View style={styles.luckyItem}>
                 <LinearGradient
                   colors={['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.3)']}
                   style={styles.luckyItemGradient}
                 >
-                  <Text style={styles.luckyItemTitle}>Цвет</Text>
-                  <Text style={styles.luckyItemValue}>{horoscope.lucky_color}</Text>
+                  <Text style={styles.luckyItemTitle}>Цвета</Text>
+                  <Text style={styles.luckyItemValue}>
+                    {horoscope.luckyColors.slice(0, 2).join(', ')}
+                  </Text>
                 </LinearGradient>
               </View>
-              
+
               <View style={styles.luckyItem}>
                 <LinearGradient
                   colors={['rgba(69, 183, 209, 0.2)', 'rgba(52, 152, 219, 0.3)']}
@@ -246,7 +360,7 @@ export default function HoroscopeScreen() {
                 >
                   <Text style={styles.luckyItemTitle}>Числа</Text>
                   <Text style={styles.luckyItemValue}>
-                    {horoscope.lucky_numbers.slice(0, 3).join(', ')}
+                    {horoscope.luckyNumbers.slice(0, 3).join(', ')}
                   </Text>
                 </LinearGradient>
               </View>
@@ -257,14 +371,30 @@ export default function HoroscopeScreen() {
           <View style={styles.horoscopeSection}>
             <Text style={styles.horoscopeSectionTitle}>✨ Ваш гороскоп</Text>
             <View style={styles.horoscopeContainer}>
-              <Text style={styles.horoscopeText}>{horoscope.horoscope_text}</Text>
+              <Text style={styles.horoscopeText}>{horoscope.horoscopeText}</Text>
+            </View>
+          </View>
+
+          {/* Activities */}
+          <View style={styles.activitiesSection}>
+            <View style={styles.activityBlock}>
+              <Text style={styles.activityTitle}>✅ Благоприятно сегодня</Text>
+              {horoscope.favorableActivities.slice(0, 3).map((activity, index) => (
+                <Text key={index} style={styles.activityItem}>• {activity}</Text>
+              ))}
+            </View>
+            <View style={styles.activityBlock}>
+              <Text style={styles.activityTitleNegative}>⛔ Лучше отложить</Text>
+              {horoscope.unfavorableActivities.map((activity, index) => (
+                <Text key={index} style={styles.activityItem}>• {activity}</Text>
+              ))}
             </View>
           </View>
 
           {/* Quick Forecasts */}
           <View style={styles.forecastsSection}>
-            <Text style={styles.forecastsSectionTitle}>🔮 Краткие прогнозы</Text>
-            
+            <Text style={styles.forecastsSectionTitle}>🔮 Сферы жизни</Text>
+
             <View style={styles.forecastItem}>
               <LinearGradient
                 colors={['rgba(255, 107, 157, 0.2)', 'rgba(196, 69, 105, 0.3)']}
@@ -273,7 +403,7 @@ export default function HoroscopeScreen() {
                 <Text style={styles.forecastIcon}>💕</Text>
                 <View style={styles.forecastContent}>
                   <Text style={styles.forecastTitle}>Любовь</Text>
-                  <Text style={styles.forecastText}>{horoscope.love_forecast}</Text>
+                  <Text style={styles.forecastText}>{horoscope.loveForecast}</Text>
                 </View>
               </LinearGradient>
             </View>
@@ -286,7 +416,7 @@ export default function HoroscopeScreen() {
                 <Text style={styles.forecastIcon}>💼</Text>
                 <View style={styles.forecastContent}>
                   <Text style={styles.forecastTitle}>Карьера</Text>
-                  <Text style={styles.forecastText}>{horoscope.career_forecast}</Text>
+                  <Text style={styles.forecastText}>{horoscope.careerForecast}</Text>
                 </View>
               </LinearGradient>
             </View>
@@ -299,7 +429,7 @@ export default function HoroscopeScreen() {
                 <Text style={styles.forecastIcon}>🌿</Text>
                 <View style={styles.forecastContent}>
                   <Text style={styles.forecastTitle}>Здоровье</Text>
-                  <Text style={styles.forecastText}>{horoscope.health_forecast}</Text>
+                  <Text style={styles.forecastText}>{horoscope.healthForecast}</Text>
                 </View>
               </LinearGradient>
             </View>
@@ -307,9 +437,9 @@ export default function HoroscopeScreen() {
 
           {/* Actions */}
           <View style={styles.actionsSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.refreshButton}
-              onPress={loadHoroscope}
+              onPress={generateHoroscope}
             >
               <LinearGradient
                 colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)']}
@@ -320,16 +450,16 @@ export default function HoroscopeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.historyButton}
-              onPress={() => router.push('/history')}
+              onPress={() => router.push('/reading')}
             >
               <LinearGradient
                 colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
                 style={styles.actionButtonGradient}
               >
-                <Ionicons name="time" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>История</Text>
+                <Ionicons name="card" size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>Гадание</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -371,13 +501,10 @@ const styles = StyleSheet.create({
   settingsButton: {
     padding: 8,
   },
-  placeholder: {
-    width: 40,
-  },
   horoscopeHeader: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingVertical: 25,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
@@ -386,7 +513,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   zodiacEmoji: {
-    fontSize: 48,
+    fontSize: 56,
     marginBottom: 8,
   },
   zodiacSign: {
@@ -396,15 +523,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   horoscopeDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  userName: {
+    fontSize: 14,
+    color: '#FFD700',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   moodSection: {
     alignItems: 'center',
     flex: 1,
   },
   moodEmoji: {
-    fontSize: 32,
+    fontSize: 36,
     marginBottom: 8,
   },
   moodText: {
@@ -413,24 +546,69 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   moodRating: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#E8E8E8',
   },
+  moonSection: {
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  moonGradient: {
+    padding: 15,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.3)',
+  },
+  moonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  moonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  moonItem: {
+    alignItems: 'center',
+  },
+  moonLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 4,
+  },
+  moonValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#BB6BD9',
+  },
+  retrogradeSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  retrogradeText: {
+    fontSize: 13,
+    color: '#E74C3C',
+    textAlign: 'center',
+  },
   luckySection: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   luckySectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#E8E8E8',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   luckyRow: {
     flexDirection: 'row',
-    gap: 15,
+    gap: 12,
   },
   luckyItem: {
     flex: 1,
@@ -457,55 +635,81 @@ const styles = StyleSheet.create({
   },
   horoscopeSection: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   horoscopeSectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#E8E8E8',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   horoscopeContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 20,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
     borderColor: 'rgba(155, 89, 182, 0.3)',
   },
   horoscopeText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#E8E8E8',
-    lineHeight: 20,
-    textAlign: 'left',
+    lineHeight: 24,
+  },
+  activitiesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  activityBlock: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2ECC71',
+    marginBottom: 8,
+  },
+  activityTitleNegative: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E74C3C',
+    marginBottom: 8,
+  },
+  activityItem: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
   },
   forecastsSection: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   forecastsSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#E8E8E8',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   forecastItem: {
     borderRadius: 15,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   forecastGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 15,
   },
   forecastIcon: {
     fontSize: 24,
-    marginRight: 15,
+    marginRight: 14,
   },
   forecastContent: {
     flex: 1,
@@ -517,30 +721,28 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   forecastText: {
-    fontSize: 12,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   actionsSection: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 15,
+    gap: 12,
   },
   refreshButton: {
     flex: 1,
     borderRadius: 25,
     overflow: 'hidden',
-    elevation: 10,
   },
   historyButton: {
     flex: 1,
     borderRadius: 25,
     overflow: 'hidden',
-    elevation: 10,
   },
   actionButtonGradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -573,47 +775,6 @@ const styles = StyleSheet.create({
     color: '#BB6BD9',
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  noProfileContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  noProfileIcon: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  noProfileTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  noProfileText: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 30,
-  },
-  createProfileButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
-  },
-  createProfileButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  createProfileButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    marginLeft: 8,
   },
   errorContainer: {
     flex: 1,
