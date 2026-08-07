@@ -1,19 +1,20 @@
 // Taro PWA Service Worker
-const CACHE_NAME = 'taro-cache-v1';
-const STATIC_CACHE = 'taro-static-v1';
+const CACHE_NAME = 'taro-cache-v2';
+const STATIC_CACHE = 'taro-static-v2';
+const BASE_PATH = '/Taro';
 
 // Files to cache immediately on install
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/favicon.ico'
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/index.html`,
+  `${BASE_PATH}/manifest.json`,
+  `${BASE_PATH}/icon-192.png`,
+  `${BASE_PATH}/icon-512.png`
 ];
 
 // Install event - precache essential files
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing Service Worker...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -21,19 +22,27 @@ self.addEventListener('install', (event) => {
         return cache.addAll(PRECACHE_URLS);
       })
       .then(() => self.skipWaiting())
+      .catch(err => console.error('[SW] Precache failed:', err))
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating Service Worker...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME && name !== STATIC_CACHE)
-          .map((name) => caches.delete(name))
+          .map((name) => {
+            console.log('[SW] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('[SW] Service Worker activated');
+      return self.clients.claim();
+    })
   );
 });
 
@@ -74,7 +83,7 @@ self.addEventListener('fetch', (event) => {
 
             // If no cache match for navigation, return the main page
             if (event.request.mode === 'navigate') {
-              return caches.match('/');
+              return caches.match(`${BASE_PATH}/`) || caches.match(`${BASE_PATH}/index.html`);
             }
 
             // Return offline fallback for images
@@ -91,41 +100,11 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle background sync for offline actions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-readings') {
-    console.log('[SW] Background sync triggered');
+// Handle messages from the main thread
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
   }
 });
 
-// Push notifications support (for future use)
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'Новое предсказание доступно!',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [100, 50, 100],
-      tag: 'taro-notification',
-      data: {
-        url: data.url || '/'
-      }
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Таро', options)
-    );
-  }
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/')
-  );
-});
-
-console.log('[SW] Service Worker loaded');
+console.log('[SW] Service Worker loaded for', BASE_PATH);

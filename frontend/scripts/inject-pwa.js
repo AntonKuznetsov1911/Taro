@@ -11,6 +11,9 @@ const path = require('path');
 const distPath = path.join(__dirname, '..', 'dist');
 const indexPath = path.join(distPath, 'index.html');
 
+// Base path for GitHub Pages
+const BASE_PATH = '/Taro';
+
 // PWA meta tags and links to inject
 const pwaHead = `
     <!-- PWA Meta Tags -->
@@ -21,21 +24,21 @@ const pwaHead = `
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Таро">
     <meta name="msapplication-TileColor" content="#9B59B6">
-    <meta name="msapplication-TileImage" content="/icon-192.png">
+    <meta name="msapplication-TileImage" content="${BASE_PATH}/icon-192.png">
 
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+    <link rel="manifest" href="${BASE_PATH}/manifest.json">
+    <link rel="apple-touch-icon" href="${BASE_PATH}/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="${BASE_PATH}/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="${BASE_PATH}/icon-512.png">
 
     <!-- Splash screens for iOS -->
-    <link rel="apple-touch-startup-image" href="/icon-512.png">
+    <link rel="apple-touch-startup-image" href="${BASE_PATH}/icon-512.png">
 `;
 
 const pwaScript = `
     <!-- Service Worker Registration -->
-    <script src="/register-sw.js"></script>
+    <script src="${BASE_PATH}/register-sw.js"></script>
 `;
 
 function injectPWA() {
@@ -48,11 +51,9 @@ function injectPWA() {
 
   let html = fs.readFileSync(indexPath, 'utf8');
 
-  // Check if already injected
-  if (html.includes('rel="manifest"')) {
-    console.log('✅ PWA already configured');
-    return;
-  }
+  // Remove old PWA tags if present (for re-injection)
+  html = html.replace(/<!-- PWA Meta Tags -->[\s\S]*?<!-- Splash screens for iOS -->[\s\S]*?icon-512\.png">/g, '');
+  html = html.replace(/<!-- Service Worker Registration -->[\s\S]*?register-sw\.js"><\/script>/g, '');
 
   // Inject meta tags before </head>
   html = html.replace('</head>', pwaHead + '</head>');
@@ -72,7 +73,7 @@ function injectPWA() {
   if (!html.includes('name="description"')) {
     html = html.replace(
       '</head>',
-      '    <meta name="description" content="Профессиональное астрологическое приложение с гаданием на картах Таро, персонализированными гороскопами и лунным календарём">\n</head>'
+      `    <meta name="description" content="Профессиональное астрологическое приложение с гаданием на картах Таро, персонализированными гороскопами и лунным календарём">\n</head>`
     );
   }
 
@@ -102,10 +103,35 @@ function copyPWAFiles() {
   console.log('✅ PWA files copied');
 }
 
+// Also inject into all other HTML files
+function injectIntoAllHtmlFiles() {
+  console.log('📄 Processing all HTML files...');
+
+  const htmlFiles = fs.readdirSync(distPath).filter(f => f.endsWith('.html'));
+
+  htmlFiles.forEach(file => {
+    if (file === 'index.html') return; // Already processed
+
+    const filePath = path.join(distPath, file);
+    let html = fs.readFileSync(filePath, 'utf8');
+
+    // Only inject if not already present
+    if (!html.includes('rel="manifest"')) {
+      html = html.replace('</head>', pwaHead + '</head>');
+      html = html.replace('</body>', pwaScript + '</body>');
+      fs.writeFileSync(filePath, html);
+      console.log(`  ✓ ${file}`);
+    }
+  });
+
+  console.log('✅ All HTML files processed');
+}
+
 // Main
 try {
   copyPWAFiles();
   injectPWA();
+  injectIntoAllHtmlFiles();
   console.log('🎉 PWA build complete!');
 } catch (error) {
   console.error('❌ Error:', error.message);
