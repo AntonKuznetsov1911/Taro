@@ -8,18 +8,16 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { CosmicBackground } from '../components/CosmicBackground';
-import { api } from '../src/utils/api';
+import { useUserProfile } from '../src/context/UserProfileContext';
 
 interface HoroscopeResult {
   id: string;
-  user_profile_id: string;
   date: string;
   zodiac_sign: string;
   horoscope_text: string;
@@ -29,37 +27,217 @@ interface HoroscopeResult {
   health_forecast: string;
   lucky_numbers: number[];
   lucky_color: string;
-  created_at: string;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Zodiac sign data
+const ZODIAC_SIGNS = [
+  { name: 'Овен', start: [3, 21], end: [4, 19], element: 'fire' },
+  { name: 'Телец', start: [4, 20], end: [5, 20], element: 'earth' },
+  { name: 'Близнецы', start: [5, 21], end: [6, 20], element: 'air' },
+  { name: 'Рак', start: [6, 21], end: [7, 22], element: 'water' },
+  { name: 'Лев', start: [7, 23], end: [8, 22], element: 'fire' },
+  { name: 'Дева', start: [8, 23], end: [9, 22], element: 'earth' },
+  { name: 'Весы', start: [9, 23], end: [10, 22], element: 'air' },
+  { name: 'Скорпион', start: [10, 23], end: [11, 21], element: 'water' },
+  { name: 'Стрелец', start: [11, 22], end: [12, 21], element: 'fire' },
+  { name: 'Козерог', start: [12, 22], end: [1, 19], element: 'earth' },
+  { name: 'Водолей', start: [1, 20], end: [2, 18], element: 'air' },
+  { name: 'Рыбы', start: [2, 19], end: [3, 20], element: 'water' },
+];
+
+// Horoscope templates for each zodiac sign
+const HOROSCOPE_TEMPLATES: { [key: string]: string[] } = {
+  'Овен': [
+    'Сегодня звезды благоприятствуют вашей энергии и решительности. Ваша природная смелость поможет преодолеть любые препятствия. Доверяйте интуиции в принятии решений.',
+    'День обещает быть динамичным и продуктивным. Ваша лидерская натура проявится в полной мере. Не бойтесь брать инициативу в свои руки.',
+    'Космические энергии усиливают вашу харизму. Это отличное время для новых начинаний и смелых шагов. Окружающие будут восхищаться вашей уверенностью.',
+  ],
+  'Телец': [
+    'Сегодня важно сохранять спокойствие и рассудительность. Ваша практичность будет вознаграждена. Материальные вопросы решатся благоприятно.',
+    'Звезды советуют уделить внимание финансовым делам. Ваша надежность привлекает нужных людей. Романтические отношения выходят на новый уровень.',
+    'День благоприятен для творческих занятий и отдыха. Позвольте себе насладиться красотой жизни. Гармония в душе отразится на всех сферах.',
+  ],
+  'Близнецы': [
+    'Ваше общение сегодня будет особенно эффективным. Новые контакты могут принести интересные возможности. Интеллектуальная деятельность принесет удовлетворение.',
+    'Звезды усиливают вашу любознательность. Это отличный день для обучения и обмена идеями. Будьте открыты новой информации.',
+    'Коммуникативные способности на высоте. Переговоры и встречи пройдут успешно. Ваша гибкость ума поможет найти нестандартные решения.',
+  ],
+  'Рак': [
+    'Сегодня важно прислушаться к своим эмоциям. Семейные дела требуют внимания. Ваша заботливость будет особенно оценена близкими.',
+    'Интуиция сегодня работает безошибочно. Доверяйте своим чувствам в принятии решений. Домашний уют принесет гармонию и спокойствие.',
+    'Звезды усиливают вашу эмпатию. Помощь другим принесет удовлетворение и вам. Романтические отношения наполнены теплотой.',
+  ],
+  'Лев': [
+    'Ваша творческая энергия сегодня на пике. Самовыражение принесет радость и признание. Не стесняйтесь быть в центре внимания.',
+    'День благоприятен для демонстрации своих талантов. Ваша щедрость и великодушие привлекают восхищение. Любовные дела развиваются позитивно.',
+    'Звезды усиливают вашу харизму и обаяние. Лидерские качества помогут вдохновить других. Это время для грандиозных планов.',
+  ],
+  'Дева': [
+    'Сегодня ваша внимательность к деталям особенно полезна. Работа над проектами принесет результаты. Здоровье требует заботы и внимания.',
+    'Звезды благоприятствуют аналитической работе. Ваша практичность поможет решить сложные задачи. Порядок во всем принесет душевное спокойствие.',
+    'День подходит для планирования и организации. Ваша методичность будет вознаграждена. Не забывайте о заботе о себе.',
+  ],
+  'Весы': [
+    'Гармония в отношениях — ваш приоритет сегодня. Дипломатические способности помогут в переговорах. Красота и искусство вдохновляют.',
+    'Звезды усиливают ваше чувство справедливости. Партнерские отношения выходят на новый уровень. Эстетические удовольствия приносят радость.',
+    'День благоприятен для социальных контактов. Ваше обаяние и такт помогут завоевать симпатии. Романтика в воздухе.',
+  ],
+  'Скорпион': [
+    'Сегодня ваша интуиция особенно сильна. Глубинные трансформации приносят освобождение. Тайны раскрываются в нужное время.',
+    'Звезды усиливают вашу проницательность. Страстная натура найдет выражение. Финансовые вопросы решаются благоприятно.',
+    'День подходит для глубокого самоанализа. Ваша сила воли поможет достичь целей. Не бойтесь перемен — они к лучшему.',
+  ],
+  'Стрелец': [
+    'Оптимизм и жажда приключений сегодня на высоте. Расширение горизонтов принесет новые возможности. Философские размышления приносят озарения.',
+    'Звезды благоприятствуют путешествиям и обучению. Ваш энтузиазм заразителен. Удача сопутствует смелым начинаниям.',
+    'День обещает интересные знакомства и открытия. Ваша честность и прямота ценятся окружающими. Мечты начинают сбываться.',
+  ],
+  'Козерог': [
+    'Сегодня важно сосредоточиться на долгосрочных целях. Ваша дисциплинированность приносит результаты. Карьерные перспективы улучшаются.',
+    'Звезды усиливают вашу амбициозность. Терпеливая работа будет вознаграждена. Авторитет среди коллег растет.',
+    'День благоприятен для серьезных дел и планирования. Ваша надежность привлекает нужных партнеров. Стабильность укрепляется.',
+  ],
+  'Водолей': [
+    'Оригинальные идеи сегодня особенно востребованы. Ваша независимость помогает видеть мир по-новому. Дружеские связи приносят радость.',
+    'Звезды усиливают вашу изобретательность. Гуманитарные инициативы найдут поддержку. Будущее выглядит многообещающе.',
+    'День подходит для инноваций и экспериментов. Ваша прогрессивность вдохновляет других. Свобода мысли ведет к открытиям.',
+  ],
+  'Рыбы': [
+    'Сегодня творческое вдохновение наполняет вас. Интуиция работает безошибочно. Духовные практики приносят гармонию.',
+    'Звезды усиливают вашу чувствительность. Сострадание и эмпатия помогают понимать других. Художественное самовыражение приносит радость.',
+    'День благоприятен для мечтаний и визуализации. Ваша мудрость помогает в сложных ситуациях. Романтика окутывает вас.',
+  ],
+};
+
+// Love forecasts
+const LOVE_FORECASTS: { [key: string]: string[] } = {
+  fire: ['Страсть и романтика наполняют ваш день', 'Смелость в чувствах принесет радость', 'Яркие эмоции и признания'],
+  earth: ['Стабильность в отношениях укрепляется', 'Практические дела с партнером', 'Надежность ценится больше всего'],
+  air: ['Интересные разговоры с любимыми', 'Легкость в общении и флирт', 'Новые знакомства возможны'],
+  water: ['Глубокие эмоциональные связи', 'Интуиция подсказывает правильный путь', 'Романтические мечты сбываются'],
+};
+
+// Career forecasts
+const CAREER_FORECASTS: { [key: string]: string[] } = {
+  fire: ['Лидерство и инициатива вознаграждаются', 'Смелые проекты получают поддержку', 'Энергия для достижения целей'],
+  earth: ['Стабильный прогресс в делах', 'Финансовые вопросы решаются позитивно', 'Надежность открывает двери'],
+  air: ['Успешные переговоры и встречи', 'Новые идеи впечатляют коллег', 'Коммуникация — ключ к успеху'],
+  water: ['Интуитивные решения верны', 'Творческие проекты продвигаются', 'Эмоциональный интеллект помогает'],
+};
+
+// Health forecasts
+const HEALTH_FORECASTS: { [key: string]: string[] } = {
+  fire: ['Энергия на высоте, но избегайте перенапряжения', 'Активный отдых принесет пользу', 'Следите за давлением'],
+  earth: ['Стабильное самочувствие', 'Правильное питание важно', 'Прогулки на свежем воздухе'],
+  air: ['Дыхательные практики полезны', 'Избегайте стрессов', 'Ментальное здоровье требует внимания'],
+  water: ['Эмоциональное равновесие важно', 'Водные процедуры полезны', 'Медитация и релаксация'],
+};
+
+// Lucky colors
+const LUCKY_COLORS: { [key: string]: string[] } = {
+  fire: ['Красный', 'Оранжевый', 'Золотой', 'Алый'],
+  earth: ['Зеленый', 'Коричневый', 'Бежевый', 'Терракотовый'],
+  air: ['Голубой', 'Желтый', 'Серебристый', 'Лавандовый'],
+  water: ['Синий', 'Бирюзовый', 'Морской', 'Фиолетовый'],
+};
+
+function getZodiacSign(birthDate: string): { name: string; element: string } | null {
+  if (!birthDate) return null;
+
+  const date = new Date(birthDate);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  for (const sign of ZODIAC_SIGNS) {
+    const [startMonth, startDay] = sign.start;
+    const [endMonth, endDay] = sign.end;
+
+    if (sign.name === 'Козерог') {
+      if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) {
+        return { name: sign.name, element: sign.element };
+      }
+    } else {
+      if ((month === startMonth && day >= startDay) || (month === endMonth && day <= endDay)) {
+        return { name: sign.name, element: sign.element };
+      }
+    }
+  }
+
+  return null;
+}
+
+function generateHoroscope(zodiacSign: string, element: string): HoroscopeResult {
+  const today = new Date();
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+
+  // Use day of year to select templates (consistent for the day)
+  const templates = HOROSCOPE_TEMPLATES[zodiacSign] || HOROSCOPE_TEMPLATES['Овен'];
+  const horoscopeIndex = dayOfYear % templates.length;
+
+  const loveForecasts = LOVE_FORECASTS[element] || LOVE_FORECASTS.fire;
+  const careerForecasts = CAREER_FORECASTS[element] || CAREER_FORECASTS.fire;
+  const healthForecasts = HEALTH_FORECASTS[element] || HEALTH_FORECASTS.fire;
+  const colors = LUCKY_COLORS[element] || LUCKY_COLORS.fire;
+
+  // Generate lucky numbers based on day
+  const luckyNumbers: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    luckyNumbers.push(((dayOfYear * (i + 1) * 7) % 49) + 1);
+  }
+
+  return {
+    id: `horoscope-${dayOfYear}`,
+    date: today.toISOString(),
+    zodiac_sign: zodiacSign,
+    horoscope_text: templates[horoscopeIndex],
+    mood_rating: 6 + (dayOfYear % 5), // 6-10
+    love_forecast: loveForecasts[dayOfYear % loveForecasts.length],
+    career_forecast: careerForecasts[dayOfYear % careerForecasts.length],
+    health_forecast: healthForecasts[dayOfYear % healthForecasts.length],
+    lucky_numbers: [...new Set(luckyNumbers)].slice(0, 3),
+    lucky_color: colors[dayOfYear % colors.length],
+  };
+}
+
 export default function HoroscopeScreen() {
   const router = useRouter();
+  const { profile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [horoscope, setHoroscope] = useState<HoroscopeResult | null>(null);
   const [hasProfile, setHasProfile] = useState(true);
+  const [zodiacInfo, setZodiacInfo] = useState<{ name: string; element: string } | null>(null);
 
   useEffect(() => {
     loadHoroscope();
-  }, []);
+  }, [profile]);
 
   const loadHoroscope = async () => {
-    try {
-      setIsLoading(true);
-      const horoscopeData = await api.get<HoroscopeResult>('/api/horoscope');
-      setHoroscope(horoscopeData);
-      setHasProfile(true);
-    } catch (error: any) {
-      console.error('Error loading horoscope:', error);
-      if (error?.statusCode === 404) {
-        setHasProfile(false);
-      } else {
-        Alert.alert('Ошибка', 'Не удалось загрузить гороскоп');
-      }
-    } finally {
+    setIsLoading(true);
+
+    // Simulate brief loading
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (!profile?.birthDate) {
+      setHasProfile(false);
       setIsLoading(false);
+      return;
     }
+
+    const zodiac = getZodiacSign(profile.birthDate);
+    if (!zodiac) {
+      setHasProfile(false);
+      setIsLoading(false);
+      return;
+    }
+
+    setZodiacInfo(zodiac);
+    setHasProfile(true);
+
+    const generatedHoroscope = generateHoroscope(zodiac.name, zodiac.element);
+    setHoroscope(generatedHoroscope);
+    setIsLoading(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -125,9 +303,9 @@ export default function HoroscopeScreen() {
           style={styles.background}
         >
           <CosmicBackground />
-          
+
           <View style={styles.header}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
             >
@@ -141,10 +319,10 @@ export default function HoroscopeScreen() {
             <Text style={styles.noProfileIcon}>🔮</Text>
             <Text style={styles.noProfileTitle}>Создайте профиль</Text>
             <Text style={styles.noProfileText}>
-              Для персонализированного гороскопа необходимо указать ваши данные рождения
+              Для персонализированного гороскопа необходимо указать вашу дату рождения
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.createProfileButton}
               onPress={() => router.push('/profile')}
             >
@@ -184,24 +362,24 @@ export default function HoroscopeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-      
+
       <LinearGradient
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
         <CosmicBackground />
-        
+
         <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Гороскоп</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.settingsButton}
               onPress={() => router.push('/profile')}
             >
@@ -227,7 +405,7 @@ export default function HoroscopeScreen() {
           {/* Lucky Elements */}
           <View style={styles.luckySection}>
             <Text style={styles.luckySectionTitle}>🍀 Счастливые символы дня</Text>
-            
+
             <View style={styles.luckyRow}>
               <View style={styles.luckyItem}>
                 <LinearGradient
@@ -238,7 +416,7 @@ export default function HoroscopeScreen() {
                   <Text style={styles.luckyItemValue}>{horoscope.lucky_color}</Text>
                 </LinearGradient>
               </View>
-              
+
               <View style={styles.luckyItem}>
                 <LinearGradient
                   colors={['rgba(69, 183, 209, 0.2)', 'rgba(52, 152, 219, 0.3)']}
@@ -264,7 +442,7 @@ export default function HoroscopeScreen() {
           {/* Quick Forecasts */}
           <View style={styles.forecastsSection}>
             <Text style={styles.forecastsSectionTitle}>🔮 Краткие прогнозы</Text>
-            
+
             <View style={styles.forecastItem}>
               <LinearGradient
                 colors={['rgba(255, 107, 157, 0.2)', 'rgba(196, 69, 105, 0.3)']}
@@ -307,7 +485,7 @@ export default function HoroscopeScreen() {
 
           {/* Actions */}
           <View style={styles.actionsSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.refreshButton}
               onPress={loadHoroscope}
             >
@@ -320,16 +498,16 @@ export default function HoroscopeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.historyButton}
-              onPress={() => router.push('/history')}
+              onPress={() => router.push('/')}
             >
               <LinearGradient
                 colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
                 style={styles.actionButtonGradient}
               >
-                <Ionicons name="time" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>История</Text>
+                <Ionicons name="home" size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>На главную</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

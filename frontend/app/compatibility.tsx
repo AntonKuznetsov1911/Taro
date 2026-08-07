@@ -15,7 +15,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { api } from '../src/utils/api';
 
 interface CompatibilityResult {
   name1: string;
@@ -23,6 +22,142 @@ interface CompatibilityResult {
   compatibility_score: number;
   analysis: string;
   created_at: string;
+}
+
+// Numerology letter values (Russian and English)
+const LETTER_VALUES: { [key: string]: number } = {
+  'а': 1, 'б': 2, 'в': 3, 'г': 4, 'д': 5, 'е': 6, 'ё': 7, 'ж': 8, 'з': 9,
+  'и': 1, 'й': 2, 'к': 3, 'л': 4, 'м': 5, 'н': 6, 'о': 7, 'п': 8, 'р': 9,
+  'с': 1, 'т': 2, 'у': 3, 'ф': 4, 'х': 5, 'ц': 6, 'ч': 7, 'ш': 8, 'щ': 9,
+  'ъ': 1, 'ы': 2, 'ь': 3, 'э': 4, 'ю': 5, 'я': 6,
+  'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8, 'i': 9,
+  'j': 1, 'k': 2, 'l': 3, 'm': 4, 'n': 5, 'o': 6, 'p': 7, 'q': 8, 'r': 9,
+  's': 1, 't': 2, 'u': 3, 'v': 4, 'w': 5, 'x': 6, 'y': 7, 'z': 8,
+};
+
+// Calculate numerology number for a name
+function calculateNameNumber(name: string): number {
+  const cleanName = name.toLowerCase().replace(/[^а-яёa-z]/g, '');
+  let sum = 0;
+  for (const char of cleanName) {
+    sum += LETTER_VALUES[char] || 0;
+  }
+  // Reduce to single digit
+  while (sum > 9) {
+    sum = String(sum).split('').reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+  }
+  return sum;
+}
+
+// Compatibility analysis texts
+const COMPATIBILITY_TEXTS: { [key: number]: string[] } = {
+  9: [
+    "Идеальная совместимость! Ваши энергии находятся в полной гармонии. Вы дополняете друг друга, как инь и янь, создавая баланс во всех сферах жизни.",
+    "Ваш союз благословлён космическими силами. Вместе вы способны преодолеть любые препятствия и достичь самых смелых целей.",
+    "Между вами существует глубокая духовная связь, которая выходит за рамки обычных отношений."
+  ],
+  8: [
+    "Очень высокая совместимость! Ваши имена резонируют на глубоком уровне. Вы понимаете друг друга интуитивно.",
+    "Энергетика ваших имен создаёт мощное поле взаимопритяжения. Это союз, который может выдержать испытание временем.",
+    "Вы вдохновляете друг друга на рост и развитие, помогая раскрыть лучшие качества."
+  ],
+  7: [
+    "Хорошая совместимость с потенциалом для развития. Ваши энергии дополняют друг друга в большинстве аспектов.",
+    "Между вами есть искра, которую нужно бережно хранить. При взаимном уважении отношения будут процветать.",
+    "Ваш союз обладает творческим потенциалом. Вместе вы можете создать что-то прекрасное."
+  ],
+  6: [
+    "Средняя совместимость с возможностью гармонии. Ваши имена имеют как схожие, так и различающиеся вибрации.",
+    "Отношения потребуют работы над собой, но результат стоит усилий. Учитесь ценить различия друг друга.",
+    "Понимание и терпение станут ключами к вашей гармонии."
+  ],
+  5: [
+    "Противоположные энергии, которые могут как притягивать, так и отталкивать. Это союз контрастов.",
+    "Ваши различия могут стать источником как конфликтов, так и взаимного обогащения. Важен компромисс.",
+    "Динамичные отношения, требующие гибкости и открытости к переменам."
+  ],
+  4: [
+    "Непростая совместимость, требующая значительных усилий. Но любовь способна преодолеть числовые барьеры.",
+    "Ваши энергии движутся в разных направлениях, но при желании можно найти точки соприкосновения.",
+    "Путь не будет легким, но если вы готовы работать над отношениями, успех возможен."
+  ],
+  3: [
+    "Сложная совместимость. Ваши вибрации значительно отличаются, что может создавать напряжение.",
+    "Потребуется много понимания и принятия. Фокусируйтесь на том, что вас объединяет.",
+    "Возможно, вам предстоит многому научиться друг у друга."
+  ],
+  2: [
+    "Низкая совместимость по нумерологическим показателям. Ваши энергии редко находят общий язык.",
+    "Это не значит, что отношения невозможны, но они потребуют особой мудрости и терпения.",
+    "Иногда противоположности притягиваются для важных жизненных уроков."
+  ],
+  1: [
+    "Очень низкая нумерологическая совместимость. Ваши вибрации движутся в противоположных направлениях.",
+    "Если чувства сильны, помните: любовь превыше чисел. Но путь будет требовать постоянных усилий.",
+    "Возможно, вселенная свела вас для важного кармического урока."
+  ],
+};
+
+// Generate compatibility analysis
+function generateCompatibilityAnalysis(name1: string, name2: string): CompatibilityResult {
+  const num1 = calculateNameNumber(name1);
+  const num2 = calculateNameNumber(name2);
+
+  // Calculate compatibility score (1-9 scale, converted to percentage)
+  const diff = Math.abs(num1 - num2);
+  const baseScore = 9 - diff;
+
+  // Add some variation based on sum
+  const sum = num1 + num2;
+  const bonus = (sum % 3) * 3;
+
+  // Final score (55-98 range)
+  const score = Math.min(98, Math.max(55, 55 + (baseScore * 5) + bonus));
+
+  // Get appropriate text
+  const textIndex = Math.floor(baseScore);
+  const texts = COMPATIBILITY_TEXTS[textIndex] || COMPATIBILITY_TEXTS[5];
+  const randomText = texts[Math.floor(Math.random() * texts.length)];
+
+  // Create detailed analysis
+  const analysis = `🔢 Нумерологический анализ имён:\n\n` +
+    `✨ Число имени "${name1}": ${num1}\n` +
+    `✨ Число имени "${name2}": ${num2}\n\n` +
+    `💫 ${randomText}\n\n` +
+    `🌟 Совместное число: ${(num1 + num2) % 9 + 1}\n\n` +
+    `${getNumberMeaning(num1, name1)}\n\n` +
+    `${getNumberMeaning(num2, name2)}\n\n` +
+    `💕 Рекомендация: ${getRecommendation(score)}`;
+
+  return {
+    name1,
+    name2,
+    compatibility_score: score,
+    analysis,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function getNumberMeaning(num: number, name: string): string {
+  const meanings: { [key: number]: string } = {
+    1: `${name} несёт энергию лидерства и независимости. Это число первопроходцев.`,
+    2: `${name} обладает энергией гармонии и дипломатии. Стремление к партнёрству.`,
+    3: `${name} наполнено творческой энергией и радостью жизни. Число самовыражения.`,
+    4: `${name} несёт стабильность и практичность. Надёжность и трудолюбие.`,
+    5: `${name} полно энергии перемен и свободы. Любовь к приключениям.`,
+    6: `${name} излучает любовь и заботу. Семейные ценности на первом месте.`,
+    7: `${name} обладает мистической энергией поиска истины. Духовность и мудрость.`,
+    8: `${name} несёт энергию достижений и материального успеха. Сила воли.`,
+    9: `${name} завершает цикл, неся мудрость и сострадание. Универсальная любовь.`,
+  };
+  return meanings[num] || meanings[5];
+}
+
+function getRecommendation(score: number): string {
+  if (score >= 85) return "Берегите этот союз — он особенный! Доверяйте друг другу и двигайтесь вместе к общим целям.";
+  if (score >= 70) return "У вас хороший потенциал. Развивайте общение и учитесь слышать друг друга.";
+  if (score >= 55) return "Работайте над взаимопониманием. Ваши различия могут стать источником роста.";
+  return "Потребуется терпение и мудрость, но любовь способна преодолеть любые препятствия.";
 }
 
 export default function CompatibilityScreen() {
@@ -40,18 +175,12 @@ export default function CompatibilityScreen() {
 
     setIsLoading(true);
 
-    try {
-      const data = await api.post<CompatibilityResult>('/api/compatibility', {
-        name1: name1.trim(),
-        name2: name2.trim()
-      });
-      setResult(data);
-    } catch (error) {
-      console.error('Error analyzing compatibility:', error);
-      Alert.alert('Ошибка', 'Не удалось проанализировать совместимость. Попробуйте еще раз.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Simulate brief loading for better UX
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const data = generateCompatibilityAnalysis(name1.trim(), name2.trim());
+    setResult(data);
+    setIsLoading(false);
   };
 
   const resetForm = () => {
@@ -61,10 +190,10 @@ export default function CompatibilityScreen() {
   };
 
   const getCompatibilityColor = (score: number) => {
-    if (score >= 80) return '#27AE60'; // Green
-    if (score >= 60) return '#F39C12'; // Orange
-    if (score >= 40) return '#E67E22'; // Orange-Red
-    return '#E74C3C'; // Red
+    if (score >= 80) return '#27AE60';
+    if (score >= 60) return '#F39C12';
+    if (score >= 40) return '#E67E22';
+    return '#E74C3C';
   };
 
   const getCompatibilityEmoji = (score: number) => {
@@ -164,7 +293,7 @@ export default function CompatibilityScreen() {
         colors={['#0a0a0a', '#1a1a2e', '#16213e', '#8E44AD']}
         style={styles.background}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
@@ -185,7 +314,7 @@ export default function CompatibilityScreen() {
             {/* Input Section */}
             <View style={styles.inputSection}>
               <Text style={styles.inputTitle}>Введите имена для анализа совместимости</Text>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Первое имя</Text>
                 <TextInput
@@ -215,15 +344,15 @@ export default function CompatibilityScreen() {
             <View style={styles.infoContainer}>
               <Text style={styles.infoTitle}>💡 О гадании на совместимость:</Text>
               <Text style={styles.infoText}>• Анализ энергетики имен и их взаимодействия</Text>
-              <Text style={styles.infoText}>• Нумерологический расчет совместимости</Text>
-              <Text style={styles.infoText}>• Астрологические соответствия имен</Text>
+              <Text style={styles.infoText}>• Нумерологический расчёт совместимости</Text>
+              <Text style={styles.infoText}>• Астрологические соответствия имён</Text>
               <Text style={styles.infoText}>• Интуитивное толкование мудрой гадалки</Text>
             </View>
           </ScrollView>
 
           {/* Submit Button */}
           <View style={styles.bottomContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
               onPress={analyzeCompatibility}
               disabled={isLoading}
@@ -348,11 +477,9 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     overflow: 'hidden',
     elevation: 8,
-    boxShadow: '0px 4px 8px rgba(231, 76, 60, 0.4)',
   },
   submitButtonDisabled: {
     elevation: 0,
-    boxShadow: 'none',
   },
   submitButtonGradient: {
     flexDirection: 'row',
@@ -397,7 +524,6 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     overflow: 'hidden',
     elevation: 10,
-    boxShadow: '0px 5px 10px rgba(0, 0, 0, 0.3)',
   },
   scoreGradient: {
     flex: 1,
@@ -408,7 +534,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFF',
-    textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
   },
   compatibilityEmoji: {
     fontSize: 24,

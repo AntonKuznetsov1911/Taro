@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   cardBackFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   cardBackText: { fontSize: 48, marginBottom: 10 },
   tapToReveal: { fontSize: 12, color: '#B8B8B8', textAlign: 'center' },
-  loadingText: { fontSize: 12, color: '#FFD700', textAlign: 'center', marginTop: 8 },
+  cardLoadingText: { fontSize: 12, color: '#FFD700', textAlign: 'center', marginTop: 8 },
   positionText: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginTop: 10, textAlign: 'center' },
   interpretationContainer: { marginHorizontal: 20, marginBottom: 20 },
   interpretationTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8', marginBottom: 15, textAlign: 'center' },

@@ -207,7 +207,7 @@ export default function HistoryScreen() {
             onSearchChange={setSearchQuery}
             onCategorySelect={setSelectedCategory}
             onSpreadSelect={setSelectedSpread}
-            onToggleFavorites={setShowFavoritesOnly}
+            onToggleFavorites={() => setShowFavoritesOnly(!showFavoritesOnly)}
             onSortChange={setSortBy}
           />
         )}
@@ -256,19 +256,26 @@ export default function HistoryScreen() {
         ) : (
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <View style={styles.readingsContainer}>
-              {filteredReadings.map((reading) => (
-                <EnhancedHistoryCard
-                  key={reading.id}
-                  reading={reading}
-                  isFavorite={favorites.has(reading.id)}
-                  notes={notes[reading.id] || ''}
-                  tags={tags[reading.id] || []}
-                  onToggleFavorite={() => toggleFavorite(reading.id)}
-                  onSaveNotes={(note) => saveNotes(reading.id, note)}
-                  onAddTag={(tag) => addTag(reading.id, tag)}
-                  onRemoveTag={(tag) => removeTag(reading.id, tag)}
-                />
-              ))}
+              {filteredReadings.map((reading) => {
+                const categoryInfo = CATEGORIES[reading.category as keyof typeof CATEGORIES] || CATEGORIES.general;
+                const spreadName = SPREADS[reading.spread_type as keyof typeof SPREADS] || reading.spread_type;
+                return (
+                  <EnhancedHistoryCard
+                    key={reading.id}
+                    reading={reading}
+                    isFavorite={favorites.has(reading.id)}
+                    notes={notes[reading.id] || ''}
+                    tags={tags[reading.id] || []}
+                    onToggleFavorite={toggleFavorite}
+                    onSaveNotes={saveNotes}
+                    onAddTag={addTag}
+                    onRemoveTag={removeTag}
+                    onViewDetails={(r) => console.log('View details:', r.id)}
+                    categoryInfo={categoryInfo}
+                    spreadName={spreadName}
+                  />
+                );
+              })}
             </View>
           </ScrollView>
         )}
