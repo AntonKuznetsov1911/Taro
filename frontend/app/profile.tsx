@@ -15,25 +15,53 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Constants from 'expo-constants';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { useUserProfile, UserProfile } from '../src/context/UserProfileContext';
 
-interface UserProfile {
-  id: string;
-  name: string;
-  birth_date: string;
-  birth_time?: string;
-  birth_place?: string;
-  zodiac_sign: string;
-  gender?: string;
-  created_at: string;
-  updated_at: string;
+// Zodiac sign calculation
+const ZODIAC_SIGNS = [
+  { name: 'Козерог', start: [12, 22], end: [1, 19] },
+  { name: 'Водолей', start: [1, 20], end: [2, 18] },
+  { name: 'Рыбы', start: [2, 19], end: [3, 20] },
+  { name: 'Овен', start: [3, 21], end: [4, 19] },
+  { name: 'Телец', start: [4, 20], end: [5, 20] },
+  { name: 'Близнецы', start: [5, 21], end: [6, 20] },
+  { name: 'Рак', start: [6, 21], end: [7, 22] },
+  { name: 'Лев', start: [7, 23], end: [8, 22] },
+  { name: 'Дева', start: [8, 23], end: [9, 22] },
+  { name: 'Весы', start: [9, 23], end: [10, 22] },
+  { name: 'Скорпион', start: [10, 23], end: [11, 21] },
+  { name: 'Стрелец', start: [11, 22], end: [12, 21] },
+];
+
+function getZodiacSign(birthDate: string): string {
+  const date = new Date(birthDate);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  for (const sign of ZODIAC_SIGNS) {
+    const [startMonth, startDay] = sign.start;
+    const [endMonth, endDay] = sign.end;
+
+    if (sign.name === 'Козерог') {
+      if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) {
+        return sign.name;
+      }
+    } else {
+      if ((month === startMonth && day >= startDay) || (month === endMonth && day <= endDay)) {
+        return sign.name;
+      }
+    }
+  }
+
+  return 'Неизвестно';
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { profile: savedProfile, saveProfile: saveProfileToContext, isLoading: contextLoading } = useUserProfile();
   const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [zodiacSign, setZodiacSign] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     birth_date: '',
@@ -43,31 +71,32 @@ export default function ProfileScreen() {
   });
 
   useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      const apiUrl = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL;
-      const response = await fetch(`${apiUrl}/api/profile`);
-      
-      if (response.ok) {
-        const profileData = await response.json();
-        setProfile(profileData);
-        setFormData({
-          name: profileData.name || '',
-          birth_date: profileData.birth_date || '',
-          birth_time: profileData.birth_time || '',
-          birth_place: profileData.birth_place || '',
-          gender: profileData.gender || '',
-        });
-      } else if (response.status !== 404) {
-        console.error('Error loading profile:', response.status);
+    if (savedProfile) {
+      // Convert ISO date to DD.MM.YYYY format for display
+      let displayDate = '';
+      if (savedProfile.birthDate) {
+        const date = new Date(savedProfile.birthDate);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        displayDate = `${day}.${month}.${year}`;
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
+
+      setFormData({
+        name: savedProfile.name || '',
+        birth_date: displayDate,
+        birth_time: savedProfile.birthTime || '',
+        birth_place: savedProfile.birthPlace || '',
+        gender: savedProfile.gender || '',
+      });
+
+      if (savedProfile.zodiacSign) {
+        setZodiacSign(savedProfile.zodiacSign);
+      } else if (savedProfile.birthDate) {
+        setZodiacSign(getZodiacSign(savedProfile.birthDate));
+      }
     }
-  };
+  }, [savedProfile]);
 
   const saveProfile = async () => {
     if (!formData.name.trim()) {
@@ -83,7 +112,7 @@ export default function ProfileScreen() {
     // Validate and convert date format
     const dateRegex = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
     const dateMatch = formData.birth_date.match(dateRegex);
-    
+
     if (!dateMatch) {
       Alert.alert('Ошибка', 'Неверный формат даты. Используйте ДД.ММ.ГГГГ');
       return;
@@ -94,38 +123,29 @@ export default function ProfileScreen() {
     const year = dateMatch[3];
     const isoDate = `${year}-${month}-${day}`;
 
+    // Calculate zodiac sign
+    const calculatedZodiac = getZodiacSign(isoDate);
+    setZodiacSign(calculatedZodiac);
+
     try {
       setIsLoading(true);
-      const apiUrl = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL;
-      
-      const profileData = {
+
+      const profileData: UserProfile = {
         name: formData.name.trim(),
-        birth_date: isoDate,
-        birth_time: formData.birth_time.trim() || null,
-        birth_place: formData.birth_place.trim() || null,
-        gender: formData.gender.trim() || null,
+        birthDate: isoDate,
+        birthTime: formData.birth_time.trim() || undefined,
+        birthPlace: formData.birth_place.trim() || undefined,
+        zodiacSign: calculatedZodiac,
+        gender: formData.gender.trim() || undefined,
       };
 
-      const response = await fetch(`${apiUrl}/api/profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profileData),
-      });
+      await saveProfileToContext(profileData);
 
-      if (response.ok) {
-        const savedProfile = await response.json();
-        setProfile(savedProfile);
-        Alert.alert(
-          'Успех',
-          `Профиль сохранен!\nВаш знак зодиака: ${savedProfile.zodiac_sign}`,
-          [{ text: 'ОК', onPress: () => router.back() }]
-        );
-      } else {
-        const errorData = await response.json();
-        Alert.alert('Ошибка', 'Не удалось сохранить профиль');
-      }
+      Alert.alert(
+        'Успех',
+        `Профиль сохранен!\nВаш знак зодиака: ${calculatedZodiac}`,
+        [{ text: 'ОК', onPress: () => router.back() }]
+      );
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert('Ошибка', 'Не удалось сохранить профиль');
@@ -137,7 +157,7 @@ export default function ProfileScreen() {
   const formatBirthDate = (text: string) => {
     // Remove all non-digits
     const digits = text.replace(/\D/g, '');
-    
+
     // Add dots automatically
     let formatted = '';
     for (let i = 0; i < digits.length && i < 8; i++) {
@@ -146,14 +166,14 @@ export default function ProfileScreen() {
       }
       formatted += digits[i];
     }
-    
+
     return formatted;
   };
 
   const formatTime = (text: string) => {
     // Remove all non-digits
     const digits = text.replace(/\D/g, '');
-    
+
     // Add colon automatically
     let formatted = '';
     for (let i = 0; i < digits.length && i < 4; i++) {
@@ -162,28 +182,28 @@ export default function ProfileScreen() {
       }
       formatted += digits[i];
     }
-    
+
     return formatted;
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000011" />
-      
+
       <LinearGradient
         colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
         style={styles.background}
       >
         <CosmicBackground />
-        
-        <KeyboardAvoidingView 
+
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
             {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => router.back()}
               >
@@ -283,27 +303,27 @@ export default function ProfileScreen() {
               </View>
 
               {/* Current Zodiac Sign */}
-              {profile && (
+              {zodiacSign && (
                 <View style={styles.zodiacContainer}>
                   <LinearGradient
                     colors={['rgba(155, 89, 182, 0.2)', 'rgba(142, 68, 173, 0.3)']}
                     style={styles.zodiacCard}
                   >
                     <Text style={styles.zodiacTitle}>🔮 Ваш знак зодиака</Text>
-                    <Text style={styles.zodiacSign}>{profile.zodiac_sign}</Text>
+                    <Text style={styles.zodiacSign}>{zodiacSign}</Text>
                   </LinearGradient>
                 </View>
               )}
 
               {/* Save Button */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
                 onPress={saveProfile}
                 disabled={isLoading}
               >
                 <LinearGradient
-                  colors={isLoading ? 
-                    ['rgba(100, 100, 100, 0.7)', 'rgba(80, 80, 80, 0.9)'] : 
+                  colors={isLoading ?
+                    ['rgba(100, 100, 100, 0.7)', 'rgba(80, 80, 80, 0.9)'] :
                     ['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
                   style={styles.saveButtonGradient}
                 >
