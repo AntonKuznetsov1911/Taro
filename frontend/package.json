@@ -8,9 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export -p web",
-    "build:gh-pages": "GITHUB_PAGES=true expo export -p web",
+    "build:web": "expo export -p web && node scripts/inject-pwa.js",
+    "build:gh-pages": "GITHUB_PAGES=true expo export -p web && node scripts/inject-pwa.js",
     "predeploy": "npm run build:gh-pages",
+    "postbuild": "node scripts/inject-pwa.js",
     "deploy": "gh-pages -d dist",
     "test": "jest --watchAll"
   },

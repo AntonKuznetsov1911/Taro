@@ -6,6 +6,7 @@ import { UserProfileProvider } from '../src/contexts/UserProfileContext';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { UpdateNotification } from '../components/UpdateNotification';
+import { InstallPWAPrompt } from '../components/InstallPWAPrompt';
 
 export default function RootLayout() {
   return (
@@ -16,6 +17,7 @@ export default function RootLayout() {
             <OfflineBanner />
             <UpdateNotification />
             <Stack screenOptions={{ headerShown: false }} />
+            <InstallPWAPrompt />
           </UserProfileProvider>
         </SettingsProvider>
       </AppProvider>
