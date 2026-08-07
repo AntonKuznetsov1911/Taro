@@ -62,6 +62,10 @@ function injectPWA() {
   html = html.replace(/<!-- PWA Meta Tags -->[\s\S]*?<!-- Splash screens for iOS -->[\s\S]*?icon-512\.png">/g, '');
   html = html.replace(/<!-- Service Worker Registration -->[\s\S]*?register-sw\.js"><\/script>/g, '');
 
+  // Remove Expo's default favicon (we'll add our own)
+  html = html.replace(/<link rel="shortcut icon" href="[^"]*"[^>]*>/g, '');
+  html = html.replace(/<link rel="icon" href="\/favicon\.ico"[^>]*>/g, '');
+
   // Inject meta tags before </head>
   html = html.replace('</head>', pwaHead + '</head>');
 
