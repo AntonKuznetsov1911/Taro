@@ -2,36 +2,46 @@
   <defs>
     <!-- Background gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a0a2e"/>
-      <stop offset="50%" style="stop-color:#2d1b4e"/>
-      <stop offset="100%" style="stop-color:#0d0015"/>
+      <stop offset="0%" style="stop-color:#0a0015"/>
+      <stop offset="50%" style="stop-color:#1a0a2e"/>
+      <stop offset="100%" style="stop-color:#0d0020"/>
     </linearGradient>
 
-    <!-- Gold gradient for accents -->
+    <!-- Crystal ball gradient -->
+    <radialGradient id="ballGrad" cx="35%" cy="35%" r="60%">
+      <stop offset="0%" style="stop-color:#e8d5f5"/>
+      <stop offset="20%" style="stop-color:#c9a6e0"/>
+      <stop offset="45%" style="stop-color:#9b59b6"/>
+      <stop offset="70%" style="stop-color:#6a3093"/>
+      <stop offset="100%" style="stop-color:#2d1b4e"/>
+    </radialGradient>
+
+    <!-- Inner glow -->
+    <radialGradient id="innerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#fff;stop-opacity:0.3"/>
+      <stop offset="40%" style="stop-color:#d4a5ff;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#9b59b6;stop-opacity:0"/>
+    </radialGradient>
+
+    <!-- Gold gradient -->
     <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#ffd700"/>
       <stop offset="50%" style="stop-color:#ffec8b"/>
       <stop offset="100%" style="stop-color:#daa520"/>
     </linearGradient>
 
-    <!-- Purple glow gradient -->
-    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#9b59b6;stop-opacity:0.8"/>
-      <stop offset="70%" style="stop-color:#9b59b6;stop-opacity:0.2"/>
-      <stop offset="100%" style="stop-color:#9b59b6;stop-opacity:0"/>
-    </radialGradient>
-
-    <!-- Card gradient -->
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3d2066"/>
-      <stop offset="100%" style="stop-color:#1a0a2e"/>
+    <!-- Stand gradient -->
+    <linearGradient id="standGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#daa520"/>
+      <stop offset="50%" style="stop-color:#b8860b"/>
+      <stop offset="100%" style="stop-color:#8b6914"/>
     </linearGradient>
 
-    <!-- Eye gradient -->
-    <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#fff"/>
-      <stop offset="40%" style="stop-color:#e8d5f0"/>
-      <stop offset="100%" style="stop-color:#9b59b6"/>
+    <!-- Mist/smoke effect -->
+    <radialGradient id="mistGrad" cx="50%" cy="60%" r="40%">
+      <stop offset="0%" style="stop-color:#bb6bd9;stop-opacity:0.6"/>
+      <stop offset="50%" style="stop-color:#9b59b6;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#9b59b6;stop-opacity:0"/>
     </radialGradient>
 
     <!-- Glow filter -->
@@ -44,98 +54,95 @@
     </filter>
 
     <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
+    </filter>
+
+    <!-- Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
     </filter>
   </defs>
 
   <!-- Background circle -->
   <circle cx="256" cy="256" r="256" fill="url(#bgGrad)"/>
 
+  <!-- Background stars -->
+  <g fill="#fff" opacity="0.6">
+    <circle cx="80" cy="100" r="2"/>
+    <circle cx="420" cy="80" r="1.5"/>
+    <circle cx="450" cy="180" r="2"/>
+    <circle cx="60" cy="200" r="1.5"/>
+    <circle cx="100" cy="350" r="1"/>
+    <circle cx="400" cy="380" r="2"/>
+    <circle cx="150" cy="80" r="1"/>
+    <circle cx="380" cy="120" r="1.5"/>
+    <circle cx="70" cy="280" r="1"/>
+    <circle cx="440" cy="300" r="1.5"/>
+  </g>
+
+  <!-- Sparkle stars -->
+  <g fill="url(#goldGrad)" filter="url(#softGlow)">
+    <polygon points="120,150 123,158 132,158 125,163 128,172 120,167 112,172 115,163 108,158 117,158"/>
+    <polygon points="400,140 402,146 409,146 404,150 406,156 400,152 394,156 396,150 391,146 398,146"/>
+    <polygon points="90,320 92,325 98,325 94,328 95,333 90,330 85,333 86,328 82,325 88,325"/>
+    <polygon points="430,350 432,355 438,355 434,358 435,363 430,360 425,363 426,358 422,355 428,355"/>
+  </g>
+
+  <!-- Crystal ball stand base -->
+  <ellipse cx="256" cy="400" rx="90" ry="20" fill="url(#standGrad)" filter="url(#shadow)"/>
+
+  <!-- Stand neck -->
+  <path d="M200,395 Q200,370 220,360 L292,360 Q312,370 312,395 Z" fill="url(#standGrad)"/>
+
+  <!-- Stand ring -->
+  <ellipse cx="256" cy="360" rx="50" ry="12" fill="url(#goldGrad)"/>
+  <ellipse cx="256" cy="360" rx="42" ry="8" fill="#2d1b4e"/>
+
+  <!-- Crystal ball shadow on stand -->
+  <ellipse cx="256" cy="355" rx="70" ry="15" fill="#000" opacity="0.3"/>
+
+  <!-- Main crystal ball -->
+  <circle cx="256" cy="220" r="130" fill="url(#ballGrad)" filter="url(#shadow)"/>
+
+  <!-- Ball inner glow/mist -->
+  <circle cx="256" cy="230" r="100" fill="url(#mistGrad)"/>
+
+  <!-- Mystical swirls inside -->
+  <g stroke="#bb6bd9" stroke-width="2" fill="none" opacity="0.4">
+    <path d="M200,200 Q230,180 260,200 Q290,220 280,250"/>
+    <path d="M220,250 Q250,230 280,250 Q310,270 290,290"/>
+    <path d="M240,180 Q260,200 240,220"/>
+  </g>
+
+  <!-- Stars inside the ball -->
+  <g fill="#fff" filter="url(#glow)">
+    <polygon points="230,190 232,196 239,196 234,200 236,206 230,202 224,206 226,200 221,196 228,196" opacity="0.9"/>
+    <polygon points="280,230 282,234 287,234 283,237 284,241 280,238 276,241 277,237 273,234 278,234" opacity="0.7"/>
+    <polygon points="250,260 251,263 255,263 252,265 253,268 250,266 247,268 248,265 245,263 249,263" opacity="0.6"/>
+  </g>
+
+  <!-- Main highlight on ball -->
+  <ellipse cx="210" cy="175" rx="40" ry="25" fill="#fff" opacity="0.4" transform="rotate(-30 210 175)"/>
+  <ellipse cx="205" cy="170" rx="25" ry="15" fill="#fff" opacity="0.6" transform="rotate(-30 205 170)"/>
+
+  <!-- Secondary highlight -->
+  <ellipse cx="300" cy="280" rx="15" ry="10" fill="#fff" opacity="0.15" transform="rotate(30 300 280)"/>
+
+  <!-- Ball edge highlight -->
+  <circle cx="256" cy="220" r="128" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.5"/>
+
   <!-- Outer mystical ring -->
-  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.6"/>
-  <circle cx="256" cy="256" r="230" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="245" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.3"/>
 
-  <!-- Background glow -->
-  <circle cx="256" cy="256" r="180" fill="url(#glowGrad)"/>
-
-  <!-- Decorative stars -->
-  <g fill="url(#goldGrad)" filter="url(#softGlow)" opacity="0.9">
-    <!-- Top star -->
-    <polygon points="256,45 260,58 274,58 263,67 267,80 256,72 245,80 249,67 238,58 252,58" transform="scale(0.8) translate(64,20)"/>
-    <!-- Left stars -->
-    <polygon points="80,200 83,208 92,208 85,214 88,222 80,217 72,222 75,214 68,208 77,208" transform="scale(1.2) translate(-10,30)"/>
-    <polygon points="100,320 102,326 109,326 104,330 106,336 100,333 94,336 96,330 91,326 98,326"/>
-    <!-- Right stars -->
-    <polygon points="432,200 435,208 444,208 437,214 440,222 432,217 424,222 427,214 420,208 429,208" transform="scale(1.2) translate(-70,30)"/>
-    <polygon points="412,320 414,326 421,326 416,330 418,336 412,333 406,336 408,330 403,326 410,326"/>
-    <!-- Bottom stars -->
-    <polygon points="180,420 182,426 189,426 184,430 186,436 180,433 174,436 176,430 171,426 178,426"/>
-    <polygon points="332,420 334,426 341,426 336,430 338,436 332,433 326,436 328,430 323,426 330,426"/>
-  </g>
-
-  <!-- Main tarot card -->
-  <g transform="translate(256,256)">
-    <!-- Card shadow -->
-    <rect x="-75" y="-110" width="150" height="220" rx="12" fill="#000" opacity="0.4" transform="translate(8,8)"/>
-
-    <!-- Card body -->
-    <rect x="-75" y="-110" width="150" height="220" rx="12" fill="url(#cardGrad)" stroke="url(#goldGrad)" stroke-width="3"/>
-
-    <!-- Card inner border -->
-    <rect x="-65" y="-100" width="130" height="200" rx="8" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.5"/>
-
-    <!-- All-seeing eye -->
-    <g filter="url(#glow)">
-      <!-- Eye outer shape -->
-      <ellipse cx="0" cy="-20" rx="50" ry="30" fill="url(#eyeGrad)"/>
-
-      <!-- Iris -->
-      <circle cx="0" cy="-20" r="20" fill="#9b59b6"/>
-
-      <!-- Pupil -->
-      <circle cx="0" cy="-20" r="10" fill="#1a0a2e"/>
-
-      <!-- Eye highlight -->
-      <circle cx="-5" cy="-25" r="5" fill="#fff" opacity="0.8"/>
-
-      <!-- Eye outline -->
-      <ellipse cx="0" cy="-20" rx="50" ry="30" fill="none" stroke="url(#goldGrad)" stroke-width="2"/>
-    </g>
-
-    <!-- Mystical triangle around eye -->
-    <polygon points="0,-70 -55,40 55,40" fill="none" stroke="url(#goldGrad)" stroke-width="2" filter="url(#softGlow)"/>
-
-    <!-- Moon symbol at top of card -->
-    <path d="M0,-85 C-12,-85 -20,-75 -20,-65 C-20,-55 -12,-45 0,-45 C-8,-50 -12,-58 -12,-65 C-12,-72 -8,-80 0,-85" fill="url(#goldGrad)" opacity="0.9"/>
-
-    <!-- Stars inside card -->
-    <g fill="url(#goldGrad)" opacity="0.8">
-      <polygon points="-45,-75 -43,-71 -39,-71 -42,-68 -41,-64 -45,-66 -49,-64 -48,-68 -51,-71 -47,-71"/>
-      <polygon points="45,-75 47,-71 51,-71 48,-68 49,-64 45,-66 41,-64 42,-68 39,-71 43,-71"/>
-    </g>
-
-    <!-- Decorative lines at bottom -->
-    <g stroke="url(#goldGrad)" stroke-width="1" opacity="0.6">
-      <line x1="-40" y1="60" x2="40" y2="60"/>
-      <line x1="-30" y1="70" x2="30" y2="70"/>
-      <line x1="-20" y1="80" x2="20" y2="80"/>
-    </g>
-  </g>
-
-  <!-- Outer decorative crescents -->
-  <g fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.5">
-    <path d="M80,256 Q80,180 130,130" />
-    <path d="M432,256 Q432,180 382,130" />
-    <path d="M80,256 Q80,332 130,382" />
-    <path d="M432,256 Q432,332 382,382" />
-  </g>
-
-  <!-- Small mystical symbols around -->
-  <g fill="url(#goldGrad)" opacity="0.6" font-family="serif" font-size="24">
-    <text x="256" y="470" text-anchor="middle">☽ ✧ ☾</text>
+  <!-- Decorative corners -->
+  <g fill="url(#goldGrad)" opacity="0.4">
+    <path d="M50,50 L80,50 L80,55 L55,55 L55,80 L50,80 Z"/>
+    <path d="M462,50 L432,50 L432,55 L457,55 L457,80 L462,80 Z"/>
+    <path d="M50,462 L80,462 L80,457 L55,457 L55,432 L50,432 Z"/>
+    <path d="M462,462 L432,462 L432,457 L457,457 L457,432 L462,432 Z"/>
   </g>
 </svg>
