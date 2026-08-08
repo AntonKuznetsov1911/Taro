@@ -3,7 +3,10 @@
  * Расчёт фаз луны, положения планет, знаков зодиака и астрологических аспектов
  */
 
-import SunCalc from 'suncalc';
+import * as SunCalcModule from 'suncalc';
+
+// Handle different import styles (CommonJS vs ESM)
+const SunCalc = (SunCalcModule as any).default || SunCalcModule;
 
 // ==================== ТИПЫ ====================
 
@@ -107,11 +110,50 @@ const LUCKY_COLORS_BY_ELEMENT = {
 // ==================== ФУНКЦИИ ====================
 
 /**
+ * Простой расчёт фазы луны без внешних библиотек
+ */
+function calculateMoonPhase(date: Date): { phase: number; fraction: number } {
+  // Известная дата новолуния для базы расчёта (1 января 2000)
+  const knownNewMoon = new Date('2000-01-06T18:14:00Z').getTime();
+  const lunarCycle = 29.53058867; // дней
+  const msPerDay = 24 * 60 * 60 * 1000;
+
+  const daysSinceKnown = (date.getTime() - knownNewMoon) / msPerDay;
+  const currentCycle = daysSinceKnown / lunarCycle;
+  const phase = currentCycle - Math.floor(currentCycle);
+
+  // Расчёт освещённости (0 = новолуние, 0.5 = полнолуние)
+  const fraction = (1 - Math.cos(2 * Math.PI * phase)) / 2;
+
+  return { phase, fraction };
+}
+
+/**
  * Получить данные о луне на указанную дату
  */
 export function getMoonData(date: Date = new Date()): MoonData {
-  const moonIllum = SunCalc.getMoonIllumination(date);
-  const phase = moonIllum.phase;
+  let phase: number;
+  let fraction: number;
+
+  try {
+    // Пробуем использовать SunCalc
+    if (SunCalc && typeof SunCalc.getMoonIllumination === 'function') {
+      const moonIllum = SunCalc.getMoonIllumination(date);
+      phase = moonIllum.phase;
+      fraction = moonIllum.fraction;
+    } else {
+      // Fallback на собственный расчёт
+      const moonCalc = calculateMoonPhase(date);
+      phase = moonCalc.phase;
+      fraction = moonCalc.fraction;
+    }
+  } catch (error) {
+    // Fallback на собственный расчёт при ошибке
+    console.warn('SunCalc unavailable, using fallback moon calculation');
+    const moonCalc = calculateMoonPhase(date);
+    phase = moonCalc.phase;
+    fraction = moonCalc.fraction;
+  }
 
   // Определяем фазу луны
   let moonPhase = MOON_PHASES[0];
@@ -133,7 +175,7 @@ export function getMoonData(date: Date = new Date()): MoonData {
     phase,
     phaseName: moonPhase.name,
     phaseNameRu: moonPhase.nameRu,
-    illumination: Math.round(moonIllum.fraction * 100),
+    illumination: Math.round(fraction * 100),
     lunarDay: Math.min(lunarDay, 30),
     moonSign,
     isWaxing: phase < 0.5,
