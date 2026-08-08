@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,9 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as ImageManipulator from 'expo-image-manipulator';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { generateOfflinePalmResult } from '../src/utils/offlineApi';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -118,21 +117,8 @@ export default function CameraScreen() {
     try {
       setIsAnalyzing(true);
 
-      // Call palmistry API
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/palmistry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_base64: `data:image/jpeg;base64,${capturedImageBase64}`,
-          question: question.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
+      // Use offline palm analysis
+      const data = await generateOfflinePalmResult(question.trim());
 
       // Navigate to result screen with analysis data
       router.push({
@@ -141,7 +127,7 @@ export default function CameraScreen() {
           imageUri: capturedImage,
           question: question.trim(),
           interpretation: data.interpretation,
-          palmLines: JSON.stringify(data.palm_lines),
+          palmLines: JSON.stringify(data.lines),
         },
       });
     } catch (error) {

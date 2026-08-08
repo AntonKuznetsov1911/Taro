@@ -15,22 +15,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import Constants from 'expo-constants';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { generateOfflinePalmResult, PalmLine } from '../src/utils/offlineApi';
 
 const { width: screenWidth } = Dimensions.get('window');
-
-interface PalmLine {
-  name: string;
-  description: string;
-  color: string;
-  points: number[][];
-}
 
 interface PalmistryResult {
   id: string;
   question: string;
-  image_base64: string;
   lines: PalmLine[];
   interpretation: string;
   created_at: string;
@@ -56,36 +48,8 @@ export default function PalmistryScreen() {
     try {
       setIsLoading(true);
 
-      // Convert image to base64
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]); // Remove data:image/jpeg;base64, prefix
-        };
-        reader.readAsDataURL(blob);
-      });
-
-      // Send to backend for analysis
-      const apiUrl = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL;
-      const palmResponse = await fetch(`${apiUrl}/api/palmistry`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_base64: base64,
-          question: 'Расскажите о моей судьбе по линиям руки',
-        }),
-      });
-
-      if (!palmResponse.ok) {
-        throw new Error('Network error');
-      }
-
-      const palmResult = await palmResponse.json();
+      // Generate offline palm reading
+      const palmResult = await generateOfflinePalmResult('Расскажите о моей судьбе по линиям руки');
       setResult(palmResult);
     } catch (error) {
       console.error('Error analyzing palm:', error);

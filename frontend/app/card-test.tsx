@@ -6,27 +6,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { getRandomCards, TarotCard } from '../src/data/tarotCards';
+import { generateTarotCardSVG, getOfflineCardBack } from '../src/utils/offlineApi';
 
-const EXPO_PUBLIC_BACKEND_URL = 'https://taro-production-619b.up.railway.app';
-
-interface TarotCard {
-  id: number;
-  name: string;
-  name_en: string;
-  type: string;
-  image: string;
-  keywords: string[];
-  upright_meaning: string;
-  reversed_meaning: string;
-  is_reversed: boolean;
+interface CardWithImage extends TarotCard {
+  image?: string;
 }
 
 export default function CardTestScreen() {
-  const [card, setCard] = useState<TarotCard | null>(null);
+  const [card, setCard] = useState<CardWithImage | null>(null);
   const [cardBack, setCardBack] = useState<string>('');
   const [revealed, setRevealed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,26 +29,18 @@ export default function CardTestScreen() {
 
   const loadTestCard = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/reading`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          category: 'love',
-          spread_type: 'one_card',
-          question: 'Тестовый вопрос',
-        }),
-      });
+      // Use offline card generation
+      const cards = getRandomCards(1);
+      const selectedCard = cards[0];
+      const cardImage = generateTarotCardSVG(selectedCard, false);
 
-      const data = await response.json();
-      console.log('Test card loaded:', data.cards[0]);
-      console.log('Image data length:', data.cards[0].image?.length);
-      console.log('Image data starts with:', data.cards[0].image?.substring(0, 50));
-      setCard(data.cards[0]);
+      console.log('Test card loaded:', selectedCard.name);
+      console.log('Image data length:', cardImage?.length);
+      console.log('Image data starts with:', cardImage?.substring(0, 50));
+
+      setCard({ ...selectedCard, image: cardImage });
     } catch (error) {
       console.error('Error loading test card:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить карту');
     } finally {
       setIsLoading(false);
     }
@@ -65,10 +48,9 @@ export default function CardTestScreen() {
 
   const loadCardBack = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card-back`);
-      const data = await response.json();
-      setCardBack(data.image);
-      console.log('Card back loaded, length:', data.image?.length);
+      const backImage = await getOfflineCardBack();
+      setCardBack(backImage);
+      console.log('Card back loaded, length:', backImage?.length);
     } catch (error) {
       console.error('Error loading card back:', error);
     }

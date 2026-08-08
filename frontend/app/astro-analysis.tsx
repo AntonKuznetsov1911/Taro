@@ -11,8 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { generateOfflineAstroPersonality } from '../src/utils/offlineApi';
 
 const MYSTICAL_MESSAGES = [
   '✨ Звёзды выстраиваются в уникальный узор...',
@@ -109,24 +108,12 @@ export default function AstroAnalysisScreen() {
 
   const performAnalysis = async () => {
     try {
-      const answersData = JSON.parse(params.answers as string);
+      const answersData = params.answers ? JSON.parse(params.answers as string) : {};
 
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/astro-personality`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: answersData,
-          name: params.name || null,
-        }),
-      });
+      // Use offline astro personality analysis
+      const result = await generateOfflineAstroPersonality(answersData, params.name as string || undefined);
 
-      if (!response.ok) {
-        throw new Error('Failed to generate analysis');
-      }
-
-      const result = await response.json();
-
-      // Wait at least 5 seconds for dramatic effect
+      // Wait at least 3 seconds for dramatic effect
       setTimeout(() => {
         router.replace({
           pathname: '/astro-result',
@@ -140,7 +127,7 @@ export default function AstroAnalysisScreen() {
             advice: result.advice,
           },
         });
-      }, 5000);
+      }, 3000);
     } catch (err) {
       console.error('Analysis error:', err);
       setError('Не удалось создать анализ. Попробуйте еще раз.');
