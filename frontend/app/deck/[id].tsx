@@ -5,28 +5,50 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { playClick } from '../../src/utils/sound';
 import { useSettings } from '../../src/contexts/SettingsContext';
+import { getCardById, TarotCard } from '../../src/data/tarotCards';
+import { generateTarotCardSVG } from '../../src/utils/offlineApi';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+// Generate detailed interpretation for a card
+function generateCardInterpretation(card: TarotCard, isReversed: boolean): string {
+  const baseMeaning = isReversed ? card.reversed_meaning : card.upright_meaning;
 
-type CardDetail = {
-  id: number;
-  name: string;
-  name_en: string;
-  type: string;
-  suit?: string | null;
-  image: string;
-  keywords: string[];
-  upright_meaning: string;
-  reversed_meaning: string;
-};
+  const introductions = [
+    `${card.name} несёт глубокое послание для вас.`,
+    `Энергия ${card.name} влияет на вашу текущую ситуацию.`,
+    `${card.name} открывает важные аспекты вашего пути.`,
+  ];
+
+  const advices = [
+    `Обратите внимание на ${card.keywords[0]} в вашей жизни.`,
+    `Ключевой аспект сейчас — ${card.keywords.slice(0, 2).join(' и ')}.`,
+    `Сосредоточьтесь на развитии ${card.keywords[0]}.`,
+  ];
+
+  const conclusions = [
+    'Доверяйте своей интуиции и следуйте внутреннему голосу.',
+    'Примите эту мудрость и интегрируйте её в свои действия.',
+    'Карта указывает на время для размышлений и принятия решений.',
+  ];
+
+  const dayIndex = new Date().getDate();
+
+  return `${introductions[dayIndex % introductions.length]}
+
+${baseMeaning}
+
+${isReversed ? '⚠️ В перевёрнутом положении карта призывает к осторожности и самоанализу. ' : '✨ В прямом положении карта приносит позитивную энергию. '}${advices[dayIndex % advices.length]}
+
+${conclusions[dayIndex % conclusions.length]}`;
+}
 
 export default function CardDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [card, setCard] = useState<CardDetail | null>(null);
+  const [card, setCard] = useState<TarotCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [reversed, setReversed] = useState(false);
   const [interpretation, setInterpretation] = useState('');
+  const [cardImage, setCardImage] = useState<string>('');
   const cardId = Number(id);
 
   const settings = useSettings();
@@ -34,10 +56,13 @@ export default function CardDetailScreen() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card/${cardId}`);
-        const data = await res.json();
-        setCard(data.card);
-        await fetchInterpretation(false);
+        // Load card from offline data
+        const foundCard = getCardById(cardId);
+        if (foundCard) {
+          setCard(foundCard);
+          setCardImage(generateTarotCardSVG(foundCard, false));
+          setInterpretation(generateCardInterpretation(foundCard, false));
+        }
       } catch (e) {
         console.error('Failed to load card', e);
       } finally {
@@ -47,24 +72,13 @@ export default function CardDetailScreen() {
     load();
   }, [cardId]);
 
-  const fetchInterpretation = async (isReversed: boolean) => {
-    try {
-      const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/card-interpretation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_id: cardId, reversed: isReversed })
-      });
-      const data = await res.json();
-      setInterpretation(data.interpretation);
-    } catch (e) {
-      if (card) setInterpretation(isReversed ? card.reversed_meaning : card.upright_meaning);
-    }
-  };
-
   const onToggleReversed = async (val: boolean) => {
     setReversed(val);
     await playClick({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
-    await fetchInterpretation(val);
+    if (card) {
+      setCardImage(generateTarotCardSVG(card, val));
+      setInterpretation(generateCardInterpretation(card, val));
+    }
   };
 
   if (loading || !card) {
@@ -93,10 +107,15 @@ export default function CardDetailScreen() {
           </View>
 
           <View style={styles.imageWrap}>
-            {card.image ? (
-              <Image source={{ uri: card.image }} style={styles.image} resizeMode="cover" />
+            {cardImage ? (
+              <Image
+                source={{ uri: cardImage }}
+                style={[styles.image, reversed && styles.imageReversed]}
+                resizeMode="cover"
+              />
             ) : (
               <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.imageFallback}>
+                <Text style={styles.cardEmoji}>🎴</Text>
                 <Text style={styles.cardName}>{card.name}</Text>
               </LinearGradient>
             )}
@@ -149,7 +168,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, color: '#E8E8E8', fontWeight: '700', flex: 1 },
   imageWrap: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', height: 300, backgroundColor: '#111' },
   image: { width: '100%', height: '100%' },
+  imageReversed: { transform: [{ rotate: '180deg' }] },
   imageFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  cardEmoji: { fontSize: 60, marginBottom: 10 },
   cardName: { color: '#E8E8E8', fontSize: 16 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 16 },
   badge: { backgroundColor: '#9B59B622', borderColor: '#9B59B6', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },

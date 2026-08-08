@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Image,
 } from 'react-native';
@@ -15,22 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
-import { ReadingInterpretation } from '../components/ReadingInterpretation';
-import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
-import { api } from '../src/utils/api';
-import { getOfflineCardBack } from '../src/utils/offlineApi';
-
-interface TarotCard {
-  id: number;
-  name: string;
-  name_en: string;
-  type: string;
-  image: string;
-  keywords: string[];
-  upright_meaning: string;
-  reversed_meaning: string;
-  is_reversed: boolean;
-}
+import { generateOfflineTarotReading, getOfflineCardBack, generateTarotCardSVG, OfflineReadingResult } from '../src/utils/offlineApi';
+import { TarotCard } from '../src/data/tarotCards';
+import { readingsStorage } from '../src/utils/storage';
 
 interface TarotReading {
   id: string;
@@ -43,15 +29,54 @@ interface TarotReading {
   created_at: string;
 }
 
+// Position names for different spread types
+const SPREAD_POSITIONS: { [key: string]: string[] } = {
+  'one_card': ['Ответ'],
+  'three_cards': ['Прошлое', 'Настоящее', 'Будущее'],
+  'celtic_cross': [
+    'Ситуация',
+    'Препятствие',
+    'Основа',
+    'Прошлое',
+    'Возможное будущее',
+    'Ближайшее будущее',
+    'Ваше отношение',
+    'Внешнее влияние',
+    'Надежды и страхи',
+    'Итог'
+  ],
+  'love': ['Вы', 'Партнёр', 'Отношения'],
+  'career': ['Текущая ситуация', 'Препятствия', 'Действия'],
+  'yes_no': ['Ответ'],
+};
+
+// Get card count for spread type
+function getCardCount(spreadType: string): number {
+  switch (spreadType) {
+    case 'one_card':
+    case 'yes_no':
+      return 1;
+    case 'three_cards':
+    case 'love':
+    case 'career':
+      return 3;
+    case 'celtic_cross':
+      return 10;
+    default:
+      return 3;
+  }
+}
+
 export default function ReadingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { category, spread, question } = params as { category: string; spread: string; question: string };
-  
+
   const [reading, setReading] = useState<TarotReading | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
   const [cardBackImage, setCardBackImage] = useState<string>('');
+  const [cardImages, setCardImages] = useState<{ [key: number]: string }>({});
 
   const settings = useSettings();
 
@@ -72,17 +97,52 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
-      const data = await api.post<TarotReading>('/api/reading', {
-        category,
-        spread_type: spread,
-        question
+      const cardCount = getCardCount(spread || 'three_cards');
+      const positions = SPREAD_POSITIONS[spread] || SPREAD_POSITIONS['three_cards'];
+
+      // Generate offline reading
+      const offlineResult = await generateOfflineTarotReading(question, cardCount);
+
+      // Generate card images
+      const images: { [key: number]: string } = {};
+      offlineResult.cards.forEach((card) => {
+        const isReversed = Math.random() < 0.3;
+        images[card.id] = generateTarotCardSVG(card, isReversed);
       });
-      setReading(data);
-      setCardsRevealed(new Array(data.cards.length).fill(false));
+      setCardImages(images);
+
+      // Create reading object
+      const readingData: TarotReading = {
+        id: `reading-${Date.now()}`,
+        question: question || 'Общее гадание',
+        category: category || 'general',
+        spread_type: spread || 'three_cards',
+        cards: offlineResult.cards,
+        positions: positions,
+        interpretation: offlineResult.interpretation,
+        created_at: offlineResult.timestamp,
+      };
+
+      setReading(readingData);
+      setCardsRevealed(new Array(offlineResult.cards.length).fill(false));
+
+      // Save reading to local storage for history
+      await readingsStorage.addReading(readingData);
     } catch (error) {
       console.error('Error creating reading:', error);
-      Alert.alert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
-      router.back();
+      // Even on error, create a simple reading
+      const fallbackReading: TarotReading = {
+        id: `reading-${Date.now()}`,
+        question: question || 'Общее гадание',
+        category: category || 'general',
+        spread_type: spread || 'three_cards',
+        cards: [],
+        positions: ['Ответ'],
+        interpretation: 'Карты несут для вас важное послание. Доверяйте своей интуиции.',
+        created_at: new Date().toISOString(),
+      };
+      setReading(fallbackReading);
+      setCardsRevealed([]);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +189,7 @@ export default function ReadingScreen() {
 
           <View style={styles.questionContainer}>
             <Text style={styles.questionLabel}>Ваш вопрос:</Text>
-            <Text style={styles.questionText}>&quot;{reading.question}&quot;</Text>
+            <Text style={styles.questionText}>"{reading.question}"</Text>
           </View>
 
           <View style={styles.cardsSection}>
@@ -143,40 +203,93 @@ export default function ReadingScreen() {
             </View>
             <View style={styles.cardsContainer}>
               {reading.cards.map((card, index) => (
-                <AnimatedTarotCard
-                  key={index}
-                  card={card}
-                  position={reading.positions[index]}
-                  index={index}
-                  revealed={cardsRevealed[index]}
-                  cardBackImage={cardBackImage}
-                  onReveal={() => revealCard(index)}
-                />
+                <View key={index} style={styles.cardWrapper}>
+                  <Text style={styles.positionLabel}>{reading.positions[index] || `Карта ${index + 1}`}</Text>
+                  <TouchableOpacity
+                    style={styles.cardTouchable}
+                    onPress={() => !cardsRevealed[index] && revealCard(index)}
+                    disabled={cardsRevealed[index]}
+                  >
+                    <View style={styles.card}>
+                      {cardsRevealed[index] ? (
+                        <View style={styles.cardFront}>
+                          {cardImages[card.id] ? (
+                            <Image
+                              source={{ uri: cardImages[card.id] }}
+                              style={styles.cardImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.cardFallback}>
+                              <Text style={styles.cardEmoji}>🎴</Text>
+                              <Text style={styles.cardName}>{card.name}</Text>
+                            </View>
+                          )}
+                          <View style={styles.cardOverlay}>
+                            <Text style={styles.cardNameOverlay}>{card.name}</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.cardBack}>
+                          {cardBackImage ? (
+                            <Image
+                              source={{ uri: cardBackImage }}
+                              style={styles.cardBackImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.cardBackFallback}>
+                              <Text style={styles.cardBackEmoji}>🔮</Text>
+                            </View>
+                          )}
+                          <View style={styles.tapHint}>
+                            <Text style={styles.tapHintText}>Нажмите для открытия</Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  {cardsRevealed[index] && (
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.cardKeywords}>
+                        {card.keywords.slice(0, 3).join(' • ')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               ))}
             </View>
           </View>
 
           {cardsRevealed.every(revealed => revealed) && (
-            <ReadingInterpretation
-              interpretation={reading.interpretation}
-              question={reading.question}
-              category={reading.category}
-              spreadType={reading.spread_type}
-            />
+            <View style={styles.interpretationContainer}>
+              <Text style={styles.interpretationTitle}>✨ Толкование</Text>
+              <View style={styles.interpretationContent}>
+                <ScrollView style={styles.interpretationScroll} nestedScrollEnabled>
+                  <Text style={styles.interpretationText}>{reading.interpretation}</Text>
+                </ScrollView>
+              </View>
+            </View>
           )}
 
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/') }>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/')}>
               <LinearGradient colors={['#4ECDC4', '#26A0B4']} style={styles.actionButtonGradient}>
                 <Ionicons name="home" size={20} color="#FFF" />
                 <Text style={styles.actionButtonText}>На главную</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/history')}>
-              <LinearGradient colors={['#FF6B9D', '#C44569']} style={styles.actionButtonGradient}>
-                <Ionicons name="time" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>История</Text>
+            <TouchableOpacity style={styles.actionButton} onPress={() => {
+              // Reset and create new reading
+              setIsLoading(true);
+              setReading(null);
+              setCardsRevealed([]);
+              createReading();
+            }}>
+              <LinearGradient colors={['#9B59B6', '#8E44AD']} style={styles.actionButtonGradient}>
+                <Ionicons name="refresh" size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>Новое гадание</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -203,34 +316,31 @@ const styles = StyleSheet.create({
   cardsSectionTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8' },
   revealAllButton: { backgroundColor: '#9B59B633', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
   revealAllText: { fontSize: 12, color: '#9B59B6', fontWeight: '600' },
-  cardsContainer: { gap: 15 },
-  cardContainer: { alignItems: 'center' },
-  card: { width: 200, height: 300, borderRadius: 15, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, position: 'relative' },
-  cardContent: { flex: 1, position: 'relative' },
-  cardInner: { flex: 1, position: 'relative' },
-  cardReversed: { transform: [{ rotate: '180deg' }] },
-  cardImage: { width: '100%', height: '100%', borderRadius: 15 },
-  cardImageFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)', padding: 10, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
-  cardNameOverlay: { fontSize: 14, fontWeight: 'bold', color: '#FFF', textAlign: 'center' },
-  reversedIndicatorOverlay: { fontSize: 10, color: '#FFD700', textAlign: 'center', marginTop: 2 },
-  cardName: { fontSize: 18, fontWeight: 'bold', color: '#FFF', textAlign: 'center', marginBottom: 10 },
-  cardType: { fontSize: 12, color: '#E8E8E8', opacity: 0.8, marginBottom: 15 },
-  reversedIndicator: { fontSize: 12, color: '#FFD700', marginBottom: 10, fontWeight: '600' },
-  keywordsContainer: { alignItems: 'center', gap: 5 },
-  keyword: { fontSize: 12, color: '#E8E8E8', backgroundColor: '#FFFFFF33', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  cardBack: { flex: 1, position: 'relative' },
-  cardBackImage: { width: '100%', height: '100%', borderRadius: 15 },
+  cardsContainer: { gap: 20 },
+  cardWrapper: { alignItems: 'center' },
+  positionLabel: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginBottom: 10, textTransform: 'uppercase' },
+  cardTouchable: { width: 180, height: 270 },
+  card: { width: '100%', height: '100%', borderRadius: 15, overflow: 'hidden', elevation: 8, shadowColor: '#9B59B6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  cardFront: { flex: 1, backgroundColor: '#2a2a4a' },
+  cardImage: { width: '100%', height: '100%' },
+  cardFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a3a' },
+  cardEmoji: { fontSize: 60, marginBottom: 10 },
+  cardName: { fontSize: 16, color: '#E8E8E8', fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
+  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', padding: 10 },
+  cardNameOverlay: { fontSize: 14, color: '#FFF', fontWeight: '600', textAlign: 'center' },
+  cardBack: { flex: 1, backgroundColor: '#1a0033' },
+  cardBackImage: { width: '100%', height: '100%' },
   cardBackFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  cardBackText: { fontSize: 48, marginBottom: 10 },
-  tapToReveal: { fontSize: 12, color: '#B8B8B8', textAlign: 'center' },
-  cardLoadingText: { fontSize: 12, color: '#FFD700', textAlign: 'center', marginTop: 8 },
-  positionText: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginTop: 10, textAlign: 'center' },
+  cardBackEmoji: { fontSize: 60 },
+  tapHint: { position: 'absolute', bottom: 15, left: 0, right: 0, alignItems: 'center' },
+  tapHintText: { fontSize: 12, color: '#9B59B6', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  cardInfo: { marginTop: 10, alignItems: 'center' },
+  cardKeywords: { fontSize: 12, color: '#B8B8B8', textAlign: 'center' },
   interpretationContainer: { marginHorizontal: 20, marginBottom: 20 },
   interpretationTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8', marginBottom: 15, textAlign: 'center' },
   interpretationContent: { backgroundColor: '#1e1e1e', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#9B59B633', maxHeight: 400 },
   interpretationScroll: { maxHeight: 360 },
-  interpretationText: { fontSize: 16, color: '#E8E8E8', lineHeight: 24 },
+  interpretationText: { fontSize: 14, color: '#E8E8E8', lineHeight: 22 },
   actionsContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 30, gap: 15 },
   actionButton: { flex: 1, borderRadius: 15, overflow: 'hidden' },
   actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },

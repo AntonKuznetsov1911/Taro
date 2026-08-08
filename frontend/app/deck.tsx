@@ -3,17 +3,11 @@ import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Flat
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { MAJOR_ARCANA, TarotCard } from '../src/data/tarotCards';
+import { generateTarotCardSVG } from '../src/utils/offlineApi';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-
-type CardItem = {
-  id: number;
-  name: string;
-  name_en: string;
-  type: string;
-  suit?: string | null;
-  image: string;
-  keywords: string[];
+type CardItem = TarotCard & {
+  image?: string;
 };
 
 const SUIT_FILTERS = [
@@ -33,13 +27,24 @@ export default function DeckScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [suit, setSuit] = useState<SuitKey>('all');
+  const [cardImages, setCardImages] = useState<{ [key: number]: string }>({});
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/deck`);
-        const data = await res.json();
-        setCards(data.cards || []);
+        // Use offline data
+        const offlineCards: CardItem[] = MAJOR_ARCANA.map(card => ({
+          ...card,
+          image: undefined
+        }));
+        setCards(offlineCards);
+
+        // Generate images for cards
+        const images: { [key: number]: string } = {};
+        offlineCards.forEach(card => {
+          images[card.id] = generateTarotCardSVG(card, false);
+        });
+        setCardImages(images);
       } catch (e) {
         console.error('Failed to load deck', e);
       } finally {
@@ -64,10 +69,11 @@ export default function DeckScreen() {
 
   const renderItem = ({ item }: { item: CardItem }) => (
     <TouchableOpacity style={styles.card} onPress={() => router.push(`/deck/${item.id}`)} activeOpacity={0.8}>
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+      {cardImages[item.id] ? (
+        <Image source={{ uri: cardImages[item.id] }} style={styles.cardImage} resizeMode="cover" />
       ) : (
         <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.cardFallback}>
+          <Text style={styles.cardEmoji}>🎴</Text>
           <Text style={styles.cardName}>{item.name}</Text>
         </LinearGradient>
       )}
@@ -124,6 +130,11 @@ export default function DeckScreen() {
               keyExtractor={(it) => String(it.id)}
               renderItem={renderItem}
               showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyText}>Карты не найдены</Text>
+                </View>
+              }
             />
           )}
         </KeyboardAvoidingView>
@@ -152,9 +163,12 @@ const styles = StyleSheet.create({
   card: { flex: 1, margin: 8, height: 220, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111' },
   cardImage: { width: '100%', height: '100%' },
   cardFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  cardName: { color: '#E8E8E8', fontSize: 14, textAlign: 'center' },
+  cardEmoji: { fontSize: 40, marginBottom: 8 },
+  cardName: { color: '#E8E8E8', fontSize: 14, textAlign: 'center', paddingHorizontal: 8 },
   cardLabel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 6, paddingHorizontal: 8 },
   cardLabelText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: '#B8B8B8', marginTop: 8 },
+  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 50 },
+  emptyText: { color: '#B8B8B8', fontSize: 16 },
 });
