@@ -203,21 +203,34 @@ function generateHoroscope(zodiacSign: string, element: string): HoroscopeResult
 
 export default function HoroscopeScreen() {
   const router = useRouter();
-  const { profile } = useUserProfile();
+  const { profile, isLoading: profileLoading } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [horoscope, setHoroscope] = useState<HoroscopeResult | null>(null);
   const [hasProfile, setHasProfile] = useState(true);
   const [zodiacInfo, setZodiacInfo] = useState<{ name: string; element: string } | null>(null);
 
   useEffect(() => {
-    loadHoroscope();
-  }, [profile]);
+    // Wait for profile to finish loading first
+    if (!profileLoading) {
+      loadHoroscope();
+    }
+
+    // Fallback timeout - if still loading after 5 seconds, show no profile screen
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        setHasProfile(false);
+        setIsLoading(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [profile, profileLoading]);
 
   const loadHoroscope = async () => {
     setIsLoading(true);
 
-    // Simulate brief loading
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Brief visual delay (reduced from 1000ms)
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     if (!profile?.birthDate) {
       setHasProfile(false);
