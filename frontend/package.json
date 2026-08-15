@@ -9,10 +9,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export -p web && node scripts/inject-pwa.js",
-    "build:gh-pages": "GITHUB_PAGES=true expo export -p web && node scripts/inject-pwa.js",
+    "build:gh-pages": "GITHUB_PAGES=true expo export -p web && node scripts/inject-pwa.js && cp dist/index.html dist/404.html && touch dist/.nojekyll",
     "predeploy": "npm run build:gh-pages",
     "postbuild": "node scripts/inject-pwa.js",
-    "deploy": "gh-pages -d dist",
+    "deploy": "gh-pages -d dist --dotfiles --nojekyll --no-history",
     "test": "jest --watchAll"
   },
   "jest": {
@@ -52,7 +52,8 @@
     "react-native-screens": "~4.1.0",
     "react-native-svg": "15.9.0",
     "react-native-web": "~0.19.13",
-    "suncalc": "^2.0.1"
+    "suncalc": "^2.0.1",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -60,6 +61,7 @@
     "@types/react": "~18.3.12",
     "@types/react-native": "^0.72.8",
     "@types/react-test-renderer": "^18.3.0",
+    "gh-pages": "^6.3.0",
     "jest": "^29.2.1",
     "jest-expo": "~52.0.1",
     "react-test-renderer": "18.3.1",

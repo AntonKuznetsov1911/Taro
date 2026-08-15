@@ -73,7 +73,7 @@ export const storage = {
   /**
    * Get all keys in AsyncStorage
    */
-  async getAllKeys(): Promise<string[]> {
+  async getAllKeys(): Promise<readonly string[]> {
     try {
       return await AsyncStorage.getAllKeys();
     } catch (error) {

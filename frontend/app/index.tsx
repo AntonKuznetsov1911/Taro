@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { DailyCardWidget } from '../components/DailyCardWidget';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
+import { wasOnboardingSeen } from '../src/utils/onboarding';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 60) / 2;
@@ -67,6 +68,8 @@ const MYSTIC_FEATURES: MysticFeature[] = [
   { id: 'runes', name: 'Руны', icon: 'ᚠ', description: 'Оракул викингов', route: '/runes', color: '#3498DB' },
   { id: 'numerology', name: 'Нумерология', icon: '🔢', description: 'Число судьбы', route: '/numerology', color: '#2ECC71' },
   { id: 'deck', name: 'Каталог колоды', icon: '🃏', description: 'Все 78 карт', route: '/deck', color: '#9B59B6' },
+  { id: 'history', name: 'История', icon: '📜', description: 'Сохранённые гадания', route: '/history', color: '#E67E22' },
+  { id: 'settings', name: 'Настройки', icon: '⚙️', description: 'Звук и оформление', route: '/settings', color: '#7F8C8D' },
 ];
 
 // Animated Category Card Component
@@ -234,11 +237,23 @@ export default function CosmicIndex() {
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
-  // Редирект на онбординг для новых пользователей
+  // Редирект на онбординг для новых пользователей.
+  // Тех, кто его сознательно пропустил, второй раз не гоняем: иначе
+  // «Пропустить» возвращает на онбординг и выйти из него невозможно.
   useEffect(() => {
-    if (!isLoading && !hasProfile) {
-      router.replace('/onboarding');
-    }
+    if (isLoading || hasProfile) return;
+
+    let cancelled = false;
+    (async () => {
+      const seen = await wasOnboardingSeen();
+      if (!cancelled && !seen) {
+        router.replace('/onboarding');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoading, hasProfile]);
 
   // Header animation
@@ -451,7 +466,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    // Баннер установки приложения прижат к низу экрана и перехватывает нажатия
+    // под собой: без запаса нижние пункты списка невозможно нажать
+    paddingBottom: 160,
   },
   header: {
     alignItems: 'center',

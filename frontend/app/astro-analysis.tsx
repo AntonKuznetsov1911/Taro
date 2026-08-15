@@ -7,12 +7,12 @@ import {
   StatusBar,
   Animated,
   Easing,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { generateOfflineAstroPersonality } from '../src/utils/offlineApi';
 
 const MYSTICAL_MESSAGES = [
   '✨ Звёзды выстраиваются в уникальный узор...',
@@ -31,6 +31,10 @@ export default function AstroAnalysisScreen() {
   const [currentMessage, setCurrentMessage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Таймеры навигации — очищаются при уходе с экрана
+  const navigationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
+
   // Animation values
   const rotation = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -38,6 +42,8 @@ export default function AstroAnalysisScreen() {
   const starOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    isMounted.current = true;
+
     // Start animations
     startAnimations();
 
@@ -50,9 +56,28 @@ export default function AstroAnalysisScreen() {
     performAnalysis();
 
     return () => {
+      isMounted.current = false;
       clearInterval(messageInterval);
+      if (navigationTimeout.current) {
+        clearTimeout(navigationTimeout.current);
+        navigationTimeout.current = null;
+      }
     };
   }, []);
+
+  const handleBack = () => {
+    // Отменяем автоматический переход, если пользователь уходит сам
+    if (navigationTimeout.current) {
+      clearTimeout(navigationTimeout.current);
+      navigationTimeout.current = null;
+    }
+    isMounted.current = false;
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/astro-personality');
+    }
+  };
 
   const startAnimations = () => {
     // Rotation animation for main circle
@@ -109,25 +134,17 @@ export default function AstroAnalysisScreen() {
 
   const performAnalysis = async () => {
     try {
-      const answersData = JSON.parse(params.answers as string);
+      const answersData = params.answers ? JSON.parse(params.answers as string) : {};
 
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/astro-personality`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: answersData,
-          name: params.name || null,
-        }),
-      });
+      // Use offline astro personality analysis
+      const result = await generateOfflineAstroPersonality(answersData, params.name as string || undefined);
 
-      if (!response.ok) {
-        throw new Error('Failed to generate analysis');
-      }
+      if (!isMounted.current) return;
 
-      const result = await response.json();
-
-      // Wait at least 5 seconds for dramatic effect
-      setTimeout(() => {
+      // Wait at least 3 seconds for dramatic effect
+      navigationTimeout.current = setTimeout(() => {
+        navigationTimeout.current = null;
+        if (!isMounted.current) return;
         router.replace({
           pathname: '/astro-result',
           params: {
@@ -140,12 +157,19 @@ export default function AstroAnalysisScreen() {
             advice: result.advice,
           },
         });
-      }, 5000);
+      }, 3000);
     } catch (err) {
       console.error('Analysis error:', err);
+      if (!isMounted.current) return;
       setError('Не удалось создать анализ. Попробуйте еще раз.');
-      setTimeout(() => {
-        router.back();
+      navigationTimeout.current = setTimeout(() => {
+        navigationTimeout.current = null;
+        if (!isMounted.current) return;
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/astro-personality');
+        }
       }, 3000);
     }
   };
@@ -162,6 +186,19 @@ export default function AstroAnalysisScreen() {
         style={styles.background}
       >
         <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+        {/* Кнопка «Назад» — доступна во время анализа */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Назад"
+          >
+            <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            <Text style={styles.backButtonText}>Назад</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.content}>
           {/* Animated Stars Background */}
@@ -277,6 +314,24 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    zIndex: 10,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#E8E8E8',
+    marginLeft: 6,
   },
   content: {
     flex: 1,

@@ -1,19 +1,7 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Audio, AVPlaybackSource } from 'expo-av';
 
-// Small embedded samples (base64). If playback fails, haptics still works.
-// CLICK: soft tap
-const CLICK_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA';
-// FLIP: soft cosmic flip
-const FLIP_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA';
-// REVEAL: airy cosmic reveal
-const REVEAL_MP3 = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAA';
-
-let clickSound: Audio.Sound | null = null;
-let flipSound: Audio.Sound | null = null;
-let revealSound: Audio.Sound | null = null;
-
+// Web audio context for sound effects
 let webAudioCtx: AudioContext | null = null;
 
 function webBeep(durationMs: number, freq: number, volume = 0.3) {
@@ -21,6 +9,7 @@ function webBeep(durationMs: number, freq: number, volume = 0.3) {
   try {
     // @ts-ignore
     const AC = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return;
     if (!webAudioCtx) webAudioCtx = new AC();
     if (webAudioCtx.state === 'suspended') webAudioCtx.resume();
 
@@ -34,76 +23,55 @@ function webBeep(durationMs: number, freq: number, volume = 0.3) {
     const now = webAudioCtx.currentTime;
     osc.start(now);
     osc.stop(now + durationMs / 1000);
-  } catch {}
-}
-
-async function ensureLoaded() {
-  try {
-    if (Platform.OS === 'web') {
-      // No preloading for web beeps
-      return;
-    }
-    if (!clickSound) {
-      clickSound = new Audio.Sound();
-      await clickSound.loadAsync({ uri: CLICK_MP3 } as AVPlaybackSource, {}, false);
-    }
-    if (!flipSound) {
-      flipSound = new Audio.Sound();
-      await flipSound.loadAsync({ uri: FLIP_MP3 } as AVPlaybackSource, {}, false);
-    }
-    if (!revealSound) {
-      revealSound = new Audio.Sound();
-      await revealSound.loadAsync({ uri: REVEAL_MP3 } as AVPlaybackSource, {}, false);
-    }
-  } catch (e) {
-    // Ignore audio errors; haptics will still provide feedback
+  } catch {
+    // Ignore audio errors
   }
 }
 
 export async function playClick(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
   try {
-    if (opts.vibration) await Haptics.selectionAsync();
+    if (opts.vibration && Platform.OS !== 'web') {
+      await Haptics.selectionAsync();
+    }
     if (!opts.soundEnabled) return;
-    await ensureLoaded();
     const vol = Math.max(0, Math.min(1, opts.volume ?? 0.7));
     if (Platform.OS === 'web') {
-      if (webClick) webClick.volume = vol;
-      await webClick?.play();
-    } else if (clickSound) {
-      await clickSound.setVolumeAsync(vol);
-      await clickSound.replayAsync();
+      webBeep(50, 800, vol * 0.3);
     }
-  } catch {}
+  } catch {
+    // Ignore errors
+  }
 }
 
 export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
   try {
-    if (opts.vibration) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+    if (opts.vibration && Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+    }
     if (!opts.soundEnabled) return;
-    await ensureLoaded();
     const vol = Math.max(0, Math.min(1, opts.volume ?? 0.7));
     if (Platform.OS === 'web') {
-      if (webFlip) webFlip.volume = vol;
-      await webFlip?.play();
-    } else if (flipSound) {
-      await flipSound.setVolumeAsync(vol);
-      await flipSound.replayAsync();
+      webBeep(100, 400, vol * 0.2);
+      setTimeout(() => webBeep(80, 600, vol * 0.15), 50);
     }
-  } catch {}
+  } catch {
+    // Ignore errors
+  }
 }
 
 export async function playReveal(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
   try {
-    if (opts.vibration) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (opts.vibration && Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     if (!opts.soundEnabled) return;
-    await ensureLoaded();
     const vol = Math.max(0, Math.min(1, opts.volume ?? 0.8));
     if (Platform.OS === 'web') {
-      if (webReveal) webReveal.volume = vol;
-      await webReveal?.play();
-    } else if (revealSound) {
-      await revealSound.setVolumeAsync(vol);
-      await revealSound.replayAsync();
+      webBeep(150, 523, vol * 0.2); // C5
+      setTimeout(() => webBeep(150, 659, vol * 0.15), 100); // E5
+      setTimeout(() => webBeep(200, 784, vol * 0.1), 200); // G5
     }
-  } catch {}
+  } catch {
+    // Ignore errors
+  }
 }

@@ -3,24 +3,47 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Sta
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { RUNES, RUNE_SPREADS } from '../src/data/runesKnowledge';
+import { RUNES, RUNE_SPREADS, Rune } from '../src/data/runesKnowledge';
+
+// Безопасный разбор JSON из параметров навигации (может отсутствовать при прямом переходе)
+const parseJsonArray = (raw: unknown): any[] => {
+  if (typeof raw !== 'string' || raw.length === 0) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Не удалось разобрать параметры расклада рун:', error);
+    return [];
+  }
+};
+
+const FALLBACK_SPREAD = {
+  name: 'Runes',
+  nameRu: 'Расклад рун',
+  positions: [] as string[],
+  description: 'Толкование выпавших рун'
+};
 
 export default function RunesResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { question, spreadType, runes, reversed } = params;
 
-  const runeIds = JSON.parse(runes as string);
-  const isReversed = JSON.parse(reversed as string);
-  const drawnRunes = runeIds.map((id: string) => RUNES.find(r => r.id === id));
-  const spread = RUNE_SPREADS[spreadType as keyof typeof RUNE_SPREADS];
+  const runeIds = parseJsonArray(runes);
+  const isReversed = parseJsonArray(reversed);
+  const drawnRunes: Rune[] = runeIds
+    .map((id: any) => RUNES.find(r => r.id === id))
+    .filter((r): r is Rune => Boolean(r));
+  const spread =
+    RUNE_SPREADS[spreadType as keyof typeof RUNE_SPREADS] ?? FALLBACK_SPREAD;
+  const getPosition = (index: number) => spread.positions[index] ?? `Руна ${index + 1}`;
 
   const handleShare = async () => {
     try {
-      const text = drawnRunes.map((r: any, i: number) =>
-        `${spread.positions[i]}: ${r.symbol} ${r.nameRu}${isReversed[i] ? ' (перевёрнута)' : ''}`
+      const text = drawnRunes.map((r: Rune, i: number) =>
+        `${getPosition(i)}: ${r.symbol} ${r.nameRu}${isReversed[i] ? ' (перевёрнута)' : ''}`
       ).join('\n');
-      await Share.share({ message: `Гадание на рунах\nВопрос: ${question}\n\n${text}` });
+      await Share.share({ message: `Гадание на рунах\nВопрос: ${question ?? ''}\n\n${text}` });
     } catch (error) {
       console.error(error);
     }
@@ -42,6 +65,34 @@ export default function RunesResultScreen() {
     </View>
   );
 
+  if (drawnRunes.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']} style={styles.background}>
+          <StatusBar barStyle="light-content" />
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color="#E8E8E8" /></TouchableOpacity>
+            <Text style={styles.headerTitle}>Толкование рун</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.emptyState}>
+            <Ionicons name="help-circle-outline" size={64} color="#3498DB" />
+            <Text style={styles.emptyTitle}>Расклад не найден</Text>
+            <Text style={styles.emptyText}>
+              Данные о выпавших рунах недоступны. Пожалуйста, сделайте новый расклад.
+            </Text>
+            <TouchableOpacity style={styles.emptyButton} onPress={() => router.replace('/runes')}>
+              <LinearGradient colors={['#3498DB', '#2980B9']} style={styles.emptyButtonGradient}>
+                <Ionicons name="sparkles" size={20} color="#FFF" />
+                <Text style={styles.emptyButtonText}>Сделать расклад</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']} style={styles.background}>
@@ -54,11 +105,11 @@ export default function RunesResultScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.questionSection}>
             <Text style={styles.spreadTitle}>{spread.nameRu}</Text>
-            <Text style={styles.question}>"{question}"</Text>
+            {!!question && <Text style={styles.question}>"{question}"</Text>}
           </View>
 
-          {drawnRunes.map((rune: any, index: number) => (
-            <RuneCard key={index} rune={rune} position={spread.positions[index]} reversed={isReversed[index]} />
+          {drawnRunes.map((rune: Rune, index: number) => (
+            <RuneCard key={`${rune.id}-${index}`} rune={rune} position={getPosition(index)} reversed={isReversed[index]} />
           ))}
 
           {drawnRunes[0] && (
@@ -115,5 +166,11 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 16, fontWeight: '600', color: '#3498DB', marginTop: 10 },
   detailText: { fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 20 },
   infoBox: { flexDirection: 'row', backgroundColor: 'rgba(52,152,219,0.15)', borderRadius: 12, padding: 15, borderWidth: 1, borderColor: 'rgba(52,152,219,0.3)', gap: 10, marginTop: 20 },
-  infoText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 18 }
+  infoText: { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 18 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 15 },
+  emptyTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8', textAlign: 'center' },
+  emptyText: { fontSize: 15, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22 },
+  emptyButton: { borderRadius: 25, overflow: 'hidden', marginTop: 10 },
+  emptyButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, paddingHorizontal: 30, gap: 8 },
+  emptyButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF' }
 });

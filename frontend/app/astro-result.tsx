@@ -14,12 +14,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { readingsStorage } from '../src/utils/storage';
+
+// Безопасный разбор JSON из параметров навигации
+const parseStringList = (raw: unknown): string[] => {
+  if (typeof raw !== 'string' || raw.length === 0) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  } catch (error) {
+    console.warn('Не удалось разобрать данные портрета:', error);
+    return [];
+  }
+};
 
 export default function AstroResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
   const {
+    analysisId,
     personalityAnalysis,
     dominantArcana,
     characterTraits,
@@ -28,26 +42,119 @@ export default function AstroResultScreen() {
     advice,
   } = params;
 
-  const arcanaList: string[] = dominantArcana ? JSON.parse(dominantArcana as string) : [];
-  const traitsList: string[] = characterTraits ? JSON.parse(characterTraits as string) : [];
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  const analysisText =
+    typeof personalityAnalysis === 'string' ? personalityAnalysis.trim() : '';
+  const hasAnalysis = analysisText.length > 0;
+
+  const arcanaList: string[] = parseStringList(dominantArcana);
+  const traitsList: string[] = parseStringList(characterTraits);
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Мой астропсихологический портрет\n\n${personalityAnalysis}\n\nЖизненный путь: ${lifePath}\n\nТекущая фаза: ${currentPhase}`,
+        message: `Мой астропсихологический портрет\n\n${analysisText}${
+          lifePath ? `\n\nЖизненный путь: ${lifePath}` : ''
+        }${currentPhase ? `\n\nТекущая фаза: ${currentPhase}` : ''}`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
     }
   };
 
-  const handleSave = () => {
-    Alert.alert('Сохранено', 'Ваш астропсихологический портрет сохранён в историю');
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const readingId = (analysisId as string) || `astro-${Date.now()}`;
+      const existing = await readingsStorage.getReadings();
+
+      if (existing.some((r) => r?.id === readingId)) {
+        setIsSaved(true);
+        Alert.alert('Уже сохранено', 'Этот портрет уже есть в вашей истории');
+        return;
+      }
+
+      await readingsStorage.addReading({
+        id: readingId,
+        type: 'astro_personality',
+        question: 'Астропсихологический портрет',
+        category: 'general',
+        spread_type: 'astro_personality',
+        cards: [],
+        positions: [],
+        interpretation: analysisText,
+        dominant_arcana: arcanaList,
+        character_traits: traitsList,
+        life_path: (lifePath as string) || '',
+        current_phase: (currentPhase as string) || '',
+        advice: (advice as string) || '',
+        created_at: new Date().toISOString(),
+      });
+
+      setIsSaved(true);
+      Alert.alert('Сохранено', 'Ваш астропсихологический портрет сохранён в историю');
+    } catch (error) {
+      console.error('Error saving astro portrait:', error);
+      Alert.alert('Ошибка', 'Не удалось сохранить портрет. Попробуйте ещё раз.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleNewReading = () => {
     router.push('/astro-personality');
   };
+
+  const hasAnyContent =
+    hasAnalysis ||
+    arcanaList.length > 0 ||
+    traitsList.length > 0 ||
+    !!lifePath ||
+    !!currentPhase ||
+    !!advice;
+
+  if (!hasAnyContent) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Ваш портрет</Text>
+            <View style={styles.backButton} />
+          </View>
+          <View style={styles.emptyState}>
+            <Ionicons name="sparkles-outline" size={64} color="#9B59B6" />
+            <Text style={styles.emptyTitle}>Портрет не найден</Text>
+            <Text style={styles.emptyText}>
+              Данные анализа недоступны. Пройдите тест заново, чтобы получить
+              астропсихологический портрет.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => router.replace('/astro-personality')}
+            >
+              <LinearGradient
+                colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
+                style={styles.emptyButtonGradient}
+              >
+                <Ionicons name="refresh" size={20} color="#FFF" />
+                <Text style={styles.emptyButtonText}>Создать портрет</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,7 +275,17 @@ export default function AstroResultScreen() {
               <Text style={styles.sectionTitle}>Глубинный анализ</Text>
             </View>
             <View style={styles.analysisCard}>
-              <MarkdownRenderer content={personalityAnalysis as string} />
+              {hasAnalysis ? (
+                <MarkdownRenderer content={analysisText} />
+              ) : (
+                <View style={styles.inlineEmpty}>
+                  <Ionicons name="alert-circle-outline" size={22} color="#9B59B6" />
+                  <Text style={styles.inlineEmptyText}>
+                    Текст анализа недоступен. Создайте портрет заново, чтобы увидеть
+                    подробный разбор.
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -201,13 +318,23 @@ export default function AstroResultScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
               <LinearGradient
-                colors={['rgba(46, 204, 113, 0.8)', 'rgba(39, 174, 96, 0.9)']}
+                colors={
+                  isSaving
+                    ? ['rgba(120, 120, 120, 0.8)', 'rgba(90, 90, 90, 0.9)']
+                    : ['rgba(46, 204, 113, 0.8)', 'rgba(39, 174, 96, 0.9)']
+                }
                 style={styles.actionButtonGradient}
               >
-                <Ionicons name="bookmark" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>Сохранить</Text>
+                <Ionicons name={isSaved ? 'checkmark' : 'bookmark'} size={20} color="#FFF" />
+                <Text style={styles.actionButtonText}>
+                  {isSaving ? 'Сохранение...' : isSaved ? 'Сохранено' : 'Сохранить'}
+                </Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -455,5 +582,53 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
     marginLeft: 8,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 15,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  emptyButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    gap: 8,
+  },
+  emptyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  inlineEmpty: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  inlineEmptyText: {
+    flex: 1,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.75)',
+    lineHeight: 20,
   },
 });

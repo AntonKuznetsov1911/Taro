@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { ZODIAC_SIGNS } from '../src/utils/astrology';
+import { markOnboardingSeen } from '../src/utils/onboarding';
 
 type Step = 'welcome' | 'name' | 'gender' | 'birthdate' | 'birthtime' | 'complete';
 
@@ -55,6 +56,12 @@ export default function OnboardingScreen() {
         router.replace('/');
         break;
     }
+  };
+
+  const handleSkip = async () => {
+    // Без этой отметки главный экран сразу вернёт нас обратно на онбординг
+    await markOnboardingSeen();
+    router.replace('/');
   };
 
   const handleSaveProfile = async () => {
@@ -380,7 +387,7 @@ export default function OnboardingScreen() {
             {step !== 'welcome' && step !== 'complete' && (
               <TouchableOpacity
                 style={styles.skipButton}
-                onPress={() => router.replace('/')}
+                onPress={handleSkip}
               >
                 <Text style={styles.skipText}>Пропустить</Text>
               </TouchableOpacity>

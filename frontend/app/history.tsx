@@ -14,8 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { EnhancedHistoryCard } from '../components/EnhancedHistoryCard';
 import { HistoryFilters } from '../components/HistoryFilters';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { readingsStorage, favoritesStorage, notesStorage, tagsStorage } from '../src/utils/storage';
 
 interface TarotCard {
   id: number;
@@ -73,21 +72,34 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     fetchReadings();
+    loadEnhancedData();
   }, []);
 
   const fetchReadings = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/readings`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
-      setReadings(data);
+      // Load readings from local storage
+      const storedReadings = await readingsStorage.getReadings();
+      setReadings(storedReadings);
     } catch (error) {
       console.error('Error fetching readings:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить историю гаданий');
+      // Don't show error alert for empty history
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadEnhancedData = async () => {
+    try {
+      const [storedFavorites, storedNotes, storedTags] = await Promise.all([
+        favoritesStorage.getFavorites(),
+        notesStorage.getNotes(),
+        tagsStorage.getTags()
+      ]);
+      setFavorites(storedFavorites);
+      setNotes(storedNotes);
+      setTags(storedTags);
+    } catch (error) {
+      console.error('Error loading enhanced data:', error);
     }
   };
 
@@ -106,34 +118,39 @@ export default function HistoryScreen() {
     setExpandedReading(expandedReading === readingId ? null : readingId);
   };
 
-  const toggleFavorite = (readingId: string) => {
-    setFavorites((prev) => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(readingId)) {
-        newFavorites.delete(readingId);
-      } else {
-        newFavorites.add(readingId);
-      }
-      return newFavorites;
-    });
+  const toggleFavorite = async (readingId: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(readingId)) {
+      newFavorites.delete(readingId);
+    } else {
+      newFavorites.add(readingId);
+    }
+    setFavorites(newFavorites);
+    await favoritesStorage.saveFavorites(newFavorites);
   };
 
-  const saveNotes = (readingId: string, note: string) => {
-    setNotes((prev) => ({ ...prev, [readingId]: note }));
+  const saveNotes = async (readingId: string, note: string) => {
+    const newNotes = { ...notes, [readingId]: note };
+    setNotes(newNotes);
+    await notesStorage.saveNotes(newNotes);
   };
 
-  const addTag = (readingId: string, tag: string) => {
-    setTags((prev) => ({
-      ...prev,
-      [readingId]: [...(prev[readingId] || []), tag],
-    }));
+  const addTag = async (readingId: string, tag: string) => {
+    const newTags = {
+      ...tags,
+      [readingId]: [...(tags[readingId] || []), tag],
+    };
+    setTags(newTags);
+    await tagsStorage.saveTags(newTags);
   };
 
-  const removeTag = (readingId: string, tag: string) => {
-    setTags((prev) => ({
-      ...prev,
-      [readingId]: (prev[readingId] || []).filter((t) => t !== tag),
-    }));
+  const removeTag = async (readingId: string, tag: string) => {
+    const newTags = {
+      ...tags,
+      [readingId]: (tags[readingId] || []).filter((t) => t !== tag),
+    };
+    setTags(newTags);
+    await tagsStorage.saveTags(newTags);
   };
 
   // Filter and sort readings
@@ -207,7 +224,7 @@ export default function HistoryScreen() {
             onSearchChange={setSearchQuery}
             onCategorySelect={setSelectedCategory}
             onSpreadSelect={setSelectedSpread}
-            onToggleFavorites={setShowFavoritesOnly}
+            onToggleFavorites={() => setShowFavoritesOnly(!showFavoritesOnly)}
             onSortChange={setSortBy}
           />
         )}
@@ -256,19 +273,26 @@ export default function HistoryScreen() {
         ) : (
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <View style={styles.readingsContainer}>
-              {filteredReadings.map((reading) => (
-                <EnhancedHistoryCard
-                  key={reading.id}
-                  reading={reading}
-                  isFavorite={favorites.has(reading.id)}
-                  notes={notes[reading.id] || ''}
-                  tags={tags[reading.id] || []}
-                  onToggleFavorite={() => toggleFavorite(reading.id)}
-                  onSaveNotes={(note) => saveNotes(reading.id, note)}
-                  onAddTag={(tag) => addTag(reading.id, tag)}
-                  onRemoveTag={(tag) => removeTag(reading.id, tag)}
-                />
-              ))}
+              {filteredReadings.map((reading) => {
+                const categoryInfo = CATEGORIES[reading.category as keyof typeof CATEGORIES] || CATEGORIES.general;
+                const spreadName = SPREADS[reading.spread_type as keyof typeof SPREADS] || reading.spread_type;
+                return (
+                  <EnhancedHistoryCard
+                    key={reading.id}
+                    reading={reading}
+                    isFavorite={favorites.has(reading.id)}
+                    notes={notes[reading.id] || ''}
+                    tags={tags[reading.id] || []}
+                    onToggleFavorite={toggleFavorite}
+                    onSaveNotes={saveNotes}
+                    onAddTag={addTag}
+                    onRemoveTag={removeTag}
+                    onViewDetails={(r) => console.log('View details:', r.id)}
+                    categoryInfo={categoryInfo}
+                    spreadName={spreadName}
+                  />
+                );
+              })}
             </View>
           </ScrollView>
         )}

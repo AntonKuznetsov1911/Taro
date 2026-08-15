@@ -442,6 +442,200 @@ lifePathNumber === 2 ? 'потребностей других с вашими с
 💫 *Ваши числа рассказывают историю безграничного потенциала. Живите своей правдой!*`;
 }
 
+/**
+ * Генерация офлайн астро-психологического анализа личности
+ */
+export async function generateOfflineAstroPersonality(answers: any, name?: string): Promise<{
+  id: string;
+  personality_analysis: string;
+  dominant_arcana: TarotCard[];
+  character_traits: string[];
+  life_path: string;
+  current_phase: string;
+  advice: string;
+}> {
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  const cards = getRandomCards(3);
+  const astrology = getDailyAstrology();
+
+  // Генерируем черты характера на основе карт
+  const traits = cards.flatMap(card => card.keywords.slice(0, 2));
+
+  // Определяем жизненный путь
+  const lifePaths = [
+    'Путь Творца — вы призваны создавать и вдохновлять других',
+    'Путь Мудреца — ваша миссия в поиске и передаче знаний',
+    'Путь Воина — вы несёте силу защиты и справедливости',
+    'Путь Целителя — ваш дар в помощи другим и восстановлении гармонии',
+    'Путь Провидца — вы способны видеть скрытое и направлять других'
+  ];
+
+  const currentPhases = [
+    'Фаза Пробуждения — время осознания своего истинного потенциала',
+    'Фаза Трансформации — период глубоких внутренних изменений',
+    'Фаза Реализации — момент воплощения своих идей в жизнь',
+    'Фаза Интеграции — время объединения опыта в мудрость',
+    'Фаза Расцвета — период полного раскрытия ваших талантов'
+  ];
+
+  const dayIndex = new Date().getDate();
+
+  const personalityAnalysis = `
+## 🌟 Астро-психологический портрет${name ? ` для ${name}` : ''}
+
+### ${astrology.moon.emoji} Космический контекст вашей личности
+
+**Луна:** ${astrology.moon.phaseNameRu} | **Стихия:** ${astrology.moon.moonSign.elementRu}
+
+---
+
+### 🎴 Доминирующие Арканы вашей души
+
+**${cards[0].name}** — Основа вашей личности
+${cards[0].upright_meaning}
+
+**${cards[1].name}** — Ваш внутренний потенциал
+${cards[1].upright_meaning}
+
+**${cards[2].name}** — Направление развития
+${cards[2].upright_meaning}
+
+---
+
+### ✨ Ключевые черты характера
+
+${traits.map(t => `• **${t}**`).join('\n')}
+
+---
+
+### 🔮 Глубинный анализ
+
+Ваша личность представляет уникальное сочетание энергий ${cards.map(c => c.name).join(', ')}. Это указывает на человека с глубоким внутренним миром и значительным потенциалом для духовного роста.
+
+**Сильные стороны:**
+- Интуитивное понимание людей и ситуаций
+- Способность видеть суть вещей
+- Природная мудрость и проницательность
+
+**Области для развития:**
+- Баланс между интуицией и рациональностью
+- Практическое применение своих даров
+- Доверие к собственному пути
+
+---
+
+💫 *Ваш уникальный энергетический отпечаток создаёт неповторимый узор возможностей. Следуйте своей внутренней правде!*
+`;
+
+  return {
+    id: `astro-${Date.now()}`,
+    personality_analysis: personalityAnalysis,
+    dominant_arcana: cards,
+    character_traits: traits,
+    life_path: lifePaths[dayIndex % lifePaths.length],
+    current_phase: currentPhases[(dayIndex + 2) % currentPhases.length],
+    advice: `Сосредоточьтесь на ${cards[0].keywords[0]} и развивайте ${cards[1].keywords[0]}. Ваш путь освещает ${cards[2].name}.`
+  };
+}
+
+/**
+ * Генерация офлайн результата анализа ладони с линиями
+ */
+export interface PalmLine {
+  name: string;
+  description: string;
+  color: string;
+  points: number[][];
+}
+
+export async function generateOfflinePalmResult(question?: string): Promise<{
+  id: string;
+  question: string;
+  lines: PalmLine[];
+  interpretation: string;
+  created_at: string;
+}> {
+  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  const cards = getRandomCards(3);
+
+  const lines: PalmLine[] = [
+    {
+      name: 'Линия жизни',
+      description: `Отражает вашу жизненную силу и энергию. ${cards[0].keywords[0]} — ключевой аспект.`,
+      color: '#E74C3C',
+      points: [[50, 80], [60, 150], [55, 220]]
+    },
+    {
+      name: 'Линия сердца',
+      description: `Показывает эмоциональную природу. ${cards[1].keywords[0]} влияет на ваши отношения.`,
+      color: '#E91E63',
+      points: [[30, 70], [100, 65], [170, 80]]
+    },
+    {
+      name: 'Линия головы',
+      description: `Указывает на мыслительные способности. ${cards[2].keywords[0]} определяет ваш подход.`,
+      color: '#3498DB',
+      points: [[40, 100], [100, 95], [160, 110]]
+    },
+    {
+      name: 'Линия судьбы',
+      description: 'Отражает жизненный путь и предназначение.',
+      color: '#9B59B6',
+      points: [[100, 220], [100, 150], [95, 80]]
+    }
+  ];
+
+  const interpretation = `🔮 **Анализ линий ладони**
+
+*Вопрос: "${question || 'Расскажите о моей судьбе'}"*
+
+---
+
+### 📍 Линия жизни
+${cards[0].upright_meaning}
+
+Эта линия указывает на ${cards[0].keywords.slice(0, 2).join(' и ')}. Ваша жизненная энергия сильна и направлена на созидание.
+
+### 💖 Линия сердца
+${cards[1].upright_meaning}
+
+Ваша эмоциональная природа характеризуется ${cards[1].keywords.slice(0, 2).join(' и ')}. В отношениях вы проявляете глубину и искренность.
+
+### 🧠 Линия головы
+${cards[2].upright_meaning}
+
+Ваш мыслительный процесс отмечен ${cards[2].keywords.slice(0, 2).join(' и ')}. Вы способны видеть связи, скрытые от других.
+
+---
+
+### ✨ Общее предсказание
+
+Линии на вашей ладони рассказывают историю о человеке с богатым внутренним миром и значительным потенциалом. Энергии ${cards.map(c => c.name).join(', ')} сплетаются в узор вашей судьбы.
+
+**Благоприятные периоды:**
+- Ближайшие 3 месяца — время для важных решений
+- Следующий год — период роста и развития
+
+**Рекомендации:**
+1. Доверяйте своей интуиции в важных вопросах
+2. Развивайте ${cards[0].keywords[0]} как ключевое качество
+3. Помните, что ваша судьба — в ваших руках
+
+---
+
+💫 *Линии на ладони — это карта возможностей, а не предопределённый маршрут. Вы сами выбираете свой путь.*`;
+
+  return {
+    id: `palm-${Date.now()}`,
+    question: question || 'Расскажите о моей судьбе',
+    lines,
+    interpretation,
+    created_at: new Date().toISOString()
+  };
+}
+
 // Re-export astrology types for convenience
 export { getDailyAstrology, getMoonData, getRetrogradePlanets, formatAstrologyForReading } from './astrology';
 export type { DailyAstrology, MoonData, ZodiacSign } from './astrology';

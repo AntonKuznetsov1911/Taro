@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,9 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as ImageManipulator from 'expo-image-manipulator';
-
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { generateOfflinePalmResult } from '../src/utils/offlineApi';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -33,9 +32,39 @@ export default function CameraScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   if (!permission) {
     // Camera permissions are still loading
-    return <View />;
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <View style={styles.placeholder} />
+          </View>
+
+          <View style={styles.permissionContainer}>
+            <ActivityIndicator size="large" color="#9B59B6" />
+            <Text style={styles.permissionText}>Проверяем доступ к камере...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
   }
 
   if (!permission.granted) {
@@ -46,6 +75,16 @@ export default function CameraScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <View style={styles.placeholder} />
+          </View>
+
           <View style={styles.permissionContainer}>
             <Ionicons name="camera" size={80} color="#9B59B6" />
             <Text style={styles.permissionText}>
@@ -66,35 +105,50 @@ export default function CameraScreen() {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current) {
-      try {
-        setIsProcessing(true);
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: true,
-        });
+    if (!cameraRef.current) {
+      Alert.alert('Ошибка', 'Камера недоступна. Попробуйте еще раз.');
+      return;
+    }
 
-        if (photo && photo.base64) {
-          // Resize image for better processing
-          const manipResult = await ImageManipulator.manipulateAsync(
-            photo.uri,
-            [{ resize: { width: 800, height: 1000 } }],
-            {
-              compress: 0.8,
-              format: ImageManipulator.SaveFormat.JPEG,
-              base64: true,
-            }
-          );
+    try {
+      setIsProcessing(true);
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+      });
 
-          setCapturedImage(manipResult.uri);
-          setCapturedImageBase64(manipResult.base64 || '');
-          setIsProcessing(false);
-        }
-      } catch (error) {
-        console.error('Error taking picture:', error);
+      if (!photo || !photo.uri) {
         Alert.alert('Ошибка', 'Не удалось сделать снимок. Попробуйте еще раз.');
-        setIsProcessing(false);
+        return;
       }
+
+      // Resize image for better processing
+      const manipResult = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 800, height: 1000 } }],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      const base64 = manipResult.base64 || photo.base64 || '';
+      if (!base64) {
+        Alert.alert(
+          'Ошибка',
+          'Не удалось обработать снимок. Попробуйте сделать фото еще раз.'
+        );
+        return;
+      }
+
+      setCapturedImage(manipResult.uri || photo.uri);
+      setCapturedImageBase64(base64);
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Ошибка', 'Не удалось сделать снимок. Попробуйте еще раз.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -118,21 +172,8 @@ export default function CameraScreen() {
     try {
       setIsAnalyzing(true);
 
-      // Call palmistry API
-      const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/palmistry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_base64: `data:image/jpeg;base64,${capturedImageBase64}`,
-          question: question.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
+      // Use offline palm analysis
+      const data = await generateOfflinePalmResult(question.trim());
 
       // Navigate to result screen with analysis data
       router.push({
@@ -141,7 +182,7 @@ export default function CameraScreen() {
           imageUri: capturedImage,
           question: question.trim(),
           interpretation: data.interpretation,
-          palmLines: JSON.stringify(data.palm_lines),
+          palmLines: JSON.stringify(data.lines),
         },
       });
     } catch (error) {

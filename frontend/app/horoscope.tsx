@@ -13,9 +13,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
-import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, ZodiacSign } from '../src/utils/astrology';
+import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, ZodiacSign, ZODIAC_SIGNS } from '../src/utils/astrology';
 import { getRandomCards } from '../src/data/tarotCards';
 
 interface HoroscopeData {
@@ -126,36 +127,109 @@ const HEALTH_FORECASTS = [
   "Ментальное здоровье так же важно, как физическое. Медитация поможет.",
 ];
 
+const SAVED_SIGN_KEY = '@taro_horoscope_sign';
+
+async function loadSavedSign(): Promise<ZodiacSign | null> {
+  try {
+    const saved = await AsyncStorage.getItem(SAVED_SIGN_KEY);
+    if (!saved) return null;
+    return ZODIAC_SIGNS.find(s => s.name === saved) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSign(name: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SAVED_SIGN_KEY, name);
+  } catch {
+    // Знак останется выбранным в текущей сессии даже если запись не удалась
+  }
+}
+
+/** Гороскоп без астрологических расчётов — на случай, если они недоступны */
+function buildFallbackHoroscope(sign: ZodiacSign | null, userName?: string): HoroscopeData {
+  const zodiacSign = sign ?? ZODIAC_SIGNS[0];
+  const today = new Date();
+  const dayIndex = today.getDate() % 3;
+  const forecastIndex = (today.getDate() + today.getMonth()) % 5;
+  const texts = HOROSCOPE_TEXTS[zodiacSign.name.toLowerCase()] || HOROSCOPE_TEXTS['aries'];
+
+  let text = texts[dayIndex];
+  if (userName) {
+    text = `${userName}, ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+  }
+
+  return {
+    zodiacSign,
+    date: today.toISOString(),
+    moodRating: 7,
+    horoscopeText: text,
+    loveForecast: LOVE_FORECASTS[forecastIndex],
+    careerForecast: CAREER_FORECASTS[forecastIndex],
+    healthForecast: HEALTH_FORECASTS[forecastIndex],
+    luckyNumbers: [(today.getDate() % 9) + 1, ((today.getDate() * 3) % 9) + 1],
+    luckyColors: ['Фиолетовый', 'Серебристый'],
+    moonPhase: '',
+    moonSign: '',
+    dayEnergy: '',
+    favorableActivities: [],
+    unfavorableActivities: [],
+    retrograde: [],
+  };
+}
+
 export default function HoroscopeScreen() {
   const router = useRouter();
   const { profile, isLoading: profileLoading } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [horoscope, setHoroscope] = useState<HoroscopeData | null>(null);
+  const [isPickingSign, setIsPickingSign] = useState(false);
+  const [chosenSign, setChosenSign] = useState<ZodiacSign | null>(null);
 
   useEffect(() => {
-    if (!profileLoading) {
-      generateHoroscope();
-    }
+    if (profileLoading) return;
+
+    let cancelled = false;
+    (async () => {
+      const saved = await loadSavedSign();
+      if (!cancelled) {
+        setChosenSign(saved);
+        await generateHoroscope(saved);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [profileLoading, profile]);
 
-  const generateHoroscope = async () => {
+  const chooseSign = async (sign: ZodiacSign) => {
+    setChosenSign(sign);
+    setIsPickingSign(false);
+    await saveSign(sign.name);
+    await generateHoroscope(sign);
+  };
+
+  const generateHoroscope = async (signOverride?: ZodiacSign | null) => {
     setIsLoading(true);
 
-    // Имитация загрузки
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      // Имитация загрузки
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Определяем знак зодиака из профиля или по текущей дате
-    let zodiacSign: ZodiacSign;
-    if (profile?.birthDate) {
-      const birthDate = new Date(profile.birthDate);
-      zodiacSign = getZodiacSign(birthDate);
-    } else {
-      // Если нет профиля, используем текущий солнечный знак
+      // Знак: выбранный вручную → из профиля → текущий солнечный
+      let zodiacSign: ZodiacSign;
+      if (signOverride) {
+        zodiacSign = signOverride;
+      } else if (profile?.birthDate) {
+        const birthDate = new Date(profile.birthDate);
+        zodiacSign = getZodiacSign(birthDate);
+      } else {
+        zodiacSign = getDailyAstrology().sunSign;
+      }
+
       const astrology = getDailyAstrology();
-      zodiacSign = astrology.sunSign;
-    }
-
-    const astrology = getDailyAstrology();
     const retrograde = getRetrogradePlanets();
     const card = getRandomCards(1)[0];
 
@@ -202,8 +276,15 @@ export default function HoroscopeScreen() {
       retrograde,
     };
 
-    setHoroscope(horoscopeData);
-    setIsLoading(false);
+      setHoroscope(horoscopeData);
+    } catch (error) {
+      // Астрологические расчёты не должны ронять экран: показываем
+      // гороскоп без лунных данных, но с текстом для знака
+      console.error('Error generating horoscope:', error);
+      setHoroscope(buildFallbackHoroscope(signOverride ?? chosenSign, profile?.name));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -223,6 +304,50 @@ export default function HoroscopeScreen() {
     if (rating >= 6) return '😐';
     return '😕';
   };
+
+  if (isPickingSign) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        >
+          <CosmicBackground />
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => setIsPickingSign(false)}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Гороскоп</Text>
+            <View style={styles.placeholder} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={styles.pickerTitle}>Выберите ваш знак зодиака</Text>
+            <View style={styles.signGrid}>
+              {ZODIAC_SIGNS.map((sign) => (
+                <TouchableOpacity
+                  key={sign.name}
+                  style={styles.signCard}
+                  onPress={() => chooseSign(sign)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['rgba(155, 89, 182, 0.18)', 'rgba(142, 68, 173, 0.28)']}
+                    style={styles.signCardGradient}
+                  >
+                    <Text style={styles.signEmoji}>{sign.symbol}</Text>
+                    <Text style={styles.signName}>{sign.nameRu}</Text>
+                    <Text style={styles.signElement}>{sign.elementRu}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ height: 30 }} />
+          </ScrollView>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading || profileLoading) {
     return (
@@ -254,7 +379,7 @@ export default function HoroscopeScreen() {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={80} color="#E74C3C" />
             <Text style={styles.errorText}>Не удалось составить гороскоп</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={generateHoroscope}>
+            <TouchableOpacity style={styles.retryButton} onPress={() => generateHoroscope(chosenSign)}>
               <Text style={styles.retryButtonText}>Попробовать снова</Text>
             </TouchableOpacity>
           </View>
@@ -300,6 +425,13 @@ export default function HoroscopeScreen() {
               {profile?.name && (
                 <Text style={styles.userName}>для {profile.name}</Text>
               )}
+              <TouchableOpacity
+                style={styles.changeSignButton}
+                onPress={() => setIsPickingSign(true)}
+              >
+                <Ionicons name="swap-horizontal" size={16} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.changeSignText}>Сменить знак</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.moodSection}>
@@ -439,7 +571,7 @@ export default function HoroscopeScreen() {
           <View style={styles.actionsSection}>
             <TouchableOpacity
               style={styles.refreshButton}
-              onPress={generateHoroscope}
+              onPress={() => generateHoroscope(chosenSign)}
             >
               <LinearGradient
                 colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)']}
@@ -492,6 +624,67 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+  },
+  placeholder: {
+    width: 40,
+  },
+  pickerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#E8E8E8',
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  signGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  signCard: {
+    width: '48%',
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  signCardGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 15,
+  },
+  signEmoji: {
+    fontSize: 32,
+    marginBottom: 6,
+    color: '#E8E8E8',
+  },
+  signName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+  },
+  signElement: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 2,
+  },
+  changeSignButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  changeSignText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   headerTitle: {
     fontSize: 18,

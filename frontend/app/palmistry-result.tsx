@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,17 +15,112 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { readingsStorage } from '../src/utils/storage';
 
+// Совпадает с PalmLine из src/utils/offlineApi.ts
 interface PalmLine {
-  id: string;
   name: string;
-  start_x: number;
-  start_y: number;
-  end_x: number;
-  end_y: number;
-  color: string;
   description: string;
+  color: string;
+  points: number[][];
 }
+
+// Размеры превью ладони (см. styles.palmImage)
+const PALM_IMAGE_WIDTH = 300;
+const PALM_IMAGE_HEIGHT = 400;
+const OVERLAY_PADDING = 24;
+const LINE_THICKNESS = 3;
+
+interface Segment {
+  key: string;
+  left: number;
+  top: number;
+  width: number;
+  angle: number;
+  color: string;
+}
+
+const isValidPoint = (point: unknown): point is number[] =>
+  Array.isArray(point) &&
+  point.length >= 2 &&
+  Number.isFinite(point[0]) &&
+  Number.isFinite(point[1]);
+
+/**
+ * Переводит координаты линий из системы координат генератора
+ * в пиксели превью и возвращает готовые сегменты для отрисовки.
+ */
+const buildSegments = (lines: PalmLine[]): Segment[] => {
+  const usableLines = lines
+    .map((line) => ({
+      line,
+      points: Array.isArray(line?.points) ? line.points.filter(isValidPoint) : [],
+    }))
+    .filter((item) => item.points.length >= 2);
+
+  if (usableLines.length === 0) return [];
+
+  const allPoints = usableLines.flatMap((item) => item.points);
+  const xs = allPoints.map((p) => p[0]);
+  const ys = allPoints.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  const availableWidth = PALM_IMAGE_WIDTH - OVERLAY_PADDING * 2;
+  const availableHeight = PALM_IMAGE_HEIGHT - OVERLAY_PADDING * 2;
+
+  const scale = Math.min(
+    spanX > 0 ? availableWidth / spanX : availableWidth,
+    spanY > 0 ? availableHeight / spanY : availableHeight
+  );
+
+  const offsetX = OVERLAY_PADDING + (availableWidth - spanX * scale) / 2;
+  const offsetY = OVERLAY_PADDING + (availableHeight - spanY * scale) / 2;
+
+  const project = (point: number[]) => ({
+    x: offsetX + (point[0] - minX) * scale,
+    y: offsetY + (point[1] - minY) * scale,
+  });
+
+  const segments: Segment[] = [];
+
+  usableLines.forEach((item, lineIndex) => {
+    for (let i = 0; i < item.points.length - 1; i++) {
+      const from = project(item.points[i]);
+      const to = project(item.points[i + 1]);
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length < 1) continue;
+
+      segments.push({
+        key: `${lineIndex}-${i}`,
+        left: (from.x + to.x) / 2 - length / 2,
+        top: (from.y + to.y) / 2 - LINE_THICKNESS / 2,
+        width: length,
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+        color: item.line.color || '#9B59B6',
+      });
+    }
+  });
+
+  return segments;
+};
+
+const parsePalmLines = (raw?: string): PalmLine[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as PalmLine[]) : [];
+  } catch (error) {
+    console.error('Error parsing palm lines:', error);
+    return [];
+  }
+};
 
 export default function PalmistryResultScreen() {
   const router = useRouter();
@@ -38,7 +133,11 @@ export default function PalmistryResultScreen() {
   };
 
   const [showGuide, setShowGuide] = useState(false);
-  const lines: PalmLine[] = palmLines ? JSON.parse(palmLines) : [];
+  const [isSaving, setIsSaving] = useState(false);
+  const lines: PalmLine[] = useMemo(() => parsePalmLines(palmLines), [palmLines]);
+  const segments: Segment[] = useMemo(() => buildSegments(lines), [lines]);
+  const hasInterpretation =
+    typeof interpretation === 'string' && interpretation.trim().length > 0;
 
   const handleShare = async () => {
     try {
@@ -50,9 +149,34 @@ export default function PalmistryResultScreen() {
     }
   };
 
-  const handleSave = () => {
-    // TODO: Implement saving to history
-    Alert.alert('Сохранено', 'Результат гадания сохранен в историю');
+  const handleSave = async () => {
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+
+      const reading = {
+        id: `palmistry-${Date.now()}`,
+        question: question || 'Гадание по руке',
+        category: 'general',
+        spread_type: 'palmistry',
+        cards: [],
+        positions: [],
+        lines,
+        image_uri: imageUri || '',
+        interpretation: hasInterpretation ? interpretation : '',
+        created_at: new Date().toISOString(),
+      };
+
+      await readingsStorage.addReading(reading);
+
+      Alert.alert('Сохранено', 'Результат гадания сохранен в историю');
+    } catch (error) {
+      console.error('Error saving palmistry reading:', error);
+      Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуйте еще раз.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -65,7 +189,10 @@ export default function PalmistryResultScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          >
             <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Результат гадания</Text>
@@ -82,23 +209,29 @@ export default function PalmistryResultScreen() {
           {/* Palm Image */}
           <View style={styles.imageSection}>
             <View style={styles.imageContainer}>
-              <Image source={{ uri: imageUri }} style={styles.palmImage} />
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.palmImage} />
+              ) : (
+                <View style={[styles.palmImage, styles.palmImagePlaceholder]}>
+                  <Ionicons name="hand-left-outline" size={64} color="#9B59B6" />
+                  <Text style={styles.palmImagePlaceholderText}>Снимок недоступен</Text>
+                </View>
+              )}
               {/* Optional: Overlay palm lines */}
-              {showGuide && (
-                <View style={styles.linesOverlay}>
-                  {lines.map((line, index) => (
+              {showGuide && segments.length > 0 && (
+                <View style={styles.linesOverlay} pointerEvents="none">
+                  {segments.map((segment) => (
                     <View
-                      key={index}
+                      key={segment.key}
                       style={{
                         position: 'absolute',
-                        left: line.start_x,
-                        top: line.start_y,
-                        width: 2,
-                        height: Math.sqrt(
-                          Math.pow(line.end_x - line.start_x, 2) +
-                            Math.pow(line.end_y - line.start_y, 2)
-                        ),
-                        backgroundColor: line.color,
+                        left: segment.left,
+                        top: segment.top,
+                        width: segment.width,
+                        height: LINE_THICKNESS,
+                        borderRadius: LINE_THICKNESS / 2,
+                        backgroundColor: segment.color,
+                        transform: [{ rotate: `${segment.angle}deg` }],
                       }}
                     />
                   ))}
@@ -106,20 +239,24 @@ export default function PalmistryResultScreen() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.guidButton}
-              onPress={() => setShowGuide(!showGuide)}
-            >
-              <Text style={styles.guideButtonText}>
-                {showGuide ? '🤲 Скрыть линии' : '✨ Показать линии'}
-              </Text>
-            </TouchableOpacity>
+            {segments.length > 0 ? (
+              <TouchableOpacity
+                style={styles.guidButton}
+                onPress={() => setShowGuide(!showGuide)}
+              >
+                <Text style={styles.guideButtonText}>
+                  {showGuide ? '🤲 Скрыть линии' : '✨ Показать линии'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.noLinesText}>Линии ладони не распознаны</Text>
+            )}
           </View>
 
           {/* Question */}
           <View style={styles.questionSection}>
             <Text style={styles.questionLabel}>Ваш вопрос:</Text>
-            <Text style={styles.questionText}>{question}</Text>
+            <Text style={styles.questionText}>{question || 'Вопрос не указан'}</Text>
           </View>
 
           {/* Divider */}
@@ -133,7 +270,28 @@ export default function PalmistryResultScreen() {
             </View>
 
             <View style={styles.interpretationContent}>
-              <MarkdownRenderer content={interpretation} />
+              {hasInterpretation ? (
+                <MarkdownRenderer content={interpretation} />
+              ) : (
+                <View style={styles.emptyInterpretation}>
+                  <Ionicons name="moon-outline" size={32} color="#9B59B6" />
+                  <Text style={styles.emptyInterpretationTitle}>
+                    Толкование недоступно
+                  </Text>
+                  <Text style={styles.emptyInterpretationText}>
+                    Похоже, результат гадания был открыт напрямую. Сделайте новый снимок
+                    ладони, чтобы получить толкование.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyInterpretationButton}
+                    onPress={() => router.push('/camera')}
+                  >
+                    <Text style={styles.emptyInterpretationButtonText}>
+                      Новое гадание
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
 
@@ -169,13 +327,23 @@ export default function PalmistryResultScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
               <LinearGradient
-                colors={['rgba(46, 204, 113, 0.8)', 'rgba(39, 174, 96, 0.9)']}
+                colors={
+                  isSaving
+                    ? ['rgba(100, 100, 100, 0.5)', 'rgba(80, 80, 80, 0.7)']
+                    : ['rgba(46, 204, 113, 0.8)', 'rgba(39, 174, 96, 0.9)']
+                }
                 style={styles.actionButtonGradient}
               >
                 <Ionicons name="bookmark" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>Сохранить</Text>
+                <Text style={styles.actionButtonText}>
+                  {isSaving ? 'Сохранение...' : 'Сохранить'}
+                </Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -243,8 +411,55 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155, 89, 182, 0.5)',
   },
   palmImage: {
-    width: 300,
-    height: 400,
+    width: PALM_IMAGE_WIDTH,
+    height: PALM_IMAGE_HEIGHT,
+  },
+  palmImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(155, 89, 182, 0.12)',
+  },
+  palmImagePlaceholderText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 12,
+  },
+  noLinesText: {
+    marginTop: 15,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  emptyInterpretation: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  emptyInterpretationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyInterpretationText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  emptyInterpretationButton: {
+    marginTop: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.6)',
+    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+  },
+  emptyInterpretationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E8E8E8',
   },
   linesOverlay: {
     position: 'absolute',

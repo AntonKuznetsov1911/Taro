@@ -18,6 +18,7 @@ import { playFlip, playReveal } from '../src/utils/sound';
 import { ReadingInterpretation } from '../components/ReadingInterpretation';
 import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
 import { getOfflineCardBack, generateOfflineTarotReading, generateTarotCardSVG } from '../src/utils/offlineApi';
+import { readingsStorage } from '../src/utils/storage';
 
 interface TarotCard {
   id: number;
@@ -78,12 +79,17 @@ export default function ReadingScreen() {
 
       const offlineResult = await generateOfflineTarotReading(question, cardCount);
 
-      const cardsWithImages = offlineResult.cards.map(card => ({
-        ...card,
-        name_en: card.name,
-        is_reversed: Math.random() < 0.3,
-        image: generateTarotCardSVG(card, Math.random() < 0.3)
-      }));
+      const cardsWithImages = offlineResult.cards.map(card => {
+        // Переворот решается один раз: иначе картинка и флаг расходятся,
+        // и перевёрнутая карта показывается с прямым изображением
+        const isReversed = Math.random() < 0.3;
+        return {
+          ...card,
+          name_en: card.name_en || card.name,
+          is_reversed: isReversed,
+          image: generateTarotCardSVG(card, isReversed),
+        };
+      });
 
       const data: TarotReading = {
         id: Date.now().toString(),
@@ -98,6 +104,13 @@ export default function ReadingScreen() {
 
       setReading(data);
       setCardsRevealed(new Array(data.cards.length).fill(false));
+
+      // Единственное место, где гадание попадает в историю
+      try {
+        await readingsStorage.addReading(data);
+      } catch (storageError) {
+        console.error('Error saving reading to history:', storageError);
+      }
     } catch (error) {
       console.error('Error creating reading:', error);
       Alert.alert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
