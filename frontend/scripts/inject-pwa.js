@@ -14,6 +14,9 @@ const indexPath = path.join(distPath, 'index.html');
 // Base path for GitHub Pages
 const BASE_PATH = '/Taro';
 
+// Язык интерфейса приложения
+const LANG = 'ru';
+
 // PWA meta tags and links to inject
 const pwaHead = `
     <!-- PWA Meta Tags -->
@@ -66,6 +69,9 @@ function injectPWA() {
   html = html.replace(/<link rel="shortcut icon" href="[^"]*"[^>]*>/g, '');
   html = html.replace(/<link rel="icon" href="\/favicon\.ico"[^>]*>/g, '');
 
+  // Объявляем язык страницы, иначе браузер переводит русский текст «на русский»
+  html = setLanguage(html);
+
   // Inject meta tags before </head>
   html = html.replace('</head>', pwaHead + '</head>');
 
@@ -114,24 +120,46 @@ function copyPWAFiles() {
   console.log('✅ PWA files copied');
 }
 
+// Expo проставляет lang="en", хотя весь интерфейс на русском. Браузер считает
+// страницу английской и переводит её на русский, превращая нормальный текст в
+// бессмыслицу («Уведомления» → «У камлия»). Объявляем язык честно.
+function setLanguage(html) {
+  if (/<html[^>]*\slang=/i.test(html)) {
+    return html.replace(/(<html[^>]*\s)lang=(["'])[^"']*\2/i, `$1lang=$2${LANG}$2`);
+  }
+  return html.replace(/<html\b/i, `<html lang="${LANG}"`);
+}
+
+// Рекурсивно собираем все .html, включая вложенные маршруты вроде deck/[id].html
+function findHtmlFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return findHtmlFiles(full);
+    return entry.name.endsWith('.html') ? [full] : [];
+  });
+}
+
 // Also inject into all other HTML files
 function injectIntoAllHtmlFiles() {
   console.log('📄 Processing all HTML files...');
 
-  const htmlFiles = fs.readdirSync(distPath).filter(f => f.endsWith('.html'));
+  findHtmlFiles(distPath).forEach(filePath => {
+    if (filePath === indexPath) return; // Already processed
 
-  htmlFiles.forEach(file => {
-    if (file === 'index.html') return; // Already processed
-
-    const filePath = path.join(distPath, file);
     let html = fs.readFileSync(filePath, 'utf8');
+    const before = html;
 
-    // Only inject if not already present
+    // Язык выставляем всегда, даже если PWA-теги уже на месте
+    html = setLanguage(html);
+
     if (!html.includes('rel="manifest"')) {
       html = html.replace('</head>', pwaHead + '</head>');
       html = html.replace('</body>', pwaScript + '</body>');
+    }
+
+    if (html !== before) {
       fs.writeFileSync(filePath, html);
-      console.log(`  ✓ ${file}`);
+      console.log(`  ✓ ${path.relative(distPath, filePath)}`);
     }
   });
 

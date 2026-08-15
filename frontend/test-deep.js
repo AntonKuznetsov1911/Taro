@@ -371,6 +371,23 @@ async function main() {
     await page.context().close();
   }
 
+  // ---------- 10. ЯЗЫК СТРАНИЦЫ ----------
+  console.log('\n📍 10. ЯЗЫК СТРАНИЦЫ (из-за lang="en" браузер переводил русский текст)');
+  {
+    const routes = ['', 'settings', 'horoscope', 'deck', 'onboarding', 'numerology'];
+    const wrong = [];
+    for (const r of routes) {
+      const page = await freshPage(browser);
+      await page.goto(`${BASE}/${r}`, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      const lang = await page.evaluate(() => document.documentElement.lang);
+      if (lang !== 'ru') wrong.push(`/${r || '(главная)'} = "${lang}"`);
+      await page.context().close();
+    }
+    if (wrong.length === 0) ok('Все страницы объявлены русскими (lang="ru")');
+    else bad('Все страницы объявлены русскими', wrong.join(', '));
+  }
+
   await browser.close();
 
   console.log('\n' + '='.repeat(60));
