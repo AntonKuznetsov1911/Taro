@@ -149,23 +149,14 @@ async function main() {
   console.log('\n📍 3. КАРТОЧКА КАРТЫ — описание и неизвестный id');
   {
     const page = await freshPage(browser);
-    // Валидная карта — младший аркан
-    await page.goto(`${BASE}/deck/77.html`, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    // Динамический маршрут: статического файла на карту нет, поэтому хостинг
+    // отдаёт 404.html (= index.html), а роутер уже разбирает адрес сам
+    await page.goto(`${BASE}/deck/22`, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(3000);
     let body = await page.textContent('body');
-    if (body.includes('Unmatched Route') || body.includes('404')) {
-      // Статический сервер не отдаёт динамический маршрут — идём через каталог
-      await navigate(page, 'Каталог колоды');
-      await page.waitForTimeout(1200);
-      await page.click('text=Пентакли', { timeout: 6000 }).catch(() => {});
-      await page.waitForTimeout(900);
-      const card = await page.$('text=Король Пентаклей');
-      if (card) {
-        await card.click();
-        await page.waitForTimeout(2000);
-        body = await page.textContent('body');
-      }
-    }
+
+    if (body.includes('Туз Жезлов')) ok('Глубокая ссылка на младший аркан открывается');
+    else bad('Глубокая ссылка на младший аркан', 'карта не отрисовалась');
 
     if (body.includes('Загрузка карты')) {
       bad('Карточка карты не зависает', 'вечный спиннер');
