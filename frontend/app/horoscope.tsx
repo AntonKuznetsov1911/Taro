@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/context/UserProfileContext';
 
@@ -168,6 +169,44 @@ function getZodiacSign(birthDate: string): { name: string; element: string } | n
   return null;
 }
 
+const SAVED_SIGN_KEY = '@taro_horoscope_sign';
+
+const MONTHS_GENITIVE = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+const ZODIAC_EMOJI: { [key: string]: string } = {
+  'Овен': '♈', 'Телец': '♉', 'Близнецы': '♊', 'Рак': '♋',
+  'Лев': '♌', 'Дева': '♍', 'Весы': '♎', 'Скорпион': '♏',
+  'Стрелец': '♐', 'Козерог': '♑', 'Водолей': '♒', 'Рыбы': '♓',
+};
+
+function formatSignRange(sign: typeof ZODIAC_SIGNS[number]): string {
+  const [sm, sd] = sign.start;
+  const [em, ed] = sign.end;
+  return `${sd} ${MONTHS_GENITIVE[sm - 1]} — ${ed} ${MONTHS_GENITIVE[em - 1]}`;
+}
+
+async function loadSavedSign(): Promise<{ name: string; element: string } | null> {
+  try {
+    const saved = await AsyncStorage.getItem(SAVED_SIGN_KEY);
+    if (!saved) return null;
+    const match = ZODIAC_SIGNS.find(s => s.name === saved);
+    return match ? { name: match.name, element: match.element } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSign(name: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SAVED_SIGN_KEY, name);
+  } catch {
+    // Знак останется выбранным в текущей сессии даже если запись не удалась
+  }
+}
+
 function generateHoroscope(zodiacSign: string, element: string): HoroscopeResult {
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
@@ -206,51 +245,52 @@ export default function HoroscopeScreen() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [horoscope, setHoroscope] = useState<HoroscopeResult | null>(null);
-  const [hasProfile, setHasProfile] = useState(true);
   const [zodiacInfo, setZodiacInfo] = useState<{ name: string; element: string } | null>(null);
+  const [isPickingSign, setIsPickingSign] = useState(false);
 
+  // Знак берётся из профиля, а при его отсутствии — из выбранного вручную.
+  // Гороскоп никогда не требует профиля, чтобы экран не упирался в тупик.
   useEffect(() => {
-    // Wait for profile to finish loading first
-    if (!profileLoading) {
-      loadHoroscope();
-    }
+    if (profileLoading) return;
 
-    // Fallback timeout - if still loading after 5 seconds, show no profile screen
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        setHasProfile(false);
+    let cancelled = false;
+
+    (async () => {
+      const fromProfile = profile?.birthDate ? getZodiacSign(profile.birthDate) : null;
+      const zodiac = fromProfile ?? (await loadSavedSign());
+
+      if (cancelled) return;
+
+      if (!zodiac) {
+        setIsPickingSign(true);
         setIsLoading(false);
+        return;
       }
-    }, 5000);
 
-    return () => clearTimeout(timeout);
+      setZodiacInfo(zodiac);
+      setHoroscope(generateHoroscope(zodiac.name, zodiac.element));
+      setIsPickingSign(false);
+      setIsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [profile, profileLoading]);
 
-  const loadHoroscope = async () => {
-    setIsLoading(true);
+  const chooseSign = async (sign: { name: string; element: string }) => {
+    setZodiacInfo(sign);
+    setHoroscope(generateHoroscope(sign.name, sign.element));
+    setIsPickingSign(false);
+    await saveSign(sign.name);
+  };
 
-    // Brief visual delay (reduced from 1000ms)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (!profile?.birthDate) {
-      setHasProfile(false);
-      setIsLoading(false);
+  const reloadHoroscope = () => {
+    if (!zodiacInfo) {
+      setIsPickingSign(true);
       return;
     }
-
-    const zodiac = getZodiacSign(profile.birthDate);
-    if (!zodiac) {
-      setHasProfile(false);
-      setIsLoading(false);
-      return;
-    }
-
-    setZodiacInfo(zodiac);
-    setHasProfile(true);
-
-    const generatedHoroscope = generateHoroscope(zodiac.name, zodiac.element);
-    setHoroscope(generatedHoroscope);
-    setIsLoading(false);
+    setHoroscope(generateHoroscope(zodiacInfo.name, zodiacInfo.element));
   };
 
   const formatDate = (dateString: string) => {
@@ -308,7 +348,7 @@ export default function HoroscopeScreen() {
     );
   }
 
-  if (!hasProfile) {
+  if (isPickingSign) {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
@@ -328,26 +368,47 @@ export default function HoroscopeScreen() {
             <View style={styles.placeholder} />
           </View>
 
-          <View style={styles.noProfileContainer}>
-            <Text style={styles.noProfileIcon}>🔮</Text>
-            <Text style={styles.noProfileTitle}>Создайте профиль</Text>
-            <Text style={styles.noProfileText}>
-              Для персонализированного гороскопа необходимо указать вашу дату рождения
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+            <Text style={styles.pickerTitle}>Выберите ваш знак зодиака</Text>
+            <Text style={styles.pickerSubtitle}>
+              Звёзды подскажут, каким будет ваш день
             </Text>
+
+            <View style={styles.signGrid}>
+              {ZODIAC_SIGNS.map((sign) => (
+                <TouchableOpacity
+                  key={sign.name}
+                  style={styles.signCard}
+                  onPress={() => chooseSign({ name: sign.name, element: sign.element })}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['rgba(155, 89, 182, 0.18)', 'rgba(142, 68, 173, 0.28)']}
+                    style={styles.signCardGradient}
+                  >
+                    <Text style={styles.signEmoji}>{ZODIAC_EMOJI[sign.name]}</Text>
+                    <Text style={styles.signName}>{sign.name}</Text>
+                    <Text style={styles.signRange}>{formatSignRange(sign)}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <TouchableOpacity
               style={styles.createProfileButton}
               onPress={() => router.push('/profile')}
             >
               <LinearGradient
-                colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
+                colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)']}
                 style={styles.createProfileButtonGradient}
               >
                 <Ionicons name="person-add" size={20} color="#FFF" />
-                <Text style={styles.createProfileButtonText}>Создать профиль</Text>
+                <Text style={styles.createProfileButtonText}>Указать дату рождения</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
         </LinearGradient>
       </SafeAreaView>
     );
@@ -363,7 +424,7 @@ export default function HoroscopeScreen() {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={80} color="#E74C3C" />
             <Text style={styles.errorText}>Не удалось загрузить гороскоп</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadHoroscope}>
+            <TouchableOpacity style={styles.retryButton} onPress={() => setIsPickingSign(true)}>
               <Text style={styles.retryButtonText}>Попробовать снова</Text>
             </TouchableOpacity>
           </View>
@@ -444,6 +505,14 @@ export default function HoroscopeScreen() {
             </View>
           </View>
 
+          <TouchableOpacity
+            style={styles.changeSignButton}
+            onPress={() => setIsPickingSign(true)}
+          >
+            <Ionicons name="swap-horizontal" size={16} color="rgba(255,255,255,0.85)" />
+            <Text style={styles.changeSignText}>Сменить знак</Text>
+          </TouchableOpacity>
+
           {/* Main Horoscope */}
           <View style={styles.horoscopeSection}>
             <Text style={styles.horoscopeSectionTitle}>✨ Ваш гороскоп</Text>
@@ -500,7 +569,7 @@ export default function HoroscopeScreen() {
           <View style={styles.actionsSection}>
             <TouchableOpacity
               style={styles.refreshButton}
-              onPress={loadHoroscope}
+              onPress={reloadHoroscope}
             >
               <LinearGradient
                 colors={['rgba(69, 183, 209, 0.9)', 'rgba(52, 152, 219, 1)']}
@@ -764,6 +833,72 @@ const styles = StyleSheet.create({
     color: '#BB6BD9',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  pickerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#E8E8E8',
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  pickerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  signGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  signCard: {
+    width: '48%',
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  signCardGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 15,
+  },
+  signEmoji: {
+    fontSize: 32,
+    marginBottom: 6,
+  },
+  signName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    marginBottom: 4,
+  },
+  signRange: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+  },
+  changeSignButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    marginBottom: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  changeSignText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   noProfileContainer: {
     flex: 1,

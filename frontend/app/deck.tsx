@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Flat
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { MAJOR_ARCANA, TarotCard } from '../src/data/tarotCards';
+import { FULL_TAROT_DECK, TarotCard } from '../src/data/tarotCards';
 import { generateTarotCardSVG } from '../src/utils/offlineApi';
 
 type CardItem = TarotCard & {
@@ -32,8 +32,8 @@ export default function DeckScreen() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Use offline data
-        const offlineCards: CardItem[] = MAJOR_ARCANA.map(card => ({
+        // Полная колода из 78 карт — данные встроены, сеть не нужна
+        const offlineCards: CardItem[] = FULL_TAROT_DECK.map(card => ({
           ...card,
           image: undefined
         }));

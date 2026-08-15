@@ -81,13 +81,42 @@ export default function CardDetailScreen() {
     }
   };
 
-  if (loading || !card) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}>
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color="#9B59B6" />
             <Text style={styles.loadingText}>Загрузка карты...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
+  // Неизвестный id (например, из старой ссылки) — показываем выход, а не вечный спиннер
+  if (!card) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient colors={["#0a0a0a", "#1a1a2e", "#16213e"]} style={styles.background}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Карта не найдена</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.loadingWrap}>
+            <Text style={styles.cardEmoji}>🃏</Text>
+            <Text style={styles.loadingText}>
+              Такой карты нет в колоде. Вернитесь в каталог и выберите другую.
+            </Text>
+            <TouchableOpacity style={styles.notFoundButton} onPress={() => router.replace('/deck')}>
+              <LinearGradient colors={["#9B59B6", "#8E44AD"]} style={styles.notFoundButtonGradient}>
+                <Ionicons name="albums" size={18} color="#FFF" />
+                <Text style={styles.notFoundButtonText}>В каталог колоды</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -131,6 +160,13 @@ export default function CardDetailScreen() {
               <Switch value={reversed} onValueChange={onToggleReversed} trackColor={{ false: '#666', true: '#9B59B6' }} thumbColor={reversed ? '#BB6BD9' : '#EEE'} />
             </View>
           </View>
+
+          {!!card.description && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Образ карты</Text>
+              <Text style={styles.description}>{card.description}</Text>
+            </View>
+          )}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ключевые слова</Text>
@@ -185,5 +221,15 @@ const styles = StyleSheet.create({
   keywordText: { color: '#E8E8E8', fontSize: 12 },
   meaning: { color: '#E8E8E8', fontSize: 14, lineHeight: 20 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { color: '#B8B8B8', marginTop: 8 },
+  loadingText: { color: '#B8B8B8', marginTop: 8, textAlign: 'center', paddingHorizontal: 30 },
+  description: { color: '#D6C9E8', fontSize: 14, lineHeight: 21, fontStyle: 'italic' },
+  notFoundButton: { marginTop: 24, borderRadius: 25, overflow: 'hidden' },
+  notFoundButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+  },
+  notFoundButtonText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
 });

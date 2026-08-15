@@ -32,9 +32,39 @@ export default function CameraScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   if (!permission) {
     // Camera permissions are still loading
-    return <View />;
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <View style={styles.placeholder} />
+          </View>
+
+          <View style={styles.permissionContainer}>
+            <ActivityIndicator size="large" color="#9B59B6" />
+            <Text style={styles.permissionText}>Проверяем доступ к камере...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
   }
 
   if (!permission.granted) {
@@ -45,6 +75,16 @@ export default function CameraScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <View style={styles.placeholder} />
+          </View>
+
           <View style={styles.permissionContainer}>
             <Ionicons name="camera" size={80} color="#9B59B6" />
             <Text style={styles.permissionText}>
@@ -65,35 +105,50 @@ export default function CameraScreen() {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current) {
-      try {
-        setIsProcessing(true);
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: true,
-        });
+    if (!cameraRef.current) {
+      Alert.alert('Ошибка', 'Камера недоступна. Попробуйте еще раз.');
+      return;
+    }
 
-        if (photo && photo.base64) {
-          // Resize image for better processing
-          const manipResult = await ImageManipulator.manipulateAsync(
-            photo.uri,
-            [{ resize: { width: 800, height: 1000 } }],
-            {
-              compress: 0.8,
-              format: ImageManipulator.SaveFormat.JPEG,
-              base64: true,
-            }
-          );
+    try {
+      setIsProcessing(true);
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+      });
 
-          setCapturedImage(manipResult.uri);
-          setCapturedImageBase64(manipResult.base64 || '');
-          setIsProcessing(false);
-        }
-      } catch (error) {
-        console.error('Error taking picture:', error);
+      if (!photo || !photo.uri) {
         Alert.alert('Ошибка', 'Не удалось сделать снимок. Попробуйте еще раз.');
-        setIsProcessing(false);
+        return;
       }
+
+      // Resize image for better processing
+      const manipResult = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 800, height: 1000 } }],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      const base64 = manipResult.base64 || photo.base64 || '';
+      if (!base64) {
+        Alert.alert(
+          'Ошибка',
+          'Не удалось обработать снимок. Попробуйте сделать фото еще раз.'
+        );
+        return;
+      }
+
+      setCapturedImage(manipResult.uri || photo.uri);
+      setCapturedImageBase64(base64);
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Ошибка', 'Не удалось сделать снимок. Попробуйте еще раз.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 

@@ -403,15 +403,17 @@ export function drawRune(): Rune {
   return RUNES[randomIndex];
 }
 
-// Функция для выбора нескольких рун
+// Функция для выбора нескольких рун (без повторов)
 export function drawRunes(count: number): Rune[] {
   const drawn: Rune[] = [];
   const available = [...RUNES];
+  const total = Math.min(Math.max(Math.floor(count) || 0, 0), RUNES.length);
 
-  for (let i = 0; i < Math.min(count, RUNES.length); i++) {
+  for (let i = 0; i < total && available.length > 0; i++) {
     const randomIndex = Math.floor(Math.random() * available.length);
-    drawn.push(available[randomIndex]);
-    available.splice(randomIndex, 1);
+    // Убираем руну из пула, чтобы она не выпала повторно
+    const [picked] = available.splice(randomIndex, 1);
+    drawn.push(picked);
   }
 
   return drawn;

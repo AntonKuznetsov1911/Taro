@@ -2,12 +2,12 @@ import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 
 interface MarkdownRendererProps {
-  content: string;
+  content?: string | null;
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   const renderContent = () => {
-    const lines = content.split('\n');
+    const lines = (content ?? '').split('\n');
     const elements: JSX.Element[] = [];
     let key = 0;
 
@@ -131,6 +131,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
 
     return parts;
   };
+
+  // Guard: nothing to render for missing / empty / non-string content
+  if (typeof content !== 'string' || content.trim() === '') {
+    return <View style={styles.container} />;
+  }
 
   return <View style={styles.container}>{renderContent()}</View>;
 };

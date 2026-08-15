@@ -31,7 +31,7 @@ interface PalmistryResult {
 export default function PalmistryScreen() {
   const router = useRouter();
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!imageUri);
   const [result, setResult] = useState<PalmistryResult | null>(null);
 
   useEffect(() => {
@@ -39,9 +39,10 @@ export default function PalmistryScreen() {
   }, []);
 
   const analyzePalm = async () => {
+    // Экран доступен по прямой ссылке — без снимка показываем понятное состояние,
+    // а не бесконечный спиннер.
     if (!imageUri) {
-      Alert.alert('Ошибка', 'Изображение не найдено');
-      router.back();
+      setIsLoading(false);
       return;
     }
 
@@ -54,9 +55,16 @@ export default function PalmistryScreen() {
     } catch (error) {
       console.error('Error analyzing palm:', error);
       Alert.alert('Ошибка', 'Не удалось проанализировать изображение. Попробуйте еще раз.');
-      router.back();
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
     }
   };
 
@@ -88,7 +96,17 @@ export default function PalmistryScreen() {
         >
           <CosmicBackground />
           <StatusBar barStyle="light-content" backgroundColor="#000011" />
-          
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/')}>
+              <Ionicons name="home" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#9B59B6" />
             <Text style={styles.loadingTitle}>Анализирую линии судьбы...</Text>
@@ -107,6 +125,47 @@ export default function PalmistryScreen() {
     );
   }
 
+  if (!imageUri) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        >
+          <CosmicBackground />
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/')}>
+              <Ionicons name="home" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.errorContainer}>
+            <Ionicons name="hand-left" size={80} color="#9B59B6" />
+            <Text style={styles.errorTitle}>Нет снимка ладони</Text>
+            <Text style={styles.errorText}>
+              Чтобы прочитать линии судьбы, сначала сделайте фотографию ладони.
+            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => router.replace('/camera')}
+            >
+              <Text style={styles.retryButtonText}>Сделать фото ладони</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={goBack}>
+              <Text style={styles.secondaryButtonText}>Вернуться назад</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
   if (!result) {
     return (
       <SafeAreaView style={styles.container}>
@@ -114,11 +173,26 @@ export default function PalmistryScreen() {
           colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
           style={styles.background}
         >
+          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Хиромантия</Text>
+            <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/')}>
+              <Ionicons name="home" size={24} color="#E8E8E8" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={80} color="#E74C3C" />
             <Text style={styles.errorText}>Не удалось проанализировать изображение</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.retryButton} onPress={analyzePalm}>
               <Text style={styles.retryButtonText}>Попробовать снова</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={goBack}>
+              <Text style={styles.secondaryButtonText}>Вернуться назад</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -385,11 +459,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
   },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    textAlign: 'center',
+    marginTop: 20,
+  },
   errorText: {
     fontSize: 16,
     color: '#E8E8E8',
     textAlign: 'center',
     marginVertical: 20,
+    lineHeight: 22,
   },
   retryButton: {
     backgroundColor: 'rgba(155, 89, 182, 0.9)',
@@ -401,5 +483,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  secondaryButton: {
+    marginTop: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.6)',
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E8E8E8',
   },
 });

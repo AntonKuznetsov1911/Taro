@@ -28,6 +28,10 @@ const SPREADS = {
   celtic_cross: { name: 'Кельтский крест', cards: 10 }
 };
 
+// Значения по умолчанию, если параметры не переданы (глубокая ссылка, обновление страницы)
+const DEFAULT_CATEGORY_KEY: keyof typeof CATEGORIES = 'general';
+const DEFAULT_SPREAD_KEY: keyof typeof SPREADS = 'three_cards';
+
 export default function QuestionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -36,8 +40,15 @@ export default function QuestionScreen() {
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const categoryInfo = CATEGORIES[category as keyof typeof CATEGORIES];
-  const spreadInfo = SPREADS[spread as keyof typeof SPREADS];
+  const categoryKey = (category && category in CATEGORIES
+    ? category
+    : DEFAULT_CATEGORY_KEY) as keyof typeof CATEGORIES;
+  const spreadKey = (spread && spread in SPREADS
+    ? spread
+    : DEFAULT_SPREAD_KEY) as keyof typeof SPREADS;
+
+  const categoryInfo = CATEGORIES[categoryKey];
+  const spreadInfo = SPREADS[spreadKey];
 
   const handleSubmit = async () => {
     if (!question.trim()) {
@@ -50,7 +61,7 @@ export default function QuestionScreen() {
     try {
       router.push({
         pathname: '/reading',
-        params: { category, spread, question: question.trim() }
+        params: { category: categoryKey, spread: spreadKey, question: question.trim() }
       });
     } catch (error) {
       Alert.alert('Ошибка', 'Произошла ошибка при создании гадания');
@@ -60,7 +71,7 @@ export default function QuestionScreen() {
   };
 
   const getPlaceholder = () => {
-    switch (category) {
+    switch (categoryKey) {
       case 'love':
         return 'Например: Что ждет меня в отношениях? Любит ли меня этот человек?';
       case 'career':

@@ -65,6 +65,8 @@ const MYSTIC_FEATURES: MysticFeature[] = [
   { id: 'runes', name: 'Руны', icon: 'ᚠ', description: 'Оракул викингов', route: '/runes', color: '#3498DB' },
   { id: 'numerology', name: 'Нумерология', icon: '🔢', description: 'Число судьбы', route: '/numerology', color: '#2ECC71' },
   { id: 'deck', name: 'Каталог колоды', icon: '🃏', description: 'Все 78 карт', route: '/deck', color: '#9B59B6' },
+  { id: 'history', name: 'История', icon: '📜', description: 'Сохранённые гадания', route: '/history', color: '#E67E22' },
+  { id: 'settings', name: 'Настройки', icon: '⚙️', description: 'Звук и оформление', route: '/settings', color: '#7F8C8D' },
 ];
 
 // Animated Category Card Component

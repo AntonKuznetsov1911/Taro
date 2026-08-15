@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const SETTINGS_KEY = '@taro_settings';
 
 export type Settings = {
   language: 'russian' | 'english';
@@ -31,6 +34,37 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<Settings>(defaultSettings);
+  const isHydrated = useRef(false);
+
+  // Загружаем сохранённые настройки один раз при старте
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SETTINGS_KEY);
+        if (!cancelled && stored) {
+          const parsed = JSON.parse(stored);
+          // Мержим с дефолтами, чтобы новые поля не оказались undefined
+          setState((s) => ({ ...s, ...parsed }));
+        }
+      } catch {
+        // Остаёмся на значениях по умолчанию
+      } finally {
+        isHydrated.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Пишем только после гидратации, иначе дефолты затрут сохранённое
+  useEffect(() => {
+    if (!isHydrated.current) return;
+    AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(state)).catch(() => {
+      // Настройки продолжат работать в текущей сессии
+    });
+  }, [state]);
 
   const value = useMemo<SettingsContextType>(
     () => ({
