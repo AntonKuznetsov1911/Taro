@@ -1,7 +1,8 @@
 // Offline API - Полная офлайн функциональность для GitHub Pages
-import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, TarotCard, getCardById } from '../data/tarotCards';
+import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, FULL_TAROT_DECK, TarotCard, getCardById } from '../data/tarotCards';
 import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology, ZodiacSign, getZodiacCompatibility } from './astrology';
-import { generateMysticalTarotSVG, generateMysticalCardBack } from './tarotCardImages';
+import { generateMysticalCardBack } from './tarotCardImages';
+import { renderTarotCard } from './tarotCardArt';
 import { UserProfile } from '../stores/userProfileStore';
 
 // Тип для опционального профиля пользователя в функциях
@@ -114,14 +115,14 @@ export async function getOfflineCardBack(): Promise<string> {
  * Получить SVG изображение карты Таро
  */
 export function generateTarotCardSVG(card: TarotCard, isReversed: boolean = false): string {
-  return generateMysticalTarotSVG(card, isReversed);
+  return renderTarotCard(card, isReversed);
 }
 
 /**
  * Получить все карты Таро (офлайн)
  */
 export async function getOfflineTarotDeck(): Promise<TarotCard[]> {
-  return MAJOR_ARCANA;
+  return FULL_TAROT_DECK;
 }
 
 /**
