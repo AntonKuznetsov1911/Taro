@@ -1,8 +1,9 @@
 // Offline API - Полная офлайн функциональность для GitHub Pages
+import type { ImageSourcePropType } from 'react-native';
 import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, FULL_TAROT_DECK, TarotCard, getCardById } from '../data/tarotCards';
 import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology, ZodiacSign, getZodiacCompatibility } from './astrology';
 import { generateMysticalCardBack } from './tarotCardImages';
-import { renderTarotCard } from './tarotCardArt';
+import { getTarotCardImage } from './tarotCardAssets';
 import { UserProfile } from '../stores/userProfileStore';
 
 // Тип для опционального профиля пользователя в функциях
@@ -112,10 +113,15 @@ export async function getOfflineCardBack(): Promise<string> {
 }
 
 /**
- * Получить SVG изображение карты Таро
+ * Иллюстрация карты Таро (скан колоды Райдера — Уэйта — Смит из assets/cards).
+ *
+ * Возвращает готовый источник для <Image source={...} /> — это require()-ассет,
+ * а не data-URI. Перевёрнутое положение картинку не меняет: разворот на 180°
+ * делается стилем на самом <Image> (REVERSED_IMAGE_STYLE), поэтому параметр
+ * isReversed сохранён только ради совместимости вызовов и не влияет на результат.
  */
-export function generateTarotCardSVG(card: TarotCard, isReversed: boolean = false): string {
-  return renderTarotCard(card, isReversed);
+export function generateTarotCardSVG(card: TarotCard, _isReversed: boolean = false): ImageSourcePropType | undefined {
+  return getTarotCardImage(card);
 }
 
 /**

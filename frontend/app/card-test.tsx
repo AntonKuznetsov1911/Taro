@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CosmicBackground } from '../components/CosmicBackground';
@@ -13,7 +14,7 @@ import { getRandomCards, TarotCard } from '../src/data/tarotCards';
 import { generateTarotCardSVG, getOfflineCardBack } from '../src/utils/offlineApi';
 
 interface CardWithImage extends TarotCard {
-  image?: string;
+  image?: ImageSourcePropType;
 }
 
 export default function CardTestScreen() {
@@ -35,8 +36,7 @@ export default function CardTestScreen() {
       const cardImage = generateTarotCardSVG(selectedCard, false);
 
       console.log('Test card loaded:', selectedCard.name);
-      console.log('Image data length:', cardImage?.length);
-      console.log('Image data starts with:', cardImage?.substring(0, 50));
+      console.log('Card asset resolved:', cardImage ? 'yes' : 'no');
 
       setCard({ ...selectedCard, image: cardImage });
     } catch (error) {
@@ -92,9 +92,9 @@ export default function CardTestScreen() {
           >
             {revealed && card ? (
               <View style={styles.cardContent}>
-                {card.image && card.image.startsWith('data:image/svg+xml;base64,') ? (
+                {card.image ? (
                   <Image
-                    source={{ uri: card.image }}
+                    source={card.image}
                     style={styles.cardImage}
                     resizeMode="contain"
                   />
@@ -132,11 +132,10 @@ export default function CardTestScreen() {
               Статус: {card ? 'Карта загружена' : 'Карта не загружена'}
             </Text>
             <Text style={styles.debugText}>
-              Изображение: {card?.image ? 'Есть' : 'Нет'} 
-              {card?.image && ` (${card.image.length} символов)`}
+              Изображение: {card?.image ? 'Есть' : 'Нет'}
             </Text>
             <Text style={styles.debugText}>
-              Тип изображения: {card?.image?.substring(0, 30)}...
+              Тип изображения: иллюстрация Райдера — Уэйта (assets/cards)
             </Text>
           </View>
         </View>

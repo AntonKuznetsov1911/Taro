@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity, ActivityIndicator, Switch, ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -48,7 +48,7 @@ export default function CardDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [reversed, setReversed] = useState(false);
   const [interpretation, setInterpretation] = useState('');
-  const [cardImage, setCardImage] = useState<string>('');
+  const [cardImage, setCardImage] = useState<ImageSourcePropType | undefined>(undefined);
   const cardId = Number(id);
 
   const settings = useSettings();
@@ -138,9 +138,9 @@ export default function CardDetailScreen() {
           <View style={styles.imageWrap}>
             {cardImage ? (
               <Image
-                source={{ uri: cardImage }}
+                source={cardImage}
                 style={[styles.image, reversed && styles.imageReversed]}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             ) : (
               <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.imageFallback}>

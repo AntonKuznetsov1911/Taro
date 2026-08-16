@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +26,7 @@ interface TarotCard {
   name: string;
   name_en: string;
   type: string;
-  image: string;
+  image?: ImageSourcePropType;
   keywords: string[];
   upright_meaning: string;
   reversed_meaning: string;

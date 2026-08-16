@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, KeyboardAvoidingView, Platform, ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,7 @@ import { FULL_TAROT_DECK, TarotCard } from '../src/data/tarotCards';
 import { generateTarotCardSVG } from '../src/utils/offlineApi';
 
 type CardItem = TarotCard & {
-  image?: string;
+  image?: ImageSourcePropType;
 };
 
 const SUIT_FILTERS = [
@@ -27,7 +27,7 @@ export default function DeckScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [suit, setSuit] = useState<SuitKey>('all');
-  const [cardImages, setCardImages] = useState<{ [key: number]: string }>({});
+  const [cardImages, setCardImages] = useState<{ [key: number]: ImageSourcePropType | undefined }>({});
 
   useEffect(() => {
     const load = async () => {
@@ -39,8 +39,8 @@ export default function DeckScreen() {
         }));
         setCards(offlineCards);
 
-        // Generate images for cards
-        const images: { [key: number]: string } = {};
+        // Иллюстрации колоды лежат в assets — подтягиваем их через require-карту
+        const images: { [key: number]: ImageSourcePropType | undefined } = {};
         offlineCards.forEach(card => {
           images[card.id] = generateTarotCardSVG(card, false);
         });
@@ -70,7 +70,7 @@ export default function DeckScreen() {
   const renderItem = ({ item }: { item: CardItem }) => (
     <TouchableOpacity style={styles.card} onPress={() => router.push(`/deck/${item.id}`)} activeOpacity={0.8}>
       {cardImages[item.id] ? (
-        <Image source={{ uri: cardImages[item.id] }} style={styles.cardImage} resizeMode="cover" />
+        <Image source={cardImages[item.id]!} style={styles.cardImage} resizeMode="cover" />
       ) : (
         <LinearGradient colors={["#2C3E50", "#34495E"]} style={styles.cardFallback}>
           <Text style={styles.cardEmoji}>🎴</Text>
@@ -160,12 +160,16 @@ const styles = StyleSheet.create({
   filterText: { color: '#B8B8B8', fontSize: 12 },
   filterTextActive: { color: '#E8E8E8', fontWeight: '600' },
   listContent: { paddingHorizontal: 12, paddingBottom: 24 },
-  card: { flex: 1, margin: 8, height: 220, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111' },
+  // Пропорция плитки = пропорция скана карты (350x600), поэтому иллюстрация
+  // заполняет её целиком и ничего не обрезается ни на телефоне, ни на широком экране
+  card: { flex: 1, maxWidth: 220, margin: 8, aspectRatio: 350 / 600, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111' },
   cardImage: { width: '100%', height: '100%' },
   cardFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   cardEmoji: { fontSize: 40, marginBottom: 8 },
   cardName: { color: '#E8E8E8', fontSize: 14, textAlign: 'center', paddingHorizontal: 8 },
-  cardLabel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 6, paddingHorizontal: 8 },
+  // Плашка кроет нижнюю кромку скана, где напечатано английское название карты,
+  // поэтому она почти непрозрачная — иначе два названия наезжают друг на друга
+  cardLabel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', paddingVertical: 6, paddingHorizontal: 8 },
   cardLabelText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: '#B8B8B8', marginTop: 8 },

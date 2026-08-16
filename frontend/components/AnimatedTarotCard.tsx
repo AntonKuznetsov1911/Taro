@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -16,7 +16,7 @@ interface TarotCard {
   id: number;
   name: string;
   type: string;
-  image?: string;
+  image?: ImageSourcePropType;
   keywords: string[];
   is_reversed: boolean;
 }
@@ -129,7 +129,13 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
 
     return {
       opacity: backOpacity,
-      backfaceVisibility: 'hidden' as const,
+      // Без backfaceVisibility: 'hidden'. Родитель при открытии повёрнут на 180°,
+      // и лицо карты доворачивается ещё на 180°, чтобы не быть зеркальным.
+      // На вебе (react-native-web) у родителя нет transform-style: preserve-3d,
+      // поэтому поворот ребёнка сплющивается в плоскость родителя и браузер
+      // считает грань «обратной» — с 'hidden' лицевая сторона просто исчезала.
+      // Какая грань видна, полностью решает opacity выше, так что скрытие
+      // по backface не нужно ни на вебе, ни на нативе.
       transform: [{ rotateY: '180deg' }],
     };
   });
@@ -166,8 +172,9 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
             {card.image ? (
               <View style={styles.cardContent}>
                 <Image
-                  source={{ uri: card.image }}
-                  style={styles.cardImage}
+                  source={card.image}
+                  // Перевёрнутая карта — тот же скан, развёрнутый на 180°
+                  style={[styles.cardImage, card.is_reversed && styles.cardImageReversed]}
                   resizeMode="cover"
                 />
                 <View style={styles.cardOverlay}>
@@ -242,12 +249,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  cardImageReversed: {
+    transform: [{ rotate: '180deg' }],
+  },
   cardOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    // Кроет нижнюю кромку скана с напечатанным английским названием,
+    // иначе оно просвечивает сквозь русскую подпись
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     padding: 10,
   },
   cardName: {

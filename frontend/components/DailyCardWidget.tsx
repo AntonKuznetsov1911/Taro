@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +37,7 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   const [isLoading, setIsLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [cardBackImage, setCardBackImage] = useState<string>('');
-  const [cardFrontImage, setCardFrontImage] = useState<string>('');
+  const [cardFrontImage, setCardFrontImage] = useState<ImageSourcePropType | undefined>(undefined);
 
   const scale = useSharedValue(0);
   const containerOpacity = useSharedValue(0);
@@ -161,8 +162,9 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
               <View style={styles.revealedContent}>
                 {cardFrontImage ? (
                   <Image
-                    source={{ uri: cardFrontImage }}
-                    style={styles.cardImage}
+                    source={cardFrontImage}
+                    // Перевёрнутая карта — тот же скан, развёрнутый на 180°
+                    style={[styles.cardImage, dailyCard.is_reversed && styles.cardImageReversed]}
                     resizeMode="cover"
                   />
                 ) : (
@@ -304,6 +306,9 @@ const styles = StyleSheet.create({
     width: 85,
     height: '100%',
     borderRadius: 6,
+  },
+  cardImageReversed: {
+    transform: [{ rotate: '180deg' }],
   },
   cardImageFallback: {
     width: 85,
