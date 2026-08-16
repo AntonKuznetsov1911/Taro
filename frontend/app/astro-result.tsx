@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { readingsStorage } from '../src/utils/storage';
+import { stripMarkdown } from '../src/utils/stripMarkdown';
 
 // Безопасный разбор JSON из параметров навигации
 const parseStringList = (raw: unknown): string[] => {
@@ -55,7 +56,7 @@ export default function AstroResultScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Мой астропсихологический портрет\n\n${analysisText}${
+        message: `Мой астропсихологический портрет\n\n${stripMarkdown(analysisText)}${
           lifePath ? `\n\nЖизненный путь: ${lifePath}` : ''
         }${currentPhase ? `\n\nТекущая фаза: ${currentPhase}` : ''}`,
       });

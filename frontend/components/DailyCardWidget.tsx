@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack, DailyAstrology } from '../src/utils/offlineApi';
 import { TarotCard } from '../src/data/tarotCards';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playFlip, playReveal } from '../src/utils/sound';
 
 interface DailyCardData {
   card: TarotCard;
@@ -38,13 +40,19 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   const [revealed, setRevealed] = useState(false);
   const [cardBackImage, setCardBackImage] = useState<string>('');
   const [cardFrontImage, setCardFrontImage] = useState<ImageSourcePropType | undefined>(undefined);
+  const settings = useSettings();
 
   const scale = useSharedValue(0);
   const containerOpacity = useSharedValue(0);
   const flipProgress = useSharedValue(0);
 
+  const revealChimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     loadDailyCard();
+    return () => {
+      if (revealChimeTimer.current) clearTimeout(revealChimeTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -73,6 +81,17 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
     if (!revealed) {
       setRevealed(true);
       flipProgress.value = withTiming(1, { duration: 600 });
+
+      const soundOptions = {
+        soundEnabled: settings.soundEnabled,
+        vibration: settings.vibration,
+        volume: settings.effectsVolume,
+      };
+      // Сначала шорох переворота, затем — тёплый тон раскрытия
+      void playFlip(soundOptions);
+      revealChimeTimer.current = setTimeout(() => {
+        void playReveal(soundOptions);
+      }, 420);
     }
   };
 

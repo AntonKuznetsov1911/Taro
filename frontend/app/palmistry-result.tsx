@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { readingsStorage } from '../src/utils/storage';
+import { stripMarkdown } from '../src/utils/stripMarkdown';
 
 // Совпадает с PalmLine из src/utils/offlineApi.ts
 interface PalmLine {
@@ -142,7 +143,7 @@ export default function PalmistryResultScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Гадание по руке\n\nВопрос: ${question}\n\nТолкование:\n${interpretation}`,
+        message: `Гадание по руке\n\nВопрос: ${question}\n\nТолкование:\n${stripMarkdown(interpretation)}`,
       });
     } catch (error) {
       console.error('Error sharing:', error);

@@ -14,6 +14,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playShuffle } from '../src/utils/sound';
 
 const CATEGORIES = {
   love: { name: 'Любовь', icon: '❤️', color: '#FF6B9D' },
@@ -39,6 +41,7 @@ export default function QuestionScreen() {
   
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const settings = useSettings();
 
   const categoryKey = (category && category in CATEGORIES
     ? category
@@ -57,7 +60,14 @@ export default function QuestionScreen() {
     }
 
     setIsLoading(true);
-    
+
+    // Колода тасуется — звук запускается внутри жеста пользователя
+    void playShuffle({
+      soundEnabled: settings.soundEnabled,
+      vibration: settings.vibration,
+      volume: settings.effectsVolume,
+    });
+
     try {
       router.push({
         pathname: '/reading',

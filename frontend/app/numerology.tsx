@@ -11,18 +11,28 @@ import {
   calculatePersonalYear,
   getNumberMeaning
 } from '../src/data/numerologyKnowledge';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playComplete } from '../src/utils/sound';
 
 export default function NumerologyScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const settings = useSettings();
 
   const handleAnalyze = () => {
     if (!name.trim()) {
       alert('Пожалуйста, введите ваше имя');
       return;
     }
+
+    // Расчёт завершён — мягкий восходящий перезвон
+    void playComplete({
+      soundEnabled: settings.soundEnabled,
+      vibration: settings.vibration,
+      volume: settings.effectsVolume,
+    });
 
     const dateString = birthDate.toISOString().split('T')[0];
     const lifePathNumber = calculateLifePathNumber(dateString);

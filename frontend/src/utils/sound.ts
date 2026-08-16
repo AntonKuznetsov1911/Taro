@@ -1,77 +1,107 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { playCue, primeAudio } from './audio';
 
-// Web audio context for sound effects
-let webAudioCtx: AudioContext | null = null;
+/**
+ * Тонкая обёртка над синтезатором: связывает настройки приложения
+ * (звук / вибрация / громкость эффектов) со звуковой палитрой.
+ *
+ * Контракт вызова намеренно сохранён прежним:
+ *   play*({ soundEnabled, vibration, volume })
+ */
+export type SoundOptions = {
+  soundEnabled: boolean;
+  vibration: boolean;
+  volume?: number;
+};
 
-function webBeep(durationMs: number, freq: number, volume = 0.3) {
-  if (typeof window === 'undefined') return;
+type HapticKind = 'selection' | 'soft' | 'light' | 'medium' | 'success';
+
+async function haptic(kind: HapticKind, enabled: boolean) {
+  if (!enabled || Platform.OS === 'web') return;
   try {
-    // @ts-ignore
-    const AC = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return;
-    if (!webAudioCtx) webAudioCtx = new AC();
-    if (webAudioCtx.state === 'suspended') webAudioCtx.resume();
-
-    const osc = webAudioCtx.createOscillator();
-    const gain = webAudioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.value = volume;
-    osc.connect(gain);
-    gain.connect(webAudioCtx.destination);
-    const now = webAudioCtx.currentTime;
-    osc.start(now);
-    osc.stop(now + durationMs / 1000);
+    switch (kind) {
+      case 'selection':
+        await Haptics.selectionAsync();
+        break;
+      case 'soft':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+        break;
+      case 'light':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        break;
+      case 'medium':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case 'success':
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        break;
+    }
   } catch {
-    // Ignore audio errors
+    // Тактильная отдача необязательна
   }
 }
 
-export async function playClick(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
+function volumeOf(opts: SoundOptions, fallback: number): number {
+  const raw = typeof opts.volume === 'number' ? opts.volume : fallback;
+  return Math.max(0, Math.min(1, raw));
+}
+
+async function play(
+  cue: Parameters<typeof playCue>[0],
+  kind: HapticKind,
+  opts: SoundOptions,
+  fallbackVolume: number
+) {
   try {
-    if (opts.vibration && Platform.OS !== 'web') {
-      await Haptics.selectionAsync();
-    }
+    await haptic(kind, opts.vibration);
     if (!opts.soundEnabled) return;
-    const vol = Math.max(0, Math.min(1, opts.volume ?? 0.7));
-    if (Platform.OS === 'web') {
-      webBeep(50, 800, vol * 0.3);
-    }
+    playCue(cue, volumeOf(opts, fallbackVolume));
   } catch {
-    // Ignore errors
+    // Звук не должен ломать пользовательский сценарий
   }
 }
 
-export async function playFlip(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
-  try {
-    if (opts.vibration && Platform.OS !== 'web') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-    }
-    if (!opts.soundEnabled) return;
-    const vol = Math.max(0, Math.min(1, opts.volume ?? 0.7));
-    if (Platform.OS === 'web') {
-      webBeep(100, 400, vol * 0.2);
-      setTimeout(() => webBeep(80, 600, vol * 0.15), 50);
-    }
-  } catch {
-    // Ignore errors
-  }
+/** Обычное касание / выбор пункта. */
+export async function playClick(opts: SoundOptions) {
+  await play('tap', 'selection', opts, 0.7);
 }
 
-export async function playReveal(opts: { soundEnabled: boolean; vibration: boolean; volume?: number }) {
-  try {
-    if (opts.vibration && Platform.OS !== 'web') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    if (!opts.soundEnabled) return;
-    const vol = Math.max(0, Math.min(1, opts.volume ?? 0.8));
-    if (Platform.OS === 'web') {
-      webBeep(150, 523, vol * 0.2); // C5
-      setTimeout(() => webBeep(150, 659, vol * 0.15), 100); // E5
-      setTimeout(() => webBeep(200, 784, vol * 0.1), 200); // G5
-    }
-  } catch {
-    // Ignore errors
-  }
+/** Алиас для читаемости в местах выбора варианта. */
+export async function playSelect(opts: SoundOptions) {
+  await play('tap', 'selection', opts, 0.7);
+}
+
+/** Переворот карты. */
+export async function playFlip(opts: SoundOptions) {
+  await play('flip', 'soft', opts, 0.7);
+}
+
+/** Раскрытие карты / всех карт. */
+export async function playReveal(opts: SoundOptions) {
+  await play('reveal', 'light', opts, 0.8);
+}
+
+/** Перемешивание колоды в начале расклада. */
+export async function playShuffle(opts: SoundOptions) {
+  await play('shuffle', 'medium', opts, 0.7);
+}
+
+/** Вытягивание рун. */
+export async function playDraw(opts: SoundOptions) {
+  await play('draw', 'medium', opts, 0.7);
+}
+
+/** Завершение расчёта (совместимость, нумерология и т. п.). */
+export async function playComplete(opts: SoundOptions) {
+  await play('chime', 'success', opts, 0.8);
+}
+
+/**
+ * Разогрев аудиодвижка внутри жеста пользователя (веб).
+ * На нативных платформах — no-op.
+ */
+export function warmUpSound() {
+  if (Platform.OS !== 'web') return;
+  primeAudio();
 }

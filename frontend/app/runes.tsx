@@ -4,17 +4,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { drawRunes, isReversed, RUNE_SPREADS } from '../src/data/runesKnowledge';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playDraw } from '../src/utils/sound';
 
 export default function RunesScreen() {
   const router = useRouter();
   const [question, setQuestion] = useState('');
   const [selectedSpread, setSelectedSpread] = useState<'one' | 'three' | 'cross'>('one');
+  const settings = useSettings();
 
   const handleDraw = () => {
     if (!question.trim()) {
       alert('Задайте вопрос рунам');
       return;
     }
+
+    // Шорох мешочка с рунами
+    void playDraw({
+      soundEnabled: settings.soundEnabled,
+      vibration: settings.vibration,
+      volume: settings.effectsVolume,
+    });
 
     const spreadCounts = { one: 1, three: 3, cross: 6 };
     const runes = drawRunes(spreadCounts[selectedSpread]);

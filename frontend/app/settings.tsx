@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useSettings } from '../src/contexts/SettingsContext';
+import { playClick, playReveal } from '../src/utils/sound';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 
 export default function SettingsScreen() {
@@ -25,6 +26,10 @@ export default function SettingsScreen() {
   const { profile, clearProfile } = useUserProfile();
 
   const [trackWidth, setTrackWidth] = useState(1);
+
+  // PanResponder создаётся один раз, поэтому актуальные настройки берём из ссылки
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const thumbLeft = Math.max(0, Math.min(trackWidth - 20, trackWidth * settings.effectsVolume - 10));
   const fillWidth = Math.max(0, Math.min(trackWidth, trackWidth * settings.effectsVolume));
 
@@ -46,6 +51,15 @@ export default function SettingsScreen() {
         const v = Math.max(0, Math.min(1, x / trackWidth));
         settings.setEffectsVolume(v);
       },
+      onPanResponderRelease: () => {
+        // Короткий пример звука на выбранной громкости
+        const current = settingsRef.current;
+        void playClick({
+          soundEnabled: current.soundEnabled,
+          vibration: current.vibration,
+          volume: current.effectsVolume,
+        });
+      },
     })
   ).current;
 
@@ -58,9 +72,19 @@ export default function SettingsScreen() {
       case 'notifications':
         settings.setNotifications(!settings.notifications);
         break;
-      case 'soundEnabled':
-        settings.setSoundEnabled(!settings.soundEnabled);
+      case 'soundEnabled': {
+        const next = !settings.soundEnabled;
+        settings.setSoundEnabled(next);
+        // При включении сразу даём послушать тембр приложения
+        if (next) {
+          void playReveal({
+            soundEnabled: true,
+            vibration: settings.vibration,
+            volume: settings.effectsVolume,
+          });
+        }
         break;
+      }
       case 'autoSave':
         settings.setAutoSave(!settings.autoSave);
         break;

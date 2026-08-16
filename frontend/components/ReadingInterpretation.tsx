@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { stripMarkdown } from '../src/utils/stripMarkdown';
 
 interface ReadingInterpretationProps {
   interpretation: string;
@@ -27,18 +28,15 @@ export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
   category,
   spreadType,
 }) => {
-  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
-    overview: true,
-    details: true,
-    interactions: true,
-    recommendations: true,
-    conclusion: true,
-  });
+  // По умолчанию все разделы раскрыты: в состоянии хранятся только свёрнутые.
+  const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
 
   const sections = parseInterpretationSections(interpretation);
 
+  const isExpanded = (sectionKey: string) => !collapsedSections[sectionKey];
+
   const toggleSection = (sectionKey: string) => {
-    setExpandedSections((prev) => ({
+    setCollapsedSections((prev) => ({
       ...prev,
       [sectionKey]: !prev[sectionKey],
     }));
@@ -51,9 +49,8 @@ export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
 Вопрос: "${question}"
 Расклад: ${spreadType}
 
-${interpretation}
+${stripMarkdown(interpretation)}
 
----
 Приложение Taro - мистические гадания
 `;
 
@@ -77,7 +74,7 @@ ${interpretation}
 
   const handleCopy = async () => {
     try {
-      await Clipboard.setStringAsync(interpretation);
+      await Clipboard.setStringAsync(stripMarkdown(interpretation));
       Alert.alert('✅ Скопировано', 'Толкование скопировано в буфер обмена');
     } catch (error) {
       Alert.alert('Ошибка', 'Не удалось скопировать текст');
@@ -120,14 +117,14 @@ ${interpretation}
               key={index}
               style={[
                 styles.navButton,
-                expandedSections[section.key] && styles.navButtonActive,
+                isExpanded(section.key) && styles.navButtonActive,
               ]}
               onPress={() => toggleSection(section.key)}
             >
               <Text
                 style={[
                   styles.navButtonText,
-                  expandedSections[section.key] && styles.navButtonTextActive,
+                  isExpanded(section.key) && styles.navButtonTextActive,
                 ]}
               >
                 {section.icon} {section.title}
@@ -153,13 +150,13 @@ ${interpretation}
                 {section.icon} {section.title}
               </Text>
               <Ionicons
-                name={expandedSections[section.key] ? 'chevron-up' : 'chevron-down'}
+                name={isExpanded(section.key) ? 'chevron-up' : 'chevron-down'}
                 size={20}
                 color="#9B59B6"
               />
             </TouchableOpacity>
 
-            {expandedSections[section.key] && (
+            {isExpanded(section.key) && (
               <View style={styles.sectionContent}>
                 <MarkdownRenderer content={section.content} />
               </View>
@@ -197,8 +194,21 @@ function parseInterpretationSections(interpretation: string): Array<{
 }> {
   const sections: Array<{ key: string; title: string; icon: string; content: string }> = [];
 
-  // Split by ## headers
-  const parts = interpretation.split(/(?=##\s)/);
+  // Разбиваем по заголовкам второго уровня («## »). Важно не задевать «### »:
+  // заголовки третьего уровня остаются внутри содержимого и рендерятся
+  // компонентом MarkdownRenderer.
+  const parts: string[] = [];
+  let current: string[] = [];
+
+  for (const line of (interpretation ?? '').split('\n')) {
+    if (/^##(?!#)\s/.test(line)) {
+      if (current.length > 0) parts.push(current.join('\n'));
+      current = [line];
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length > 0) parts.push(current.join('\n'));
 
   for (const part of parts) {
     const lines = part.trim().split('\n');
@@ -207,8 +217,9 @@ function parseInterpretationSections(interpretation: string): Array<{
     const firstLine = lines[0];
 
     // Check if it's a header
-    if (firstLine.startsWith('## ')) {
-      const title = firstLine.substring(3).trim();
+    if (/^##(?!#)\s/.test(firstLine)) {
+      // Заголовок секции показывается обычным <Text>, поэтому markdown из него убираем
+      const title = stripMarkdown(firstLine.replace(/^##\s*/, ''));
       const content = lines.slice(1).join('\n').trim();
 
       let key = 'section';
@@ -232,12 +243,13 @@ function parseInterpretationSections(interpretation: string): Array<{
         icon = '🌙';
       }
 
-      sections.push({ key, title, icon, content });
+      // Ключ должен быть уникальным: одинаковые разделы иначе сворачиваются вместе
+      sections.push({ key: `${key}-${sections.length}`, title, icon, content });
     } else {
       // Content before first header
       if (part.trim()) {
         sections.push({
-          key: 'intro',
+          key: `intro-${sections.length}`,
           title: 'Введение',
           icon: '✨',
           content: part.trim(),

@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CosmicBackground } from '../components/CosmicBackground';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { generateOfflinePalmResult, PalmLine } from '../src/utils/offlineApi';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -246,7 +247,7 @@ export default function PalmistryScreen() {
             </View>
             
             <View style={styles.interpretationContainer}>
-              <Text style={styles.interpretationText}>{result.interpretation}</Text>
+              <MarkdownRenderer content={result.interpretation} />
             </View>
           </View>
 

@@ -17,6 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getRandomCards } from '../src/data/tarotCards';
 import { getDailyAstrology } from '../src/utils/astrology';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playComplete, playSelect } from '../src/utils/sound';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 interface CompatibilityResult {
   name1: string;
@@ -176,6 +179,7 @@ export default function CompatibilityScreen() {
   const [name2, setName2] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CompatibilityResult | null>(null);
+  const settings = useSettings();
 
   const analyzeCompatibility = async () => {
     if (!name1.trim() || !name2.trim()) {
@@ -184,6 +188,7 @@ export default function CompatibilityScreen() {
     }
 
     setIsLoading(true);
+    void playSelect({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
 
     try {
       // Имитация загрузки для UX
@@ -191,6 +196,7 @@ export default function CompatibilityScreen() {
 
       const data = generateCompatibilityAnalysis(name1.trim(), name2.trim());
       setResult(data);
+      void playComplete({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
     } catch (error) {
       console.error('Error analyzing compatibility:', error);
       Alert.alert('Ошибка', 'Не удалось проанализировать совместимость. Попробуйте еще раз.');
@@ -263,9 +269,7 @@ export default function CompatibilityScreen() {
             <View style={styles.analysisContainer}>
               <Text style={styles.analysisTitle}>✨ Анализ мудрой гадалки</Text>
               <View style={styles.analysisContent}>
-                <ScrollView style={styles.analysisScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.analysisText}>{result.analysis}</Text>
-                </ScrollView>
+                <MarkdownRenderer content={result.analysis} />
               </View>
             </View>
 
@@ -578,15 +582,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#E74C3C33',
-    maxHeight: 300,
-  },
-  analysisScroll: {
-    maxHeight: 260,
-  },
-  analysisText: {
-    fontSize: 16,
-    color: '#E8E8E8',
-    lineHeight: 24,
   },
   actionsContainer: {
     flexDirection: 'row',

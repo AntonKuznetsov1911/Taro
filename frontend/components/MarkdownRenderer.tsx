@@ -12,62 +12,54 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     let key = 0;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i].trim();
 
       // Empty line
-      if (line.trim() === '') {
+      if (line === '') {
         elements.push(<View key={key++} style={styles.spacer} />);
         continue;
       }
 
-      // Headers
-      if (line.startsWith('### ')) {
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      const hrMatch = /^([-*_])[ \t]*(?:\1[ \t]*){2,}$/.test(line);
+      const bulletMatch = line.match(/^[-*+][ \t]+(.*)$/);
+      const numberedMatch = line.match(/^(\d+)\.[ \t]+(.*)$/);
+
+      // Headers (# / ## / ### ...)
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingStyle = level === 1 ? styles.h1 : level === 2 ? styles.h2 : styles.h3;
         elements.push(
-          <Text key={key++} style={styles.h3}>
-            {parseInlineMarkdown(line.substring(4))}
-          </Text>
-        );
-      } else if (line.startsWith('## ')) {
-        elements.push(
-          <Text key={key++} style={styles.h2}>
-            {parseInlineMarkdown(line.substring(3))}
-          </Text>
-        );
-      } else if (line.startsWith('# ')) {
-        elements.push(
-          <Text key={key++} style={styles.h1}>
-            {parseInlineMarkdown(line.substring(2))}
+          <Text key={key++} style={headingStyle}>
+            {parseInlineMarkdown(headingMatch[2])}
           </Text>
         );
       }
-      // Horizontal rule
-      else if (line.trim() === '---') {
+      // Horizontal rule (---, ***, ___)
+      else if (hrMatch) {
         elements.push(<View key={key++} style={styles.hr} />);
       }
       // Bullet list
-      else if (line.trim().startsWith('- ')) {
+      else if (bulletMatch) {
         elements.push(
           <View key={key++} style={styles.listItem}>
             <Text style={styles.bullet}>•</Text>
             <Text style={styles.listText}>
-              {parseInlineMarkdown(line.trim().substring(2))}
+              {parseInlineMarkdown(bulletMatch[1])}
             </Text>
           </View>
         );
       }
       // Numbered list
-      else if (/^\d+\.\s/.test(line.trim())) {
-        const match = line.trim().match(/^(\d+)\.\s(.+)/);
-        if (match) {
-          elements.push(
-            <View key={key++} style={styles.listItem}>
-              <Text style={styles.number}>{match[1]}.</Text>
-              <Text style={styles.listText}>
-                {parseInlineMarkdown(match[2])}
-              </Text>
-            </View>
-          );
-        }
+      else if (numberedMatch) {
+        elements.push(
+          <View key={key++} style={styles.listItem}>
+            <Text style={styles.number}>{numberedMatch[1]}.</Text>
+            <Text style={styles.listText}>
+              {parseInlineMarkdown(numberedMatch[2])}
+            </Text>
+          </View>
+        );
       }
       // Regular paragraph
       else {
@@ -82,6 +74,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     return elements;
   };
 
+  // Служебные символы разметки не должны попадать на экран: непарные * и #
+  // (например, «5 * 3» или обрезанный заголовок) убираем из обычного текста.
+  const cleanLeftovers = (text: string): string =>
+    text.replace(/\*+/g, '').replace(/(^|\s)#{1,6}(?=\s|$)/g, '$1').replace(/[ \t]{2,}/g, ' ');
+
   const parseInlineMarkdown = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
     let remaining = text;
@@ -94,7 +91,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         // Add text before
         if (boldMatch.index > 0) {
           parts.push(
-            <Text key={key++}>{remaining.substring(0, boldMatch.index)}</Text>
+            <Text key={key++}>{cleanLeftovers(remaining.substring(0, boldMatch.index))}</Text>
           );
         }
         // Add bold text
@@ -112,7 +109,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
       if (italicMatch && italicMatch.index !== undefined) {
         if (italicMatch.index > 0) {
           parts.push(
-            <Text key={key++}>{remaining.substring(0, italicMatch.index)}</Text>
+            <Text key={key++}>{cleanLeftovers(remaining.substring(0, italicMatch.index))}</Text>
           );
         }
         parts.push(
@@ -125,7 +122,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
       }
 
       // No more markdown, add remaining text
-      parts.push(<Text key={key++}>{remaining}</Text>);
+      parts.push(<Text key={key++}>{cleanLeftovers(remaining)}</Text>);
       break;
     }
 

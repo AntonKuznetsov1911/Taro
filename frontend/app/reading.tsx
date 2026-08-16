@@ -121,16 +121,25 @@ export default function ReadingScreen() {
     }
   };
 
+  const soundOptions = () => ({
+    soundEnabled: settings.soundEnabled,
+    vibration: settings.vibration,
+    volume: settings.effectsVolume,
+  });
+
   const revealCard = async (index: number) => {
     const newRevealed = [...cardsRevealed];
     newRevealed[index] = true;
     setCardsRevealed(newRevealed);
-    await playFlip({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
+    // Шорох переворота, а следом — тёплый тон раскрытия
+    await playFlip(soundOptions());
+    setTimeout(() => { void playReveal(soundOptions()); }, 420);
   };
 
   const revealAllCards = async () => {
     setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
-    await playReveal({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
+    await playFlip(soundOptions());
+    setTimeout(() => { void playReveal(soundOptions()); }, 380);
   };
 
   if (isLoading) {

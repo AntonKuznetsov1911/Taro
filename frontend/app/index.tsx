@@ -18,6 +18,8 @@ import { useRouter } from 'expo-router';
 import { DailyCardWidget } from '../components/DailyCardWidget';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { playSelect, playShuffle } from '../src/utils/sound';
 import { wasOnboardingSeen } from '../src/utils/onboarding';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -234,6 +236,7 @@ const FeatureButton = ({ feature, index }: { feature: MysticFeature; index: numb
 export default function CosmicIndex() {
   const router = useRouter();
   const { profile, isLoading, hasProfile, getGreeting, isBirthday } = useUserProfile();
+  const settings = useSettings();
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const [selectedSpread, setSelectedSpread] = React.useState<string | null>(null);
 
@@ -276,8 +279,26 @@ export default function CosmicIndex() {
     ]).start();
   }, []);
 
+  const soundOptions = () => ({
+    soundEnabled: settings.soundEnabled,
+    vibration: settings.vibration,
+    volume: settings.effectsVolume,
+  });
+
+  const selectCategory = (id: string) => {
+    setSelectedCategory(id);
+    void playSelect(soundOptions());
+  };
+
+  const selectSpread = (id: string) => {
+    setSelectedSpread(id);
+    void playSelect(soundOptions());
+  };
+
   const startReading = () => {
     if (selectedCategory && selectedSpread) {
+      // Перед раскладом слышно, как тасуется колода
+      void playShuffle(soundOptions());
       router.push({
         pathname: '/question',
         params: { category: selectedCategory, spread: selectedSpread }
@@ -351,7 +372,7 @@ export default function CosmicIndex() {
                   key={category.id}
                   category={category}
                   isSelected={selectedCategory === category.id}
-                  onPress={() => setSelectedCategory(category.id)}
+                  onPress={() => selectCategory(category.id)}
                   index={index}
                 />
               ))}
@@ -371,7 +392,7 @@ export default function CosmicIndex() {
                     styles.spreadCard,
                     selectedSpread === spread.id && styles.spreadCardSelected
                   ]}
-                  onPress={() => setSelectedSpread(spread.id)}
+                  onPress={() => selectSpread(spread.id)}
                   activeOpacity={0.8}
                 >
                   <View style={styles.spreadContent}>
