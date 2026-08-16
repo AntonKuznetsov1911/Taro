@@ -124,7 +124,7 @@ export default function CardTestScreen() {
           </TouchableOpacity>
           
           <Text style={styles.instruction}>
-            {revealed ? 'Нажмите чтобы закрыть' : 'Нажмите чтобы открыть'} карту
+            {revealed ? 'Нажмите, чтобы закрыть' : 'Нажмите, чтобы открыть'} карту
           </Text>
           
           <View style={styles.debugInfo}>

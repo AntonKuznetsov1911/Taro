@@ -14,14 +14,14 @@ function generateCardInterpretation(card: TarotCard, isReversed: boolean): strin
 
   const introductions = [
     `${card.name} несёт глубокое послание для вас.`,
-    `Энергия ${card.name} влияет на вашу текущую ситуацию.`,
+    `Энергия карты «${card.name}» влияет на вашу текущую ситуацию.`,
     `${card.name} открывает важные аспекты вашего пути.`,
   ];
 
   const advices = [
-    `Обратите внимание на ${card.keywords[0]} в вашей жизни.`,
+    `Обратите внимание на тему «${card.keywords[0]}» в вашей жизни.`,
     `Ключевой аспект сейчас — ${card.keywords.slice(0, 2).join(' и ')}.`,
-    `Сосредоточьтесь на развитии ${card.keywords[0]}.`,
+    `Сосредоточьтесь на развитии качества «${card.keywords[0]}».`,
   ];
 
   const conclusions = [

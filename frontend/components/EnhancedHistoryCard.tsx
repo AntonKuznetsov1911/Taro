@@ -212,7 +212,7 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
                 </View>
               ) : (
                 <Text style={styles.notesText}>
-                  {notes || 'Нет заметок. Нажмите ✏️ чтобы добавить.'}
+                  {notes || 'Нет заметок. Нажмите ✏️, чтобы добавить.'}
                 </Text>
               )}
             </View>

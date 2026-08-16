@@ -248,7 +248,7 @@ export default function HoroscopeScreen() {
     }
 
     // Добавляем контекст карты Таро
-    personalizedText += `\n\n🎴 Карта дня — ${card.name} — усиливает энергии ${card.keywords.slice(0, 2).join(' и ')}.`;
+    personalizedText += `\n\n🎴 Карта дня — ${card.name} — усиливает энергии: ${card.keywords.slice(0, 2).join(' и ')}.`;
 
     // Рассчитываем рейтинг настроения на основе астрологии
     let moodRating = 7;
@@ -454,7 +454,7 @@ export default function HoroscopeScreen() {
                   <Text style={styles.moonValue}>{horoscope.moonPhase}</Text>
                 </View>
                 <View style={styles.moonItem}>
-                  <Text style={styles.moonLabel}>Луна в</Text>
+                  <Text style={styles.moonLabel}>Луна в знаке</Text>
                   <Text style={styles.moonValue}>{horoscope.moonSign}</Text>
                 </View>
               </View>

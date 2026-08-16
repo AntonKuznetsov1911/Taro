@@ -398,9 +398,9 @@ export function formatAstrologyForReading(astrology: DailyAstrology): string {
   let text = `🌙 **Лунный календарь**\n`;
   text += `${astrology.moon.emoji} ${astrology.moon.phaseNameRu} (${astrology.moon.illumination}%)\n`;
   text += `Лунный день: ${astrology.moon.lunarDay}\n`;
-  text += `Луна в ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n\n`;
+  text += `Луна в знаке ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n\n`;
 
-  text += `☀️ **Солнце в ${astrology.sunSign.nameRu}** ${astrology.sunSign.symbol}\n`;
+  text += `☀️ **Солнце в знаке ${astrology.sunSign.nameRu}** ${astrology.sunSign.symbol}\n`;
   text += `Стихия: ${astrology.sunSign.elementRu}\n\n`;
 
   text += `📅 **${astrology.dayOfWeekRu}**\n`;

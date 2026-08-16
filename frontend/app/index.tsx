@@ -69,7 +69,7 @@ const MYSTIC_FEATURES: MysticFeature[] = [
   { id: 'numerology', name: 'Нумерология', icon: '🔢', description: 'Число судьбы', route: '/numerology', color: '#2ECC71' },
   { id: 'deck', name: 'Каталог колоды', icon: '🃏', description: 'Все 78 карт', route: '/deck', color: '#9B59B6' },
   { id: 'history', name: 'История', icon: '📜', description: 'Сохранённые гадания', route: '/history', color: '#E67E22' },
-  { id: 'settings', name: 'Настройки', icon: '⚙️', description: 'Звук и оформление', route: '/settings', color: '#7F8C8D' },
+  { id: 'settings', name: 'Настройки', icon: '⚙️', description: 'Звук и уведомления', route: '/settings', color: '#7F8C8D' },
 ];
 
 // Animated Category Card Component
@@ -323,7 +323,7 @@ export default function CosmicIndex() {
             {isBirthday() && (
               <Text style={styles.birthdayText}>🎂 С Днём Рождения! 🎂</Text>
             )}
-            <Text style={styles.mainTitle}>ТARO</Text>
+            <Text style={styles.mainTitle}>TARO</Text>
             <View style={styles.subtitleContainer}>
               {profile?.sunSign ? (
                 <Text style={styles.subtitle}>

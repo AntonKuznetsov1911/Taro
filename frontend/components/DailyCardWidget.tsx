@@ -181,7 +181,7 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
                   )}
                   {dailyCard.astrology && (
                     <Text style={styles.moonInfo}>
-                      {dailyCard.astrology.moon.moonSign.symbol} Луна в {dailyCard.astrology.moon.moonSign.nameRu}
+                      {dailyCard.astrology.moon.moonSign.symbol} Луна в знаке {dailyCard.astrology.moon.moonSign.nameRu}
                     </Text>
                   )}
                   <Text style={styles.message} numberOfLines={2}>{dailyCard.message}</Text>

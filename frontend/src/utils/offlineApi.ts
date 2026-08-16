@@ -68,14 +68,14 @@ function generateDetailedInterpretation(cards: TarotCard[], question?: string, p
     interpretation += `**Гармония с Луной:** ${compatibility.score}%\n\n`;
   }
 
-  interpretation += `**Луна:** ${astrology.moon.phaseNameRu} в ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n`;
+  interpretation += `**Луна:** ${astrology.moon.phaseNameRu} в знаке ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n`;
   interpretation += `**Лунный день:** ${astrology.moon.lunarDay} | **Освещённость:** ${astrology.moon.illumination}%\n`;
   interpretation += `**День:** ${astrology.dayOfWeekRu} — день ${astrology.rulingPlanetRu}\n`;
 
   if (retrograde.length > 0) {
     interpretation += `⚠️ **Ретроград:** ${retrograde.join(', ')}\n`;
     if (profile?.sunSign) {
-      interpretation += `*Влияние на ${profile.sunSign.nameRu}: будьте внимательны в коммуникации*\n`;
+      interpretation += `*Влияние на знак ${profile.sunSign.nameRu}: будьте внимательны в коммуникации*\n`;
     }
   }
   interpretation += `\n---\n\n`;
@@ -158,10 +158,10 @@ export async function getOfflineDailyCard(): Promise<{
     : 'Убывающая луна призывает к рефлексии';
 
   const messages = [
-    `${astrology.moon.emoji} ${moonContext}. ${card.name} направляет вас сегодня. ${card.keywords[0]} — ключ к успеху.`,
-    `${astrology.moon.emoji} ${astrology.moon.phaseNameRu}. Энергия ${card.name} освещает ваш путь.`,
-    `${astrology.moon.emoji} Луна в ${astrology.moon.moonSign.nameRu}. ${card.name} несёт важное послание.`,
-    `${astrology.moon.emoji} ${moonContext}. ${card.name} говорит о ${card.keywords.slice(0, 2).join(' и ')}.`
+    `${astrology.moon.emoji} ${moonContext}. ${card.name} направляет вас сегодня. «${card.keywords[0]}» — ключ к успеху.`,
+    `${astrology.moon.emoji} ${astrology.moon.phaseNameRu}. Энергия карты «${card.name}» освещает ваш путь.`,
+    `${astrology.moon.emoji} Луна в знаке ${astrology.moon.moonSign.nameRu}. ${card.name} несёт важное послание.`,
+    `${astrology.moon.emoji} ${moonContext}. Карта «${card.name}» говорит о темах: ${card.keywords.slice(0, 2).join(' и ')}.`
   ];
 
   return {
@@ -536,7 +536,7 @@ ${traits.map(t => `• **${t}**`).join('\n')}
     character_traits: traits,
     life_path: lifePaths[dayIndex % lifePaths.length],
     current_phase: currentPhases[(dayIndex + 2) % currentPhases.length],
-    advice: `Сосредоточьтесь на ${cards[0].keywords[0]} и развивайте ${cards[1].keywords[0]}. Ваш путь освещает ${cards[2].name}.`
+    advice: `Сосредоточьтесь на теме «${cards[0].keywords[0]}» и развивайте качество «${cards[1].keywords[0]}». Ваш путь освещает ${cards[2].name}.`
   };
 }
 
@@ -597,17 +597,17 @@ export async function generateOfflinePalmResult(question?: string): Promise<{
 ### 📍 Линия жизни
 ${cards[0].upright_meaning}
 
-Эта линия указывает на ${cards[0].keywords.slice(0, 2).join(' и ')}. Ваша жизненная энергия сильна и направлена на созидание.
+Эта линия указывает на темы: ${cards[0].keywords.slice(0, 2).join(' и ')}. Ваша жизненная энергия сильна и направлена на созидание.
 
 ### 💖 Линия сердца
 ${cards[1].upright_meaning}
 
-Ваша эмоциональная природа характеризуется ${cards[1].keywords.slice(0, 2).join(' и ')}. В отношениях вы проявляете глубину и искренность.
+Ваша эмоциональная природа характеризуется темами: ${cards[1].keywords.slice(0, 2).join(' и ')}. В отношениях вы проявляете глубину и искренность.
 
 ### 🧠 Линия головы
 ${cards[2].upright_meaning}
 
-Ваш мыслительный процесс отмечен ${cards[2].keywords.slice(0, 2).join(' и ')}. Вы способны видеть связи, скрытые от других.
+Ваш мыслительный процесс отмечен темами: ${cards[2].keywords.slice(0, 2).join(' и ')}. Вы способны видеть связи, скрытые от других.
 
 ---
 
@@ -621,7 +621,7 @@ ${cards[2].upright_meaning}
 
 **Рекомендации:**
 1. Доверяйте своей интуиции в важных вопросах
-2. Развивайте ${cards[0].keywords[0]} как ключевое качество
+2. Развивайте «${cards[0].keywords[0]}» как ключевое качество
 3. Помните, что ваша судьба — в ваших руках
 
 ---

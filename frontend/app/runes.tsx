@@ -48,7 +48,7 @@ export default function RunesScreen() {
               </LinearGradient>
             </View>
             <Text style={styles.title}>Древняя мудрость викингов</Text>
-            <Text style={styles.subtitle}>Elder Futhark - 25 священных рун</Text>
+            <Text style={styles.subtitle}>Старший Футарк — 25 священных рун</Text>
           </View>
 
           <View style={styles.form}>

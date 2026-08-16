@@ -51,7 +51,6 @@ export default function SettingsScreen() {
 
   const languages = [
     { code: 'russian', name: 'Русский', flag: '🇷🇺' },
-    { code: 'english', name: 'English', flag: '🇺🇸' },
   ];
 
   const toggle = (key: 'notifications' | 'soundEnabled' | 'autoSave' | 'vibration') => {
@@ -73,7 +72,6 @@ export default function SettingsScreen() {
 
   const selectLanguage = (languageCode: 'russian' | 'english') => {
     settings.setLanguage(languageCode);
-    Alert.alert('Язык изменен', 'Перезапустите приложение для применения изменений');
   };
 
   const resetSettings = () => {
@@ -218,7 +216,7 @@ export default function SettingsScreen() {
               <Text style={styles.sectionTitle}>🌍 Язык интерфейса</Text>
               <View style={styles.sectionContent}>
                 {languages.map(language => (
-                  <LanguageRow key={language.code} language={language} isSelected={settings.language === language.code} onSelect={() => selectLanguage(language.code as 'russian' | 'english')} />
+                  <LanguageRow key={language.code} language={language} isSelected onSelect={() => selectLanguage(language.code as 'russian' | 'english')} />
                 ))}
               </View>
             </View>
