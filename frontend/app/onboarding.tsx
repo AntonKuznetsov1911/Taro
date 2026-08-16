@@ -16,6 +16,31 @@ import { useRouter } from 'expo-router';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { ZODIAC_SIGNS } from '../src/utils/astrology';
 import { markOnboardingSeen } from '../src/utils/onboarding';
+import { WelcomeBackdrop, CrystalOrb, GoldIcon } from '../components/WelcomeArtwork';
+
+// Заголовок приветствия — «золотая» надпись с мягким свечением.
+// На вебе пробуем настоящий градиент по буквам (background-clip: text),
+// на остальных платформах остаётся сплошное золото с тенью.
+const supportsGradientText =
+  Platform.OS === 'web' &&
+  typeof CSS !== 'undefined' &&
+  typeof CSS.supports === 'function' &&
+  (CSS.supports('-webkit-background-clip', 'text') || CSS.supports('background-clip', 'text'));
+
+const goldGradientText: any = supportsGradientText
+  ? {
+      backgroundImage: 'linear-gradient(178deg, #FFF8E2 0%, #F6DCA0 38%, #E0B45E 68%, #B98431 100%)',
+      WebkitBackgroundClip: 'text',
+      backgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      color: 'transparent',
+    }
+  : null;
+
+const titleGlow: any =
+  Platform.OS === 'web'
+    ? { filter: 'drop-shadow(0 0 14px rgba(255,196,96,0.45)) drop-shadow(0 2px 3px rgba(0,0,0,0.55))' }
+    : null;
 
 type Step = 'welcome' | 'name' | 'gender' | 'birthdate' | 'birthtime' | 'complete';
 
@@ -116,28 +141,44 @@ export default function OnboardingScreen() {
   };
 
   const zodiacPreview = getZodiacPreview();
+  const isWelcome = step === 'welcome';
 
   const renderStep = () => {
     switch (step) {
       case 'welcome':
         return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.welcomeEmoji}>🔮</Text>
-            <Text style={styles.welcomeTitle}>Добро пожаловать в Таро</Text>
+          <View style={styles.welcomeStep}>
+            {/* Хрустальный шар с галактикой на резной золотой подставке.
+                Всё нарисовано в SVG — офлайн, без картинок и шрифтов. */}
+            <View style={styles.orbWrap} pointerEvents="none">
+              <CrystalOrb />
+            </View>
+
+            <View style={styles.welcomeTitleWrap} pointerEvents="none">
+              <Text style={styles.welcomeTitle}>Добро пожаловать в Таро</Text>
+            </View>
+
             <Text style={styles.welcomeSubtitle}>
               Для точных персонализированных прогнозов нам нужно узнать вас немного лучше
             </Text>
+
             <View style={styles.featureList}>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🌙</Text>
+                <View style={styles.featureIconWrap}>
+                  <GoldIcon name="moon" />
+                </View>
                 <Text style={styles.featureText}>Персональный лунный календарь</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>⭐</Text>
+                <View style={styles.featureIconWrap}>
+                  <GoldIcon name="star" />
+                </View>
                 <Text style={styles.featureText}>Прогнозы на основе вашей натальной карты</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🎴</Text>
+                <View style={styles.featureIconWrap}>
+                  <GoldIcon name="candle" />
+                </View>
                 <Text style={styles.featureText}>Таро с учётом вашей энергетики</Text>
               </View>
             </View>
@@ -356,7 +397,25 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.background}>
+      <LinearGradient
+        colors={isWelcome ? ['#05030C', '#160B2E', '#0A0518'] : ['#0a0a0a', '#1a1a2e', '#16213e']}
+        style={styles.background}
+      >
+        {/*
+          Приветственный шаг рисуется во весь экран, поэтому его фон живёт здесь,
+          а не внутри ScrollView с отступами — иначе картинка не была бы full-bleed
+          и не заходила бы под кнопку «Начать».
+
+          WelcomeBackdrop сам решает, что показать:
+          • есть файл assets/onboarding-welcome.png — он растягивается на весь экран
+            и накрывается тёмной вуалью (см. src/utils/onboardingWelcomeImage.ts);
+          • файла нет — рисуется мистическая сцена: ночное небо с туманностью,
+            звёзды с бликами, бархатные портьеры и рубашки карт Таро.
+          Слой не перехватывает нажатия (pointerEvents="none"), чтобы кнопки
+          под ним оставались доступными.
+        */}
+        {isWelcome && <WelcomeBackdrop />}
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -394,7 +453,11 @@ export default function OnboardingScreen() {
             )}
 
             <TouchableOpacity
-              style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]}
+              style={[
+                styles.nextButton,
+                isWelcome && styles.nextButtonWelcome,
+                !canProceed() && styles.nextButtonDisabled,
+              ]}
               onPress={handleNext}
               disabled={!canProceed()}
             >
@@ -424,13 +487,76 @@ const styles = StyleSheet.create({
 
   stepContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
 
-  welcomeEmoji: { fontSize: 80, marginBottom: 20 },
-  welcomeTitle: { fontSize: 28, fontWeight: 'bold', color: '#E8E8E8', textAlign: 'center', marginBottom: 10 },
-  welcomeSubtitle: { fontSize: 16, color: '#B8B8B8', textAlign: 'center', marginBottom: 30, paddingHorizontal: 20 },
-  featureList: { gap: 15 },
-  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  featureIcon: { fontSize: 24 },
-  featureText: { fontSize: 15, color: '#E8E8E8' },
+  // ── Приветственный шаг: мистический постер ──
+  welcomeStep: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  orbWrap: {
+    width: '100%',
+    maxWidth: 268,
+    aspectRatio: 300 / 372,
+    marginBottom: 6,
+  },
+  // Ширина подобрана так, чтобы заголовок разбивался на две сбалансированные
+  // строки — «Добро пожаловать» / «в Таро» (текст при этом не меняется).
+  welcomeTitleWrap: {
+    marginBottom: 14,
+    maxWidth: 300,
+    ...titleGlow,
+  },
+  welcomeTitle: {
+    fontSize: 32,
+    lineHeight: 42,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    fontFamily: Platform.select({
+      web: 'Georgia, "Times New Roman", "Palatino Linotype", serif',
+      ios: 'Georgia',
+      default: 'serif',
+    }),
+    color: '#F6DFA0',
+    textShadowColor: 'rgba(255,190,80,0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+    ...goldGradientText,
+  },
+  welcomeSubtitle: {
+    fontSize: 15,
+    lineHeight: 23,
+    color: '#EFE0C8',
+    textAlign: 'center',
+    marginBottom: 26,
+    maxWidth: 310,
+    paddingHorizontal: 8,
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  featureList: { gap: 18, alignSelf: 'center', alignItems: 'flex-start' },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 14, maxWidth: 300 },
+  featureIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(Platform.OS === 'web'
+      ? ({ filter: 'drop-shadow(0 0 7px rgba(255,192,90,0.6))' } as any)
+      : null),
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#F0E2CB',
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
+  },
 
   stepTitle: { fontSize: 24, fontWeight: 'bold', color: '#E8E8E8', textAlign: 'center', marginBottom: 10 },
   stepSubtitle: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 30, paddingHorizontal: 20 },
@@ -539,6 +665,13 @@ const styles = StyleSheet.create({
   skipButton: { alignItems: 'center', padding: 10 },
   skipText: { fontSize: 14, color: '#888' },
   nextButton: { borderRadius: 25, overflow: 'hidden' },
+  nextButtonWelcome: {
+    borderWidth: 1,
+    borderColor: 'rgba(231,194,113,0.55)',
+    ...(Platform.OS === 'web'
+      ? ({ boxShadow: '0 6px 22px rgba(120,50,190,0.45), 0 0 16px rgba(231,194,113,0.18)' } as any)
+      : null),
+  },
   nextButtonDisabled: { opacity: 0.5 },
   nextButtonGradient: {
     flexDirection: 'row',
