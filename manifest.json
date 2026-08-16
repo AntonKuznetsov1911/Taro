@@ -1,0 +1,56 @@
+{
+  "name": "Таро - Мистическое Астрологическое Приложение",
+  "short_name": "Таро",
+  "description": "Профессиональное астрологическое приложение с гаданием на картах Таро, персонализированными гороскопами, лунным календарём и астрологическими прогнозами",
+  "id": "/Taro/",
+  "start_url": "/Taro/",
+  "scope": "/Taro/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000011",
+  "theme_color": "#9B59B6",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/Taro/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Taro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Taro/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/Taro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["lifestyle", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "Гадание Таро",
+      "short_name": "Таро",
+      "description": "Начать гадание на картах Таро",
+      "url": "/Taro/reading",
+      "icons": [{ "src": "/Taro/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Гороскоп",
+      "short_name": "Гороскоп",
+      "description": "Персональный гороскоп на сегодня",
+      "url": "/Taro/horoscope",
+      "icons": [{ "src": "/Taro/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
