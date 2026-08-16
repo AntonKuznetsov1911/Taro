@@ -15,7 +15,21 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getRandomCards } from '../src/data/tarotCards';
+import { FULL_TAROT_DECK } from '../src/data/tarotCards';
+
+/** Устойчивый код имени: одинаковые имена всегда дают одинаковое число */
+function nameCode(name: string): number {
+  let hash = 0;
+  for (const char of name.trim().toLowerCase()) {
+    hash = (hash * 31 + char.codePointAt(0)!) >>> 0;
+  }
+  return hash;
+}
+
+/** Разброс 0..9, выведенный из пары имён, вместо случайной добавки */
+function nameSpread(name1: string, name2: string): number {
+  return (nameCode(name1) ^ nameCode(name2)) % 10;
+}
 import { getDailyAstrology } from '../src/utils/astrology';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playComplete, playSelect } from '../src/utils/sound';
@@ -57,7 +71,12 @@ function calculateNameNumber(name: string): number {
 function generateCompatibilityAnalysis(name1: string, name2: string): CompatibilityResult {
   const num1 = calculateNameNumber(name1);
   const num2 = calculateNameNumber(name2);
-  const cards = getRandomCards(2);
+  // Карты пары тоже закреплены за именами, а не тасуются при каждом открытии
+  const deck = FULL_TAROT_DECK;
+  const cards = [
+    deck[nameCode(name1) % deck.length],
+    deck[(nameCode(name2) + 1) % deck.length],
+  ];
   const astrology = getDailyAstrology();
 
   // Расчет совместимости на основе нумерологии
@@ -70,7 +89,11 @@ function generateCompatibilityAnalysis(name1: string, name2: string): Compatibil
   if ((num1 + num2) === 11 || (num1 + num2) === 22) bonus += 10; // Мастер-числа
   if (Math.abs(num1 - num2) === 3 || Math.abs(num1 - num2) === 6) bonus += 5; // Гармоничные числа
 
-  const score = Math.min(99, Math.max(40, baseScore + bonus + Math.floor(Math.random() * 10)));
+  // Одна и та же пара имён обязана давать один и тот же результат:
+  // нумерология детерминирована, поэтому вместо случайной добавки берём
+  // устойчивый разброс, выведенный из самих имён
+  const spread = nameSpread(name1, name2);
+  const score = Math.min(99, Math.max(40, baseScore + bonus + spread));
 
   const compatibilityLevels = {
     high: ['исключительная гармония', 'глубокая духовная связь', 'идеальное дополнение'],
@@ -79,7 +102,7 @@ function generateCompatibilityAnalysis(name1: string, name2: string): Compatibil
   };
 
   const level = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
-  const levelText = compatibilityLevels[level][Math.floor(Math.random() * 3)];
+  const levelText = compatibilityLevels[level][spread % 3];
 
   const analysis = `💕 **Анализ совместимости имён**
 
