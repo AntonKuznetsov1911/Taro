@@ -6,20 +6,23 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Alert,
   Platform,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { stripMarkdown } from '../src/utils/stripMarkdown';
+import { favoritesStorage } from '../src/utils/storage';
 
 interface ReadingInterpretationProps {
   interpretation: string;
   question: string;
   category: string;
   spreadType: string;
+  /** Нужен, чтобы отметку «в избранном» можно было по-настоящему сохранить */
+  readingId: string;
 }
 
 export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
@@ -27,9 +30,14 @@ export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
   question,
   category,
   spreadType,
+  readingId,
 }) => {
   // По умолчанию все разделы раскрыты: в состоянии хранятся только свёрнутые.
   const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
+  // Компонент используется только для только что созданного расклада,
+  // поэтому на входе он никогда ещё не может быть в избранном
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   const sections = parseInterpretationSections(interpretation);
 
@@ -67,7 +75,7 @@ ${stripMarkdown(interpretation)}
         }
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось поделиться гаданием');
+      showAlert('Ошибка', 'Не удалось поделиться гаданием');
       console.error('Share error:', error);
     }
   };
@@ -75,16 +83,25 @@ ${stripMarkdown(interpretation)}
   const handleCopy = async () => {
     try {
       await Clipboard.setStringAsync(stripMarkdown(interpretation));
-      Alert.alert('✅ Скопировано', 'Толкование скопировано в буфер обмена');
+      showAlert('✅ Скопировано', 'Толкование скопировано в буфер обмена');
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось скопировать текст');
+      showAlert('Ошибка', 'Не удалось скопировать текст');
       console.error('Copy error:', error);
     }
   };
 
-  const handleSave = () => {
-    // This will be connected to a favorites/saved readings feature
-    Alert.alert('💫 Сохранено', 'Гадание добавлено в избранное');
+  const handleToggleFavorite = async () => {
+    if (isTogglingFavorite) return;
+    setIsTogglingFavorite(true);
+    try {
+      const nowFavorite = await favoritesStorage.toggleFavorite(readingId);
+      setIsFavorite(nowFavorite);
+    } catch (error) {
+      console.error('Toggle favorite error:', error);
+      showAlert('Ошибка', 'Не удалось сохранить гадание в избранное');
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   return (
@@ -98,8 +115,12 @@ ${stripMarkdown(interpretation)}
           <TouchableOpacity onPress={handleShare} style={styles.actionIcon}>
             <Ionicons name="share-outline" size={22} color="#9B59B6" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleSave} style={styles.actionIcon}>
-            <Ionicons name="heart-outline" size={22} color="#9B59B6" />
+          <TouchableOpacity onPress={handleToggleFavorite} style={styles.actionIcon} disabled={isTogglingFavorite}>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isFavorite ? '#FF6B9D' : '#9B59B6'}
+            />
           </TouchableOpacity>
         </View>
       </View>

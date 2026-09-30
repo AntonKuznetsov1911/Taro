@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   StatusBar,
   Share,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -74,7 +74,7 @@ export default function AstroResultScreen() {
 
       if (existing.some((r) => r?.id === readingId)) {
         setIsSaved(true);
-        Alert.alert('Уже сохранено', 'Этот портрет уже есть в вашей истории');
+        showAlert('Уже сохранено', 'Этот портрет уже есть в вашей истории');
         return;
       }
 
@@ -96,10 +96,10 @@ export default function AstroResultScreen() {
       });
 
       setIsSaved(true);
-      Alert.alert('Сохранено', 'Ваш астропсихологический портрет сохранён в историю');
+      showAlert('Сохранено', 'Ваш астропсихологический портрет сохранён в историю');
     } catch (error) {
       console.error('Error saving astro portrait:', error);
-      Alert.alert('Ошибка', 'Не удалось сохранить портрет. Попробуйте ещё раз.');
+      showAlert('Ошибка', 'Не удалось сохранить портрет. Попробуйте ещё раз.');
     } finally {
       setIsSaving(false);
     }

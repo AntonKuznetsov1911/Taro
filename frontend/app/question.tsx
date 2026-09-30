@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -55,7 +55,7 @@ export default function QuestionScreen() {
 
   const handleSubmit = async () => {
     if (!question.trim()) {
-      Alert.alert('Внимание', 'Пожалуйста, введите ваш вопрос');
+      showAlert('Внимание', 'Пожалуйста, введите ваш вопрос');
       return;
     }
 
@@ -74,7 +74,7 @@ export default function QuestionScreen() {
         params: { category: categoryKey, spread: spreadKey, question: question.trim() }
       });
     } catch (error) {
-      Alert.alert('Ошибка', 'Произошла ошибка при создании гадания');
+      showAlert('Ошибка', 'Произошла ошибка при создании гадания');
     } finally {
       setIsLoading(false);
     }

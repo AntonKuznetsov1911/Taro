@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -206,7 +206,7 @@ export default function CompatibilityScreen() {
 
   const analyzeCompatibility = async () => {
     if (!name1.trim() || !name2.trim()) {
-      Alert.alert('Внимание', 'Пожалуйста, введите оба имени');
+      showAlert('Внимание', 'Пожалуйста, введите оба имени');
       return;
     }
 
@@ -222,7 +222,7 @@ export default function CompatibilityScreen() {
       void playComplete({ soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume });
     } catch (error) {
       console.error('Error analyzing compatibility:', error);
-      Alert.alert('Ошибка', 'Не удалось проанализировать совместимость. Попробуйте еще раз.');
+      showAlert('Ошибка', 'Не удалось проанализировать совместимость. Попробуйте еще раз.');
     } finally {
       setIsLoading(false);
     }

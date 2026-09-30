@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Text,
   View,
@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
+import type { UserProfile } from '../src/stores/userProfileStore';
 import { ZODIAC_SIGNS } from '../src/utils/astrology';
 import { markOnboardingSeen } from '../src/utils/onboarding';
 import { WelcomeBackdrop, CrystalOrb, GoldIcon } from '../components/WelcomeArtwork';
@@ -44,18 +45,71 @@ const titleGlow: any =
 
 type Step = 'welcome' | 'name' | 'gender' | 'birthdate' | 'birthtime' | 'complete';
 
+/** Раскладывает уже сохранённый профиль на поля анкеты, чтобы редактирование
+ *  начиналось с текущих значений, а не с чистого листа. */
+function prefillFromProfile(profile: UserProfile | null) {
+  if (!profile?.isComplete) return null;
+
+  const birth = new Date(profile.birthDate);
+  const [hour, minute] = profile.birthTime ? profile.birthTime.split(':') : [undefined, undefined];
+
+  return {
+    name: profile.name,
+    gender: profile.gender,
+    day: String(birth.getDate()).padStart(2, '0'),
+    month: String(birth.getMonth() + 1).padStart(2, '0'),
+    year: String(birth.getFullYear()),
+    hour: hour ?? '',
+    minute: minute ?? '',
+    knowsTime: !!profile.birthTime,
+  };
+}
+
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { saveProfile } = useUserProfile();
-  const [step, setStep] = useState<Step>('welcome');
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(null);
-  const [birthDay, setBirthDay] = useState('');
-  const [birthMonth, setBirthMonth] = useState('');
-  const [birthYear, setBirthYear] = useState('');
-  const [birthHour, setBirthHour] = useState('');
-  const [birthMinute, setBirthMinute] = useState('');
-  const [knowsBirthTime, setKnowsBirthTime] = useState<boolean | null>(null);
+  const { profile, isLoading: profileLoading, saveProfile } = useUserProfile();
+
+  // Ленивая инициализация читает профиль на самом первом рендере: если он уже
+  // загружен (обычный случай — «Изменить» открывается из настроек, где профиль
+  // давно в памяти), анкета сразу стартует с шага «Имя» и без мигания заставки.
+  const initialPrefill = prefillFromProfile(profile);
+
+  const [step, setStep] = useState<Step>(initialPrefill ? 'name' : 'welcome');
+  const [name, setName] = useState(initialPrefill?.name ?? '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(initialPrefill?.gender ?? null);
+  const [birthDay, setBirthDay] = useState(initialPrefill?.day ?? '');
+  const [birthMonth, setBirthMonth] = useState(initialPrefill?.month ?? '');
+  const [birthYear, setBirthYear] = useState(initialPrefill?.year ?? '');
+  const [birthHour, setBirthHour] = useState(initialPrefill?.hour ?? '');
+  const [birthMinute, setBirthMinute] = useState(initialPrefill?.minute ?? '');
+  const [knowsBirthTime, setKnowsBirthTime] = useState<boolean | null>(
+    initialPrefill ? initialPrefill.knowsTime : null
+  );
+  // Правим существующий профиль, а не заполняем его заново с нуля
+  const [isEditing, setIsEditing] = useState(!!initialPrefill);
+  const prefilledRef = useRef(!!initialPrefill);
+
+  // Догоняющий случай: экран открыли напрямую по ссылке /onboarding до того,
+  // как профиль успел загрузиться из хранилища. Как только он придёт — если
+  // пользователь ещё не сдвинулся с заставки, подставляем данные и пропускаем её.
+  useEffect(() => {
+    if (profileLoading || prefilledRef.current) return;
+    prefilledRef.current = true;
+
+    const prefill = prefillFromProfile(profile);
+    if (!prefill) return;
+
+    setIsEditing(true);
+    setName(prefill.name);
+    setGender(prefill.gender);
+    setBirthDay(prefill.day);
+    setBirthMonth(prefill.month);
+    setBirthYear(prefill.year);
+    setBirthHour(prefill.hour);
+    setBirthMinute(prefill.minute);
+    setKnowsBirthTime(prefill.knowsTime);
+    setStep('name');
+  }, [profileLoading, profile]);
 
   const handleNext = async () => {
     switch (step) {
@@ -78,12 +132,27 @@ export default function OnboardingScreen() {
         setStep('complete');
         break;
       case 'complete':
-        router.replace('/');
+        // После правки возвращаемся туда, откуда пришли (обычно в настройки),
+        // а не на главный экран — так «Изменить» ведёт себя как обычное редактирование
+        if (isEditing && router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/');
+        }
         break;
     }
   };
 
   const handleSkip = async () => {
+    if (isEditing) {
+      // Отмена редактирования: ничего не меняли, просто возвращаемся назад
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+      return;
+    }
     // Без этой отметки главный экран сразу вернёт нас обратно на онбординг
     await markOnboardingSeen();
     router.replace('/');
@@ -350,7 +419,9 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.completeEmoji}>✨</Text>
-            <Text style={styles.completeTitle}>Профиль создан!</Text>
+            <Text style={styles.completeTitle}>
+              {isEditing ? 'Профиль обновлён!' : 'Профиль создан!'}
+            </Text>
             {zodiacPreview && (
               <View style={styles.profileSummary}>
                 <Text style={styles.summaryName}>{name}</Text>
@@ -364,7 +435,9 @@ export default function OnboardingScreen() {
               </View>
             )}
             <Text style={styles.completeSubtitle}>
-              Теперь все прогнозы будут персонализированы специально для вас
+              {isEditing
+                ? 'Прогнозы теперь учитывают обновлённые данные'
+                : 'Теперь все прогнозы будут персонализированы специально для вас'}
             </Text>
           </View>
         );
@@ -390,7 +463,7 @@ export default function OnboardingScreen() {
   const getButtonText = () => {
     switch (step) {
       case 'welcome': return 'Начать';
-      case 'complete': return 'Открыть приложение';
+      case 'complete': return isEditing ? 'Готово' : 'Открыть приложение';
       default: return 'Далее';
     }
   };
@@ -448,7 +521,7 @@ export default function OnboardingScreen() {
                 style={styles.skipButton}
                 onPress={handleSkip}
               >
-                <Text style={styles.skipText}>Пропустить</Text>
+                <Text style={styles.skipText}>{isEditing ? 'Отмена' : 'Пропустить'}</Text>
               </TouchableOpacity>
             )}
 

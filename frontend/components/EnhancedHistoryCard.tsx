@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   Modal,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -151,7 +151,7 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
                 key={index}
                 style={styles.tag}
                 onLongPress={() => {
-                  Alert.alert('Удалить тег?', `Удалить тег "${tag}"?`, [
+                  showAlert('Удалить тег?', `Удалить тег "${tag}"?`, [
                     { text: 'Отмена', style: 'cancel' },
                     { text: 'Удалить', onPress: () => onRemoveTag(reading.id, tag) },
                   ]);

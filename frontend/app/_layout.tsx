@@ -18,8 +18,6 @@ function InstallPrompt() {
   return <InstallPWAPrompt />;
 }
 
-// OfflineBanner намеренно не подключён: все гадания считаются локально,
-// поэтому отсутствие сети ни на что не влияет и предупреждать о нём не о чем.
 export default function RootLayout() {
   return (
     <ErrorBoundary>

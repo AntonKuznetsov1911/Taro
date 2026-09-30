@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Image,
   ImageSourcePropType,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -114,7 +114,7 @@ export default function ReadingScreen() {
       }
     } catch (error) {
       console.error('Error creating reading:', error);
-      Alert.alert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
+      showAlert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
       router.back();
     } finally {
       setIsLoading(false);
@@ -204,6 +204,7 @@ export default function ReadingScreen() {
               question={reading.question}
               category={reading.category}
               spreadType={reading.spread_type}
+              readingId={reading.id}
             />
           )}
 

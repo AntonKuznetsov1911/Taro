@@ -9,9 +9,9 @@ import {
   StatusBar,
   Image,
   ActivityIndicator,
-  Alert,
   Dimensions,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -55,7 +55,7 @@ export default function PalmistryScreen() {
       setResult(palmResult);
     } catch (error) {
       console.error('Error analyzing palm:', error);
-      Alert.alert('Ошибка', 'Не удалось проанализировать изображение. Попробуйте еще раз.');
+      showAlert('Ошибка', 'Не удалось проанализировать изображение. Попробуйте еще раз.');
     } finally {
       setIsLoading(false);
     }

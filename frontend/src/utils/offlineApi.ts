@@ -455,7 +455,7 @@ lifePathNumber === 2 ? 'потребностей других с вашими с
 export async function generateOfflineAstroPersonality(answers: any, name?: string): Promise<{
   id: string;
   personality_analysis: string;
-  dominant_arcana: TarotCard[];
+  dominant_arcana: string[];
   character_traits: string[];
   life_path: string;
   current_phase: string;
@@ -463,7 +463,41 @@ export async function generateOfflineAstroPersonality(answers: any, name?: strin
 }> {
   await new Promise(resolve => setTimeout(resolve, 1500));
 
-  const cards = getRandomCards(3);
+  // Ответы квиза (каждый — {questionId, optionId, keywords, arcana}) должны
+  // реально влиять на портрет, а не просто собираться и игнорироваться.
+  // Каждый вариант ответа в astroPsychologyQuestions.ts указывает связанный
+  // архетип Таро (Russian name, совпадает с MAJOR_ARCANA[i].name) — считаем,
+  // какие архетипы выбирались чаще всего, и берём именно их.
+  const answerList: Array<{ keywords?: string[]; arcana?: string }> = Array.isArray(answers)
+    ? answers
+    : [];
+
+  const arcanaCounts = new Map<string, number>();
+  const arcanaFirstSeen: string[] = [];
+  for (const a of answerList) {
+    if (a?.arcana) {
+      if (!arcanaCounts.has(a.arcana)) arcanaFirstSeen.push(a.arcana);
+      arcanaCounts.set(a.arcana, (arcanaCounts.get(a.arcana) ?? 0) + 1);
+    }
+  }
+  const orderedArcanaNames = arcanaFirstSeen.sort(
+    (a, b) => (arcanaCounts.get(b) ?? 0) - (arcanaCounts.get(a) ?? 0)
+  );
+
+  const cards: TarotCard[] = [];
+  for (const arcanaName of orderedArcanaNames) {
+    const match = MAJOR_ARCANA.find(c => c.name === arcanaName);
+    if (match && !cards.some(c => c.id === match.id)) cards.push(match);
+    if (cards.length === 3) break;
+  }
+  if (cards.length < 3) {
+    const filler = getRandomCards(3).filter(c => !cards.some(existing => existing.id === c.id));
+    for (const c of filler) {
+      if (cards.length === 3) break;
+      cards.push(c);
+    }
+  }
+
   const astrology = getDailyAstrology();
 
   // Генерируем черты характера на основе карт
@@ -486,7 +520,16 @@ export async function generateOfflineAstroPersonality(answers: any, name?: strin
     'Фаза Расцвета — период полного раскрытия ваших талантов'
   ];
 
-  const dayIndex = new Date().getDate();
+  // Индекс пути/фазы строим из ключевых слов ответов (стабильно для одного
+  // и того же набора ответов), а не только из дня месяца — иначе все, кто
+  // проходит квиз в один день, получают одинаковый результат вне
+  // зависимости от того, что они отвечали.
+  const keywordSeed = answerList.flatMap(a => a.keywords ?? []).join('|');
+  let seedHash = 0;
+  for (let i = 0; i < keywordSeed.length; i++) {
+    seedHash = (seedHash * 31 + keywordSeed.charCodeAt(i)) >>> 0;
+  }
+  const dayIndex = keywordSeed ? seedHash : new Date().getDate();
 
   const personalityAnalysis = `
 ## 🌟 Астро-психологический портрет${name ? ` для ${name}` : ''}
@@ -538,7 +581,10 @@ ${traits.map(t => `• **${t}**`).join('\n')}
   return {
     id: `astro-${Date.now()}`,
     personality_analysis: personalityAnalysis,
-    dominant_arcana: cards,
+    // Только имена карт: astro-result.tsx получает этот массив через
+    // JSON.stringify в параметрах роутинга и разбирает его строками —
+    // передача полных объектов TarotCard даёт "[object Object]" на экране.
+    dominant_arcana: cards.map(c => c.name),
     character_traits: traits,
     life_path: lifePaths[dayIndex % lifePaths.length],
     current_phase: currentPhases[(dayIndex + 2) % currentPhases.length],
@@ -646,25 +692,3 @@ ${cards[2].upright_meaning}
 // Re-export astrology types for convenience
 export { getDailyAstrology, getMoonData, getRetrogradePlanets, formatAstrologyForReading } from './astrology';
 export type { DailyAstrology, MoonData, ZodiacSign } from './astrology';
-
-/**
- * Проверка доступности бэкенда
- */
-export async function isBackendAvailable(backendUrl?: string): Promise<boolean> {
-  if (!backendUrl) return false;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(`${backendUrl}/health`, {
-      method: 'GET',
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-    return response.ok;
-  } catch {
-    return false;
-  }
-}

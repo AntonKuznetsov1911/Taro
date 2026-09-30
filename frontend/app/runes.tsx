@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { drawRunes, isReversed, RUNE_SPREADS } from '../src/data/runesKnowledge';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playDraw } from '../src/utils/sound';
+import { showAlert } from '../src/utils/alert';
 
 export default function RunesScreen() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function RunesScreen() {
 
   const handleDraw = () => {
     if (!question.trim()) {
-      alert('Задайте вопрос рунам');
+      showAlert('Внимание', 'Задайте вопрос рунам');
       return;
     }
 
@@ -28,7 +29,9 @@ export default function RunesScreen() {
 
     const spreadCounts = { one: 1, three: 3, cross: 6 };
     const runes = drawRunes(spreadCounts[selectedSpread]);
-    const reversed = runes.map(() => isReversed());
+    // Симметричные руны (Гебо, Хагалаз, Иса и т.д.) не переворачиваются —
+    // передаём id руны, чтобы для них isReversed() всегда вернула false
+    const reversed = runes.map((r) => isReversed(r.id));
 
     router.push({
       pathname: '/runes-result',

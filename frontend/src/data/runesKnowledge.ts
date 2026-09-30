@@ -419,8 +419,32 @@ export function drawRunes(count: number): Rune[] {
   return drawn;
 }
 
-// Функция для определения перевёрнута ли руна
-export function isReversed(): boolean {
+// Руны, которые традиционно не имеют перевёрнутого значения (симметричные
+// или "always-on" руны — их uprightMeaning/reversedMeaning текст сам об этом
+// говорит). Раскладывать их "перевёрнутыми" бессмысленно: в UI это даёт
+// противоречие — иконка повёрнута и стоит пометка «Перевёрнута», но текст
+// толкования утверждает, что перевёрнутого значения не существует.
+const NON_REVERSIBLE_RUNE_IDS = new Set([
+  'gebo',
+  'hagalaz',
+  'isa',
+  'jera',
+  'eihwaz',
+  'sowilo',
+  'ingwaz',
+  'dagaz',
+  'wyrd',
+]);
+
+// Может ли данная руна выпасть перевёрнутой
+export function canBeReversed(runeId: string): boolean {
+  return !NON_REVERSIBLE_RUNE_IDS.has(runeId);
+}
+
+// Функция для определения перевёрнута ли руна.
+// Если передан id руны из числа симметричных/неперевёрнутых — всегда false.
+export function isReversed(runeId?: string): boolean {
+  if (runeId && !canBeReversed(runeId)) return false;
   return Math.random() < 0.5;
 }
 

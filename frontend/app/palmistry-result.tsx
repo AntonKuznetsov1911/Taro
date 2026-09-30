@@ -7,10 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   Share,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -171,10 +171,10 @@ export default function PalmistryResultScreen() {
 
       await readingsStorage.addReading(reading);
 
-      Alert.alert('Сохранено', 'Результат гадания сохранен в историю');
+      showAlert('Сохранено', 'Результат гадания сохранен в историю');
     } catch (error) {
       console.error('Error saving palmistry reading:', error);
-      Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуйте еще раз.');
+      showAlert('Ошибка', 'Не удалось сохранить результат. Попробуйте еще раз.');
     } finally {
       setIsSaving(false);
     }

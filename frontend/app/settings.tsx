@@ -8,10 +8,10 @@ import {
   SafeAreaView,
   StatusBar,
   Switch,
-  Alert,
   PanResponder,
   LayoutChangeEvent,
 } from 'react-native';
+import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -99,7 +99,7 @@ export default function SettingsScreen() {
   };
 
   const resetSettings = () => {
-    Alert.alert(
+    showAlert(
       'Сбросить настройки',
       'Вы уверены, что хотите сбросить все настройки к значениям по умолчанию?',
       [
@@ -114,7 +114,24 @@ export default function SettingsScreen() {
             settings.setAutoSave(true);
             settings.setVibration(true);
             settings.setEffectsVolume(0.7);
-            Alert.alert('Готово', 'Настройки сброшены к значениям по умолчанию');
+            showAlert('Готово', 'Настройки сброшены к значениям по умолчанию');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteProfile = () => {
+    showAlert(
+      'Удалить профиль?',
+      'Имя, дата рождения и остальные данные будут удалены с этого устройства. Гороскоп и другие прогнозы перестанут быть персональными.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: () => {
+            void clearProfile();
           },
         },
       ]
@@ -215,6 +232,13 @@ export default function SettingsScreen() {
                         >
                           <Ionicons name="pencil" size={16} color="#BB6BD9" />
                           <Text style={styles.profileEditText}>Изменить</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.profileDeleteButton}
+                          onPress={handleDeleteProfile}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#E74C3C" />
+                          <Text style={styles.profileDeleteText}>Удалить</Text>
                         </TouchableOpacity>
                       </View>
                     </LinearGradient>
@@ -340,9 +364,11 @@ const styles = StyleSheet.create({
   profileZodiacSymbol: { fontSize: 24 },
   profileZodiacName: { fontSize: 16, color: '#BB6BD9', fontWeight: '600' },
   profileBirthDate: { fontSize: 13, color: 'rgba(255, 255, 255, 0.6)' },
-  profileActions: { alignItems: 'center' },
+  profileActions: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
   profileEditButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(155, 89, 182, 0.2)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   profileEditText: { fontSize: 14, color: '#BB6BD9', fontWeight: '500' },
+  profileDeleteButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(231, 76, 60, 0.15)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  profileDeleteText: { fontSize: 14, color: '#E74C3C', fontWeight: '500' },
   createProfileButton: { borderRadius: 15, overflow: 'hidden' },
   createProfileGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 10 },
   createProfileText: { fontSize: 16, fontWeight: '600', color: '#FFF' },

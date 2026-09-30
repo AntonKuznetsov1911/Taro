@@ -13,6 +13,7 @@ import {
 } from '../src/data/numerologyKnowledge';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playComplete } from '../src/utils/sound';
+import { showAlert } from '../src/utils/alert';
 
 export default function NumerologyScreen() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function NumerologyScreen() {
 
   const handleAnalyze = () => {
     if (!name.trim()) {
-      alert('Пожалуйста, введите ваше имя');
+      showAlert('Внимание', 'Пожалуйста, введите ваше имя');
       return;
     }
 
@@ -34,7 +35,11 @@ export default function NumerologyScreen() {
       volume: settings.effectsVolume,
     });
 
-    const dateString = birthDate.toISOString().split('T')[0];
+    // Дата берётся по локальным полям, а не toISOString(): тот переводит
+    // полночь в UTC и во всех российских часовых поясах (UTC+2…+12) сдвигает
+    // календарный день на сутки назад — расчёт шёл бы по чужой дате рождения
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateString = `${birthDate.getFullYear()}-${pad(birthDate.getMonth() + 1)}-${pad(birthDate.getDate())}`;
     const lifePathNumber = calculateLifePathNumber(dateString);
     const destinyNumber = calculateDestinyNumber(name);
     const soulNumber = calculateSoulNumber(name);
