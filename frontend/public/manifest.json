@@ -42,7 +42,7 @@
       "name": "Гадание Таро",
       "short_name": "Таро",
       "description": "Начать гадание на картах Таро",
-      "url": "/Taro/reading",
+      "url": "/Taro/question",
       "icons": [{ "src": "/Taro/icon-192.png", "sizes": "192x192" }]
     },
     {
