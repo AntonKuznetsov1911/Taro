@@ -10,6 +10,7 @@ import {
 import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface TarotCard {
   name: string;
@@ -171,14 +172,27 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
         {isExpanded && (
           <View style={styles.expandedContent}>
             {/* Cards */}
-            <View style={styles.cardsPreview}>
-              <Text style={styles.sectionLabel}>Карты:</Text>
-              {reading.cards.map((card, index) => (
-                <Text key={index} style={styles.cardName}>
-                  • {card.name} {card.is_reversed ? '(перевёрнутая)' : ''}
-                </Text>
-              ))}
-            </View>
+            {reading.cards.length > 0 && (
+              <View style={styles.cardsPreview}>
+                <Text style={styles.sectionLabel}>Карты:</Text>
+                {reading.cards.map((card, index) => (
+                  <Text key={index} style={styles.cardName}>
+                    • {card.name} {card.is_reversed ? '(перевёрнутая)' : ''}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {/* Interpretation — раньше "Просмотреть полное толкование" вызывал
+                onViewDetails(), который нигде не был подключён к экрану с
+                толкованием (console.log и всё), так что кнопка не делала
+                ничего видимого. Показываем толкование прямо здесь. */}
+            {!!reading.interpretation && (
+              <View style={styles.interpretationSection}>
+                <Text style={styles.sectionLabel}>Толкование:</Text>
+                <MarkdownRenderer content={reading.interpretation} />
+              </View>
+            )}
 
             {/* Notes */}
             <View style={styles.notesSection}>
@@ -220,14 +234,17 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
             {/* Actions */}
             <TouchableOpacity
               style={styles.viewButton}
-              onPress={() => onViewDetails(reading)}
+              onPress={() => {
+                setIsExpanded(false);
+                onViewDetails(reading);
+              }}
             >
               <LinearGradient
                 colors={['#9B59B6', '#8E44AD']}
                 style={styles.viewButtonGradient}
               >
-                <Ionicons name="eye-outline" size={18} color="#FFF" />
-                <Text style={styles.viewButtonText}>Просмотреть полное толкование</Text>
+                <Ionicons name="chevron-up-outline" size={18} color="#FFF" />
+                <Text style={styles.viewButtonText}>Свернуть</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -237,7 +254,10 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
         {!isExpanded && (
           <TouchableOpacity
             style={styles.quickViewButton}
-            onPress={() => onViewDetails(reading)}
+            onPress={() => {
+              setIsExpanded(true);
+              onViewDetails(reading);
+            }}
           >
             <Text style={styles.quickViewButtonText}>Подробнее</Text>
             <Ionicons name="arrow-forward" size={16} color="#9B59B6" />
@@ -389,6 +409,9 @@ const styles = StyleSheet.create({
     color: '#D0D0D0',
     lineHeight: 20,
     marginLeft: 8,
+  },
+  interpretationSection: {
+    marginBottom: 16,
   },
   notesSection: {
     marginBottom: 16,
