@@ -2743,6 +2743,11 @@ ast-types@0.15.2:
   dependencies:
     tslib "^2.0.1"
 
+astronomy-engine@^2.1.19:
+  version "2.1.19"
+  resolved "https://registry.npmjs.org/astronomy-engine/-/astronomy-engine-2.1.19.tgz"
+  integrity sha512-8yWKNf7UeNbH458h3sAJ6ZgAjE5jTXp/mNNRFoC20j2SHwZIjAQeEsBB2Q3uCFRaTCCJRv33K2XhkhZQMXoX6w==
+
 async-limiter@~1.0.0:
   version "1.0.1"
   resolved "https://registry.npmjs.org/async-limiter/-/async-limiter-1.0.1.tgz"
@@ -7630,11 +7635,6 @@ sucrase@3.35.0:
     mz "^2.7.0"
     pirates "^4.0.1"
     ts-interface-checker "^0.1.9"
-
-suncalc@^2.0.1:
-  version "2.0.1"
-  resolved "https://registry.npmjs.org/suncalc/-/suncalc-2.0.1.tgz"
-  integrity sha512-wjujU+HpsP1TUvN3/9dFkVQQCsMZbk7PkdZsASRJR4jVPHCm9Qy0FVkFTqXfs70Ag2yheN7ZUavzCyOjhJDGxQ==
 
 supports-color@^5.3.0:
   version "5.5.0"

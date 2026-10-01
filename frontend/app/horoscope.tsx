@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, ZodiacSign, ZODIAC_SIGNS } from '../src/utils/astrology';
-import { getRandomCards } from '../src/data/tarotCards';
+import { getDailyCard } from '../src/utils/offlineApi';
 
 interface HoroscopeData {
   zodiacSign: ZodiacSign;
@@ -231,7 +231,8 @@ export default function HoroscopeScreen() {
 
       const astrology = getDailyAstrology();
     const retrograde = getRetrogradePlanets();
-    const card = getRandomCards(1)[0];
+    // Та же карта дня, что на главном экране
+    const { card, isReversed: cardReversed } = getDailyCard(new Date());
 
     // Выбираем тексты на основе даты для консистентности в течение дня
     const today = new Date();
@@ -248,7 +249,9 @@ export default function HoroscopeScreen() {
     }
 
     // Добавляем контекст карты Таро
-    personalizedText += `\n\n🎴 Карта дня — ${card.name} — усиливает энергии: ${card.keywords.slice(0, 2).join(' и ')}.`;
+    personalizedText += cardReversed
+      ? `\n\n🎴 Карта дня — ${card.name} (перевёрнутая): ${(card.reversed_meaning.split(',')[0] || '').toLowerCase()}.`
+      : `\n\n🎴 Карта дня — ${card.name} — усиливает энергии: ${card.keywords.slice(0, 2).join(' и ')}.`;
 
     // Рассчитываем рейтинг настроения на основе астрологии
     let moodRating = 7;

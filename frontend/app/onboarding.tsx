@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 import type { UserProfile } from '../src/stores/userProfileStore';
-import { ZODIAC_SIGNS } from '../src/utils/astrology';
+import { getZodiacSign } from '../src/utils/astrology';
 import { markOnboardingSeen } from '../src/utils/onboarding';
 import { WelcomeBackdrop, CrystalOrb, GoldIcon } from '../components/WelcomeArtwork';
 
@@ -182,31 +182,13 @@ export default function OnboardingScreen() {
   };
 
   const getZodiacPreview = () => {
-    if (!birthDay || !birthMonth || !birthYear) return null;
-    try {
-      const date = new Date(parseInt(birthYear), parseInt(birthMonth) - 1, parseInt(birthDay));
-      if (isNaN(date.getTime())) return null;
-
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-
-      const signIndex =
-        (month === 3 && day >= 21) || (month === 4 && day <= 19) ? 0 :
-        (month === 4 && day >= 20) || (month === 5 && day <= 20) ? 1 :
-        (month === 5 && day >= 21) || (month === 6 && day <= 20) ? 2 :
-        (month === 6 && day >= 21) || (month === 7 && day <= 22) ? 3 :
-        (month === 7 && day >= 23) || (month === 8 && day <= 22) ? 4 :
-        (month === 8 && day >= 23) || (month === 9 && day <= 22) ? 5 :
-        (month === 9 && day >= 23) || (month === 10 && day <= 22) ? 6 :
-        (month === 10 && day >= 23) || (month === 11 && day <= 21) ? 7 :
-        (month === 11 && day >= 22) || (month === 12 && day <= 21) ? 8 :
-        (month === 12 && day >= 22) || (month === 1 && day <= 19) ? 9 :
-        (month === 1 && day >= 20) || (month === 2 && day <= 18) ? 10 : 11;
-
-      return ZODIAC_SIGNS[signIndex];
-    } catch {
-      return null;
-    }
+    const d = Number(birthDay), m = Number(birthMonth), y = Number(birthYear);
+    if (!d || !m || !y) return null;
+    const date = new Date(y, m - 1, d);
+    // 31.02 и подобные даты Date молча переносит — такую дату не показываем
+    if (date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+    // Тот же расчёт, что и для сохранённого профиля, — без второй копии таблицы
+    return getZodiacSign(date);
   };
 
   const zodiacPreview = getZodiacPreview();
@@ -449,11 +431,12 @@ export default function OnboardingScreen() {
       case 'welcome': return true;
       case 'name': return name.trim().length > 0;
       case 'gender': return gender !== null;
-      case 'birthdate':
-        const day = parseInt(birthDay);
-        const month = parseInt(birthMonth);
-        const year = parseInt(birthYear);
-        return day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= new Date().getFullYear();
+      case 'birthdate': {
+        // Настоящая дата (не 31.02), не раньше 1900 года и не в будущем
+        const year = Number(birthYear);
+        return !!zodiacPreview && birthYear.length === 4 && year >= 1900
+          && new Date(year, Number(birthMonth) - 1, Number(birthDay)) <= new Date();
+      }
       case 'birthtime': return knowsBirthTime !== null;
       case 'complete': return true;
       default: return false;

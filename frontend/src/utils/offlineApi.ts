@@ -158,6 +158,31 @@ export function generateTarotCardSVG(card: TarotCard, _isReversed: boolean = fal
 }
 
 /**
+ * Карта дня: зависит только от календарной даты, одна и та же на главном
+ * экране и в гороскопе. Раньше в расчёт входила текущая фаза Луны — карта
+ * менялась посреди дня, — выбор шёл только из 22 старших арканов и почти
+ * по порядку день за днём, а гороскоп брал вообще случайную карту.
+ */
+export function getDailyCard(date: Date = new Date()): { card: TarotCard; isReversed: boolean } {
+  const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  let hash = 2166136261;
+  for (let i = 0; i < dateKey.length; i++) {
+    hash = Math.imul(hash ^ dateKey.charCodeAt(i), 16777619) >>> 0;
+  }
+  // Перемешиваем биты, чтобы соседние даты давали несвязанные карты
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
+  hash ^= hash >>> 16;
+  hash >>>= 0;
+  return {
+    card: FULL_TAROT_DECK[hash % FULL_TAROT_DECK.length],
+    isReversed: ((hash >>> 16) & 1) === 1,
+  };
+}
+
+/**
  * Получить карту дня с астрологическим контекстом
  */
 export async function getOfflineDailyCard(): Promise<{
@@ -171,23 +196,7 @@ export async function getOfflineDailyCard(): Promise<{
   const today = new Date();
   const astrology = getDailyAstrology(today);
 
-  // Карта дня зависит только от календарной даты: раньше в расчёт входила
-  // текущая фаза Луны, и карта менялась посреди дня, а выбор шёл только из
-  // 22 старших арканов и почти по порядку день за днём
-  const dateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-  let hash = 2166136261;
-  for (let i = 0; i < dateKey.length; i++) {
-    hash = Math.imul(hash ^ dateKey.charCodeAt(i), 16777619) >>> 0;
-  }
-  // Перемешиваем биты, чтобы соседние даты давали несвязанные карты
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
-  hash ^= hash >>> 16;
-  hash >>>= 0;
-  const card = FULL_TAROT_DECK[hash % FULL_TAROT_DECK.length];
-  const isReversed = ((hash >>> 16) & 1) === 1;
+  const { card, isReversed } = getDailyCard(today);
 
   const moonContext = astrology.moon.isWaxing
     ? 'Растущая луна усиливает энергию карты'

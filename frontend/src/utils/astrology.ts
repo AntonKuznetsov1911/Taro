@@ -3,10 +3,11 @@
  * Расчёт фаз луны, положения планет, знаков зодиака и астрологических аспектов
  */
 
-import * as SunCalcModule from 'suncalc';
-
-// Handle different import styles (CommonJS vs ESM)
-const SunCalc = (SunCalcModule as any).default || SunCalcModule;
+// Положения Луны и планет считаются настоящей эфемеридой (astronomy-engine:
+// чистый JS, без сети и файлов данных). Раньше знак Луны выводился из
+// «время / 2,5 дня по кругу» и был неверен 93% дней, а ретроградность
+// планет задавалась выдуманными окнами по дням года.
+import * as Astronomy from 'astronomy-engine';
 
 // ==================== ТИПЫ ====================
 
@@ -128,6 +129,17 @@ function calculateMoonPhase(date: Date): { phase: number; fraction: number } {
   return { phase, fraction };
 }
 
+function moonSignIndexAt(date: Date): number {
+  try {
+    return Math.floor(Astronomy.EclipticGeoMoon(date).lon / 30) % 12;
+  } catch {
+    // Средняя долгота Луны (точность — несколько градусов)
+    const days = (date.getTime() - Date.UTC(2000, 0, 1, 12)) / 864e5;
+    const lon = ((218.316 + 13.176396 * days) % 360 + 360) % 360;
+    return Math.floor(lon / 30);
+  }
+}
+
 /**
  * Получить данные о луне на указанную дату
  */
@@ -136,20 +148,11 @@ export function getMoonData(date: Date = new Date()): MoonData {
   let fraction: number;
 
   try {
-    // Пробуем использовать SunCalc
-    if (SunCalc && typeof SunCalc.getMoonIllumination === 'function') {
-      const moonIllum = SunCalc.getMoonIllumination(date);
-      phase = moonIllum.phase;
-      fraction = moonIllum.fraction;
-    } else {
-      // Fallback на собственный расчёт
-      const moonCalc = calculateMoonPhase(date);
-      phase = moonCalc.phase;
-      fraction = moonCalc.fraction;
-    }
+    // Элонгация Луны от Солнца: 0° — новолуние, 180° — полнолуние
+    phase = Astronomy.MoonPhase(date) / 360;
+    fraction = Astronomy.Illumination(Astronomy.Body.Moon, date).phase_fraction;
   } catch (error) {
-    // Fallback на собственный расчёт при ошибке
-    console.warn('SunCalc unavailable, using fallback moon calculation');
+    console.warn('Moon ephemeris unavailable, using mean-cycle approximation');
     const moonCalc = calculateMoonPhase(date);
     phase = moonCalc.phase;
     fraction = moonCalc.fraction;
@@ -167,9 +170,8 @@ export function getMoonData(date: Date = new Date()): MoonData {
   // Расчёт лунного дня (приблизительно)
   const lunarDay = Math.floor(phase * 29.53) + 1;
 
-  // Определяем знак луны (упрощённый расчёт на основе даты)
-  const moonSignIndex = Math.floor((date.getTime() / (2.5 * 24 * 60 * 60 * 1000)) % 12);
-  const moonSign = ZODIAC_SIGNS[moonSignIndex];
+  // Знак Луны — по её настоящей эклиптической долготе (30° на знак)
+  const moonSign = ZODIAC_SIGNS[moonSignIndexAt(date)];
 
   return {
     phase,
@@ -343,50 +345,55 @@ export function getZodiacCompatibility(sign1: ZodiacSign, sign2: ZodiacSign): {
   score: number;
   description: string;
 } {
-  // Одинаковая стихия - высокая совместимость
-  if (sign1.element === sign2.element) {
-    return { score: 85 + Math.floor(Math.random() * 10), description: 'Гармоничный союз одной стихии. Глубокое понимание и общие ценности.' };
+  // Совместимость по аспекту между знаками — расстоянию по зодиакальному
+  // кругу. Раньше оценка включала Math.random(), и «гармония с Луной» в одном
+  // и том же раскладе менялась при каждом открытии
+  const i1 = ZODIAC_SIGNS.findIndex(s => s.name === sign1.name);
+  const i2 = ZODIAC_SIGNS.findIndex(s => s.name === sign2.name);
+  const distance = Math.min((i2 - i1 + 12) % 12, (i1 - i2 + 12) % 12);
+
+  switch (distance) {
+    case 0:
+      return { score: 88, description: 'Один знак: глубокое понимание, но и общие слабые стороны.' };
+    case 4:
+      return { score: 92, description: 'Трин — знаки одной стихии. Гармония и общие ценности.' };
+    case 2:
+      return { score: 80, description: 'Секстиль — дружественные стихии. Партнёры вдохновляют друг друга.' };
+    case 6:
+      return { score: 70, description: 'Оппозиция — противоположности, которые притягиваются и дополняют друг друга.' };
+    case 3:
+      return { score: 55, description: 'Квадрат — напряжение и разные темпы. Союз требует работы, но даёт рост.' };
+    default:
+      return { score: 62, description: 'Соседние или несвязанные знаки: мало общего, нужно учиться понимать друг друга.' };
   }
+}
 
-  // Совместимые стихии
-  const compatible: { [key: string]: string[] } = {
-    fire: ['air'],
-    air: ['fire'],
-    earth: ['water'],
-    water: ['earth'],
-  };
+const RETROGRADE_BODIES: Array<{ body: Astronomy.Body; nameRu: string }> = [
+  { body: Astronomy.Body.Mercury, nameRu: 'Меркурий' },
+  { body: Astronomy.Body.Venus, nameRu: 'Венера' },
+  { body: Astronomy.Body.Mars, nameRu: 'Марс' },
+];
 
-  if (compatible[sign1.element]?.includes(sign2.element)) {
-    return { score: 70 + Math.floor(Math.random() * 15), description: 'Взаимодополняющие энергии. Партнёры вдохновляют друг друга.' };
-  }
-
-  // Противоположные стихии
-  return { score: 50 + Math.floor(Math.random() * 20), description: 'Непростой союз, требующий работы. Но противоположности притягиваются и учат друг друга.' };
+function geocentricLongitude(body: Astronomy.Body, date: Date): number {
+  return Astronomy.Ecliptic(Astronomy.GeoVector(body, date, true)).elon;
 }
 
 /**
- * Получить ретроградные планеты (упрощённый расчёт)
+ * Ретроградные личные планеты (Меркурий, Венера, Марс) на дату: планета
+ * ретроградна, когда её видимая долгота с Земли уменьшается
  */
 export function getRetrogradePlanets(date: Date = new Date()): string[] {
-  const retrogrades: string[] = [];
-  const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-
-  // Меркурий ретроградный ~3 раза в год по ~3 недели
-  if ((dayOfYear >= 20 && dayOfYear <= 40) || (dayOfYear >= 140 && dayOfYear <= 160) || (dayOfYear >= 280 && dayOfYear <= 300)) {
-    retrogrades.push('Меркурий');
+  try {
+    const nextDay = new Date(date.getTime() + 864e5);
+    return RETROGRADE_BODIES.filter(({ body }) => {
+      let delta = geocentricLongitude(body, nextDay) - geocentricLongitude(body, date);
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      return delta < 0;
+    }).map(({ nameRu }) => nameRu);
+  } catch {
+    return [];
   }
-
-  // Венера ретроградная ~раз в 18 месяцев
-  if (dayOfYear >= 200 && dayOfYear <= 240 && date.getFullYear() % 2 === 0) {
-    retrogrades.push('Венера');
-  }
-
-  // Марс ретроградный ~раз в 2 года
-  if (dayOfYear >= 270 && dayOfYear <= 330 && date.getFullYear() % 2 === 1) {
-    retrogrades.push('Марс');
-  }
-
-  return retrogrades;
 }
 
 /**
