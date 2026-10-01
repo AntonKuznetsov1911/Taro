@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Sta
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { RUNES, RUNE_SPREADS, Rune } from '../src/data/runesKnowledge';
+import { RUNES, RUNE_SPREADS, Rune, canBeReversed } from '../src/data/runesKnowledge';
 
 // Безопасный разбор JSON из параметров навигации (может отсутствовать при прямом переходе)
 const parseJsonArray = (raw: unknown): any[] => {
@@ -37,11 +37,14 @@ export default function RunesResultScreen() {
   const spread =
     RUNE_SPREADS[spreadType as keyof typeof RUNE_SPREADS] ?? FALLBACK_SPREAD;
   const getPosition = (index: number) => spread.positions[index] ?? `Руна ${index + 1}`;
+  // Симметричные руны не переворачиваются, даже если так пришло в ссылке
+  const reversedAt = (index: number) =>
+    isReversed[index] === true && !!drawnRunes[index] && canBeReversed(drawnRunes[index].id);
 
   const handleShare = async () => {
     try {
       const text = drawnRunes.map((r: Rune, i: number) =>
-        `${getPosition(i)}: ${r.symbol} ${r.nameRu}${isReversed[i] ? ' (перевёрнута)' : ''}`
+        `${getPosition(i)}: ${r.symbol} ${r.nameRu}${reversedAt(i) ? ' (перевёрнута)' : ''}`
       ).join('\n');
       await Share.share({ message: `Гадание на рунах\nВопрос: ${question ?? ''}\n\n${text}` });
     } catch (error) {
@@ -109,19 +112,34 @@ export default function RunesResultScreen() {
           </View>
 
           {drawnRunes.map((rune: Rune, index: number) => (
-            <RuneCard key={`${rune.id}-${index}`} rune={rune} position={getPosition(index)} reversed={isReversed[index]} />
+            <RuneCard key={`${rune.id}-${index}`} rune={rune} position={getPosition(index)} reversed={reversedAt(index)} />
           ))}
 
           {drawnRunes[0] && (
             <View style={styles.detailsSection}>
               <Text style={styles.sectionTitle}>Детальный анализ первой руны</Text>
               <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Совет:</Text>
-                <Text style={styles.detailText}>{drawnRunes[0].advice}</Text>
-                <Text style={styles.detailLabel}>Отношения:</Text>
-                <Text style={styles.detailText}>{drawnRunes[0].relationship}</Text>
-                <Text style={styles.detailLabel}>Карьера:</Text>
-                <Text style={styles.detailText}>{drawnRunes[0].career}</Text>
+                {reversedAt(0) ? (
+                  <>
+                    {/* Советы по сферам написаны для прямого положения и в перевёрнутом
+                        противоречили бы толкованию выше — показываем блокировку */}
+                    <Text style={styles.detailLabel}>Перевёрнутое положение:</Text>
+                    <Text style={styles.detailText}>
+                      Энергия руны заблокирована или обращена против вас. {drawnRunes[0].reversedMeaning}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.detailLabel}>Предсказание:</Text>
+                    <Text style={styles.detailText}>{drawnRunes[0].divination}</Text>
+                    <Text style={styles.detailLabel}>Совет:</Text>
+                    <Text style={styles.detailText}>{drawnRunes[0].advice}</Text>
+                    <Text style={styles.detailLabel}>Отношения:</Text>
+                    <Text style={styles.detailText}>{drawnRunes[0].relationship}</Text>
+                    <Text style={styles.detailLabel}>Карьера:</Text>
+                    <Text style={styles.detailText}>{drawnRunes[0].career}</Text>
+                  </>
+                )}
                 <Text style={styles.detailLabel}>Духовное значение:</Text>
                 <Text style={styles.detailText}>{drawnRunes[0].spiritualMeaning}</Text>
               </View>
