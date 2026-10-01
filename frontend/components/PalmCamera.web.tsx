@@ -27,12 +27,11 @@ import { CapturedPalmPhoto, PalmCameraProps } from './palmCameraTypes';
  * <canvas> для снимка, явная остановка потока перед каждым перезапуском.
  */
 
-type Facing = 'back' | 'front';
 type Status = 'starting' | 'ready' | 'error';
 type ErrorKind = 'unsupported' | 'denied' | 'notfound' | 'busy' | 'unknown';
 
 /** Максимальная сторона готового снимка — держим файл небольшим. */
-const MAX_OUTPUT_SIZE = 1280;
+const MAX_OUTPUT_SIZE = 2400; // складки на ладони тонкие — нужна детализация
 const JPEG_QUALITY = 0.9;
 /** Видоискатель и снимок — 3:4: в кадр помещается ладонь с пальцами */
 const FRAME_ASPECT = 3 / 4;
@@ -117,7 +116,6 @@ const drawToCanvas = (
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
-  mirror: boolean,
   crop: CropRect = { x: 0, y: 0, width: sourceWidth, height: sourceHeight }
 ): HTMLCanvasElement | null => {
   if (!sourceWidth || !sourceHeight) return null;
@@ -133,12 +131,6 @@ const drawToCanvas = (
   const context = canvas.getContext('2d');
   if (!context) return null;
 
-  // Фронтальная камера показывается зеркально — снимок делаем таким же,
-  // чтобы результат совпадал с тем, что человек видел на экране.
-  if (mirror) {
-    context.translate(width, 0);
-    context.scale(-1, 1);
-  }
   context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
   return canvas;
 };
@@ -164,15 +156,80 @@ const canvasToPhoto = async (canvas: HTMLCanvasElement): Promise<CapturedPalmPho
   return { uri, base64, width: canvas.width, height: canvas.height };
 };
 
+interface CameraInfo {
+  deviceId: string;
+  label: string;
+}
+
+const FRONT_LABEL = /front|user|selfie|facetime|передн|фронт/i;
+const BACK_LABEL = /back|rear|environment|world|задн|основн/i;
+const SAVED_CAMERA_KEY = 'palm_camera_device';
+
+/**
+ * Задние камеры устройства. Фронтальная для ладони не нужна: она хуже
+ * по качеству и снимает зеркально. На телефонах с несколькими задними
+ * камерами (основная, широкоугольная, макро) можно выбрать ту, что
+ * чётче снимает линии.
+ */
+const pickBackCameras = (devices: MediaDeviceInfo[]): CameraInfo[] => {
+  const cameras = devices
+    .filter((d) => d.kind === 'videoinput' && d.deviceId)
+    .map((d) => ({ deviceId: d.deviceId, label: d.label || '' }));
+  const labeledBack = cameras.filter((c) => BACK_LABEL.test(c.label));
+  if (labeledBack.length) return labeledBack;
+  const notFront = cameras.filter((c) => !FRONT_LABEL.test(c.label));
+  // У ноутбука может быть только фронтальная веб-камера — тогда берём её
+  return notFront.length ? notFront : cameras;
+};
+
+const readSavedCamera = (): string => {
+  try {
+    return localStorage.getItem(SAVED_CAMERA_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+const saveCamera = (deviceId: string) => {
+  try {
+    localStorage.setItem(SAVED_CAMERA_KEY, deviceId);
+  } catch {
+    /* не критично */
+  }
+};
+
+/** Снимок в полном разрешении камеры, если браузер это умеет */
+type ImageCaptureLike = { takePhoto: () => Promise<Blob> };
+const takeFullPhoto = async (track: MediaStreamTrack): Promise<HTMLImageElement | null> => {
+  const Ctor = (window as unknown as { ImageCapture?: new (t: MediaStreamTrack) => ImageCaptureLike }).ImageCapture;
+  if (!Ctor) return null;
+  try {
+    const blob = await new Ctor(track).takePhoto();
+    const url = URL.createObjectURL(blob);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('photo decode failed'));
+      el.src = url;
+    });
+    URL.revokeObjectURL(url);
+    return img;
+  } catch {
+    return null;
+  }
+};
+
 export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
-  const [facing, setFacing] = useState<Facing>('back'); // ладонь снимают основной камерой
   const [status, setStatus] = useState<Status>('starting');
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown');
   const [errorDetail, setErrorDetail] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
-  const [cameraCount, setCameraCount] = useState(0);
+  const [cameras, setCameras] = useState<CameraInfo[]>([]);
+  const [cameraIndex, setCameraIndex] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
 
   // Рамка 3:4 — максимально большая, какая помещается на экране
@@ -185,7 +242,6 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const deviceIdsRef = useRef<string[]>([]);
   const isMountedRef = useRef(true);
 
   const stopStream = useCallback(() => {
@@ -210,22 +266,6 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
     }
   }, []);
 
-  const refreshDeviceList = useCallback(async () => {
-    try {
-      if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
-        return;
-      }
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter((device) => device.kind === 'videoinput');
-      deviceIdsRef.current = cameras.map((device) => device.deviceId).filter(Boolean);
-      if (isMountedRef.current) {
-        setCameraCount(cameras.length);
-      }
-    } catch {
-      /* список камер не критичен — просто не покажем переключатель */
-    }
-  }, []);
-
   const attachStream = useCallback((stream: MediaStream) => {
     const video = videoRef.current;
     if (!video) return;
@@ -240,12 +280,29 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
     }
   }, []);
 
+  /** Непрерывная фокусировка и проверка, есть ли у камеры фонарик */
+  const tuneTrack = useCallback(async (track: MediaStreamTrack) => {
+    const caps = (typeof track.getCapabilities === 'function' ? track.getCapabilities() : {}) as Record<string, unknown>;
+    setTorchSupported(!!caps.torch);
+    setTorchOn(false);
+    const focusModes = caps.focusMode as string[] | undefined;
+    if (focusModes?.includes('continuous')) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+      } catch {
+        /* фокус по умолчанию */
+      }
+    }
+  }, []);
+
   /**
-   * Запускает камеру. Перед каждым запуском старый поток закрывается:
-   * Android не даёт держать фронтальную и основную камеру открытыми одновременно.
+   * Запускает заднюю камеру (конкретную — по deviceId). Перед каждым
+   * запуском старый поток закрывается: Android не даёт держать две камеры
+   * открытыми одновременно. Просим высокое разрешение — складки на ладони
+   * тонкие, и каждый пиксель на счету.
    */
   const startCamera = useCallback(
-    async (target: Facing, deviceId?: string): Promise<boolean> => {
+    async (deviceId?: string): Promise<boolean> => {
       if (!hasGetUserMedia()) {
         if (isMountedRef.current) {
           setStatus('error');
@@ -261,46 +318,38 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
       }
       stopStream();
 
-      const constraints: MediaStreamConstraints = deviceId
-        ? { audio: false, video: { deviceId: { exact: deviceId } } }
-        : {
-            audio: false,
-            video: {
-              facingMode: { ideal: target === 'back' ? 'environment' : 'user' },
-              width: { ideal: 1280 },
-              height: { ideal: 1280 },
-            },
-          };
+      const size = { width: { ideal: 2560 }, height: { ideal: 2560 } };
+      const attempts: MediaStreamConstraints[] = deviceId
+        ? [{ audio: false, video: { deviceId: { exact: deviceId }, ...size } }]
+        : [];
+      attempts.push(
+        { audio: false, video: { facingMode: { ideal: 'environment' }, ...size } },
+        { audio: false, video: true }
+      );
 
       let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (error) {
-        const kind = classifyError(error);
-        // Слишком строгие пожелания (facingMode/размер) — пробуем любую камеру.
-        if (kind !== 'denied') {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-          } catch (fallbackError) {
-            if (isMountedRef.current) {
-              setStatus('error');
-              setErrorKind(classifyError(fallbackError));
-              setErrorDetail(
-                typeof fallbackError === 'object' && fallbackError !== null && 'name' in fallbackError
-                  ? String((fallbackError as { name: unknown }).name)
-                  : ''
-              );
-            }
-            return false;
-          }
-        } else {
-          if (isMountedRef.current) {
-            setStatus('error');
-            setErrorKind(kind);
-            setErrorDetail('');
-          }
-          return false;
+      let lastError: unknown = null;
+      for (const constraints of attempts) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (classifyError(error) === 'denied') break;
         }
+      }
+
+      if (!stream) {
+        if (isMountedRef.current) {
+          setStatus('error');
+          setErrorKind(classifyError(lastError));
+          setErrorDetail(
+            typeof lastError === 'object' && lastError !== null && 'name' in lastError
+              ? String((lastError as { name: unknown }).name)
+              : ''
+          );
+        }
+        return false;
       }
 
       if (!isMountedRef.current) {
@@ -310,16 +359,43 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
 
       streamRef.current = stream;
       attachStream(stream);
+      const track = stream.getVideoTracks()[0];
+      if (track) void tuneTrack(track);
       setStatus('ready');
-      void refreshDeviceList();
       return true;
     },
-    [attachStream, refreshDeviceList, stopStream]
+    [attachStream, stopStream, tuneTrack]
   );
+
+  /** Названия камер браузер отдаёт только после разрешения — список строим после первого запуска */
+  const loadCameras = useCallback(async (): Promise<CameraInfo[]> => {
+    try {
+      if (typeof navigator.mediaDevices?.enumerateDevices !== 'function') return [];
+      const list = pickBackCameras(await navigator.mediaDevices.enumerateDevices());
+      if (isMountedRef.current) setCameras(list);
+      return list;
+    } catch {
+      return [];
+    }
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
-    void startCamera('back');
+    (async () => {
+      const saved = readSavedCamera();
+      const ok = await startCamera(saved || undefined);
+      if (!ok) return;
+      const list = await loadCameras();
+      const currentId = streamRef.current?.getVideoTracks()[0]?.getSettings().deviceId ?? '';
+      const index = list.findIndex((c) => c.deviceId === currentId);
+      if (index >= 0) {
+        setCameraIndex(index);
+      } else if (list.length) {
+        // Браузер открыл фронтальную или неизвестную камеру — переходим на заднюю
+        setCameraIndex(0);
+        await startCamera(list[0].deviceId);
+      }
+    })();
     return () => {
       isMountedRef.current = false;
       stopStream();
@@ -328,40 +404,31 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const currentDeviceId = (): string => {
-    const track = streamRef.current?.getVideoTracks()[0];
-    const settings = track?.getSettings();
-    return settings?.deviceId ?? '';
-  };
-
   const handleSwitchCamera = useCallback(async () => {
-    if (isSwitching || isCapturing) return;
-
-    const previousDeviceId = currentDeviceId();
-    const next: Facing = facing === 'back' ? 'front' : 'back';
-
+    if (isSwitching || isCapturing || cameras.length < 2) return;
+    const next = (cameraIndex + 1) % cameras.length;
     setIsSwitching(true);
-    setFacing(next);
     try {
-      const ok = await startCamera(next);
-      if (!ok) return;
-
-      // Некоторые устройства (ноутбуки, часть Android) не сообщают facingMode.
-      // Если камера не сменилась — переключаемся по deviceId.
-      const deviceIds = deviceIdsRef.current;
-      if (previousDeviceId && deviceIds.length > 1 && currentDeviceId() === previousDeviceId) {
-        const index = deviceIds.indexOf(previousDeviceId);
-        const nextId = deviceIds[(index + 1) % deviceIds.length];
-        if (nextId && nextId !== previousDeviceId) {
-          await startCamera(next, nextId);
-        }
+      const ok = await startCamera(cameras[next].deviceId);
+      if (ok) {
+        setCameraIndex(next);
+        saveCamera(cameras[next].deviceId);
       }
     } finally {
-      if (isMountedRef.current) {
-        setIsSwitching(false);
-      }
+      if (isMountedRef.current) setIsSwitching(false);
     }
-  }, [facing, isCapturing, isSwitching, startCamera]);
+  }, [cameraIndex, cameras, isCapturing, isSwitching, startCamera]);
+
+  const handleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn } as MediaTrackConstraintSet] });
+      setTorchOn(!torchOn);
+    } catch {
+      setTorchSupported(false);
+    }
+  }, [torchOn]);
 
   const handleCapture = useCallback(async () => {
     const video = videoRef.current;
@@ -373,11 +440,18 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
     setIsCapturing(true);
     setNotice('');
     try {
+      // Полноразмерный снимок с матрицы — если он того же кадра, что и
+      // превью (та же ориентация и пропорции). Иначе — кадр из видео.
+      const track = streamRef.current?.getVideoTracks()[0];
+      const full = track && !torchOn ? await takeFullPhoto(track) : null;
+      const sameFrame =
+        full && Math.abs(full.naturalWidth / full.naturalHeight - video.videoWidth / video.videoHeight) < 0.02;
+      const source: CanvasImageSource = sameFrame && full ? full : video;
+      const w = sameFrame && full ? full.naturalWidth : video.videoWidth;
+      const h = sameFrame && full ? full.naturalHeight : video.videoHeight;
+
       // В снимок попадает ровно то, что видно в рамке
-      const canvas = drawToCanvas(
-        video, video.videoWidth, video.videoHeight, facing === 'front',
-        frameCrop(video.videoWidth, video.videoHeight)
-      );
+      const canvas = drawToCanvas(source, w, h, frameCrop(w, h));
       if (!canvas) {
         setNotice('Не удалось сделать снимок. Попробуйте ещё раз.');
         return;
@@ -397,7 +471,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
         setIsCapturing(false);
       }
     }
-  }, [facing, onCaptured, stopStream]);
+  }, [onCaptured, stopStream, torchOn]);
 
   const handlePickFile = useCallback(() => {
     fileInputRef.current?.click();
@@ -419,7 +493,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
           element.src = objectUrl;
         });
 
-        const canvas = drawToCanvas(image, image.naturalWidth, image.naturalHeight, false);
+        const canvas = drawToCanvas(image, image.naturalWidth, image.naturalHeight);
         if (!canvas) {
           // Без canvas отдаём файл как есть.
           onCaptured({ uri: objectUrl, base64: '' });
@@ -447,12 +521,11 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
       height: '100%',
       objectFit: 'cover',
       backgroundColor: '#000011',
-      transform: facing === 'front' ? 'scaleX(-1)' : undefined,
     }),
-    [facing]
+    []
   );
 
-  const canSwitch = cameraCount > 1;
+  const canSwitch = cameras.length > 1;
 
   const fileInput = (
     <input
@@ -493,7 +566,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
 
             <TouchableOpacity
               style={styles.primaryAction}
-              onPress={() => void startCamera(facing)}
+              onPress={() => void startCamera(cameras[cameraIndex]?.deviceId)}
             >
               <LinearGradient
                 colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
@@ -531,15 +604,14 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
             <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Хиромантия</Text>
-          {canSwitch ? (
+          {torchSupported ? (
             <TouchableOpacity
-              style={styles.switchButton}
-              onPress={() => void handleSwitchCamera()}
-              disabled={isSwitching || isCapturing}
-              accessibilityLabel="Сменить камеру"
+              style={[styles.switchButton, torchOn && styles.torchOn]}
+              onPress={() => void handleTorch()}
+              accessibilityLabel="Фонарик"
             >
-              <Ionicons name="camera-reverse" size={20} color="#E8E8E8" />
-              <Text style={styles.switchButtonText}>Сменить</Text>
+              <Ionicons name={torchOn ? 'flash' : 'flash-outline'} size={20} color="#E8E8E8" />
+              <Text style={styles.switchButtonText}>Свет</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.placeholder} />
@@ -547,7 +619,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
         </View>
 
         <Text style={styles.hintLine}>
-          Ладонь целиком в рамке, пальцы вместе, свет ровный
+          Ладонь целиком в рамке, пальцы прямые. Свет сбоку делает линии чётче
         </Text>
 
         <View style={styles.cameraArea} onLayout={handleAreaLayout}>
@@ -608,9 +680,9 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
               onPress={() => void handleSwitchCamera()}
               disabled={isSwitching || isCapturing}
             >
-              <Ionicons name="camera-reverse" size={18} color="#E8E8E8" />
+              <Ionicons name="swap-horizontal" size={18} color="#E8E8E8" />
               <Text style={styles.switchPillText}>
-                {isSwitching ? 'Переключаем...' : 'Сменить камеру'}
+                {isSwitching ? 'Переключаем...' : `Камера ${cameraIndex + 1} из ${cameras.length} — сменить`}
               </Text>
             </TouchableOpacity>
           )}
@@ -660,6 +732,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(155, 89, 182, 0.6)',
     backgroundColor: 'rgba(155, 89, 182, 0.2)',
+  },
+  torchOn: {
+    backgroundColor: 'rgba(241, 196, 15, 0.35)',
+    borderColor: 'rgba(241, 196, 15, 0.8)',
   },
   switchButtonText: {
     marginLeft: 6,

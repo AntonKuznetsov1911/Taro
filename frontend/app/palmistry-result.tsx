@@ -74,6 +74,8 @@ export default function PalmistryResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const imageUri = typeof params.imageUri === 'string' ? params.imageUri : '';
+  const enhancedUri = typeof params.enhancedUri === 'string' ? params.enhancedUri : '';
+  const softPhoto = params.soft === '1';
   const source: PalmSource = params.source === 'auto' ? 'auto' : 'manual';
 
   const features = useMemo(() => parseJson<Partial<PalmFeatures>>(params.features, {}), [params.features]);
@@ -91,6 +93,7 @@ export default function PalmistryResultScreen() {
   const segments = useMemo(() => buildSegments(lines, IMAGE_WIDTH, imageHeight), [lines, imageHeight]);
 
   const [showLines, setShowLines] = useState(true);
+  const [contrastView, setContrastView] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -168,7 +171,10 @@ export default function PalmistryResultScreen() {
               {/* Снимок с найденными линиями */}
               <View style={styles.imageWrap}>
                 {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={{ width: IMAGE_WIDTH, height: imageHeight }} />
+                  <Image
+                    source={{ uri: contrastView && enhancedUri ? enhancedUri : imageUri }}
+                    style={{ width: IMAGE_WIDTH, height: imageHeight }}
+                  />
                 ) : (
                   <View style={[styles.imagePlaceholder, { width: IMAGE_WIDTH, height: imageHeight }]}>
                     <Ionicons name="hand-left-outline" size={56} color="#9B59B6" />
@@ -194,10 +200,23 @@ export default function PalmistryResultScreen() {
                   </View>
                 )}
               </View>
-              {segments.length > 0 && (
-                <TouchableOpacity style={styles.toggle} onPress={() => setShowLines(v => !v)}>
-                  <Text style={styles.toggleText}>{showLines ? 'Скрыть линии' : 'Показать найденные линии'}</Text>
-                </TouchableOpacity>
+              <View style={styles.toggleRow}>
+                {!!enhancedUri && (
+                  <TouchableOpacity style={[styles.toggle, contrastView && styles.toggleActive]} onPress={() => setContrastView(v => !v)}>
+                    <Text style={styles.toggleText}>{contrastView ? 'Обычное фото' : 'Контраст линий'}</Text>
+                  </TouchableOpacity>
+                )}
+                {segments.length > 0 && (
+                  <TouchableOpacity style={[styles.toggle, showLines && styles.toggleActive]} onPress={() => setShowLines(v => !v)}>
+                    <Text style={styles.toggleText}>{showLines ? 'Скрыть разметку' : 'Показать разметку'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {softPhoto && (
+                <Text style={styles.softWarning}>
+                  Снимок немного размыт — тонкие линии могли не попасть в разбор, а глубина может быть занижена.
+                  Для точности переснимите при хорошем свете.
+                </Text>
               )}
 
               {/* Что распознано */}
@@ -291,7 +310,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  toggle: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 16, backgroundColor: 'rgba(155,89,182,0.2)' },
+  toggleRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  toggle: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: 'rgba(155,89,182,0.2)', borderWidth: 1, borderColor: 'transparent' },
+  toggleActive: { borderColor: '#BB6BD9' },
+  softWarning: { marginTop: 10, fontSize: 12, lineHeight: 17, color: '#F1C40F', textAlign: 'center', maxWidth: 340 },
   toggleText: { fontSize: 13, fontWeight: '600', color: '#E8E8E8' },
   card: {
     alignSelf: 'stretch',

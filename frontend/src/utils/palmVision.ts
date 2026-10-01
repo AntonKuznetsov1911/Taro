@@ -44,6 +44,8 @@ export interface PalmAnalysis {
   measurements: PalmMeasurements;
   lines: LineFinding[];
   issues: PalmQualityIssue[];
+  /** Снимок слегка размыт: линии найдены, но глубина может быть занижена */
+  soft: boolean;
 }
 
 // ==================== ГЕОМЕТРИЯ РУКИ ====================
@@ -92,8 +94,11 @@ function palmQuad(lm: Point[]) {
 
 // ==================== ИЗОБРАЖЕНИЕ ====================
 
-const GRID_U = 150;
-const GRID_V = 180;
+const GRID_U = 200;
+const GRID_V = 240;
+/** Размеры в клетках ниже подобраны для сетки шириной 150 */
+const K = GRID_U / 150;
+const k = (n: number) => Math.round(n * K);
 
 function sampleGray(img: RgbaImage, x: number, y: number): number {
   const fx = Math.min(img.width - 1.001, Math.max(0, x));
@@ -130,28 +135,65 @@ function boxBlur(src: Grid, r: number, horizontal: boolean): Grid {
   return out;
 }
 
+/** Приближение гауссова размытия тремя проходами box-фильтра */
+function gaussBlur(src: Grid, sigma: number): Grid {
+  const r = Math.max(1, Math.round(sigma * 0.9));
+  let out = src;
+  for (let i = 0; i < 3; i++) out = boxBlur(boxBlur(out, r, true), r, false);
+  return out;
+}
+
 /**
- * Отклик «тёмной складки» заданной ориентации: насколько пиксель темнее
- * соседей по обе стороны (несколько ширин складки), сглаженный вдоль линии
+ * Выравнивание освещения: каждая точка делится на среднюю яркость
+ * окрестности. Тени от изгиба ладони и неровный свет пропадают, а
+ * складки остаются — значение показывает, насколько точка темнее кожи
+ * вокруг (1 — как кожа, 0,9 — на 10% темнее)
  */
-function valleyResponse(gray: Grid, orientation: 'h' | 'v' | 'any'): Grid {
-  const out = new Float32Array(gray.length);
-  const widths = [2, 4];
-  for (let v = 0; v < GRID_V; v++) {
-    for (let u = 0; u < GRID_U; u++) {
-      let best = 0;
-      for (const d of widths) {
-        const c = at(gray, u, v);
-        const cand: number[] = [];
-        if (orientation !== 'v' && v - d >= 0 && v + d < GRID_V) cand.push((at(gray, u, v - d) + at(gray, u, v + d)) / 2 - c);
-        if (orientation !== 'h' && u - d >= 0 && u + d < GRID_U) cand.push((at(gray, u - d, v) + at(gray, u + d, v)) / 2 - c);
-        for (const x of cand) if (x > best) best = x;
+function flatField(gray: Grid): Grid {
+  const bg = gaussBlur(gray, 9 * K);
+  return gray.map((x, i) => x / Math.max(bg[i], 1)) as Grid;
+}
+
+/**
+ * Отклик складки по матрице Гессе (как в фильтре Франжи): у тёмной линии
+ * яркость резко растёт поперёк неё (большое λ1 > 0) и почти не меняется
+ * вдоль (малое |λ2|). У пор и пятен обе кривизны велики — отклик гасится,
+ * у коротких морщинок он слабее, чем у длинной складки. Ориентация 'h' —
+ * поперечные линии (сердца, ума), 'v' — продольные (судьбы).
+ */
+function ridgeResponse(img: Grid, orientation: 'h' | 'v' | 'any'): Grid {
+  const out = new Float32Array(img.length);
+  for (const sigma of [1.1 * K, 1.8 * K, 2.8 * K]) {
+    const g = gaussBlur(img, sigma);
+    const s2 = sigma * sigma;
+    for (let v = 1; v < GRID_V - 1; v++) {
+      for (let u = 1; u < GRID_U - 1; u++) {
+        const c = at(g, u, v);
+        const dxx = at(g, u + 1, v) - 2 * c + at(g, u - 1, v);
+        const dyy = at(g, u, v + 1) - 2 * c + at(g, u, v - 1);
+        const dxy = (at(g, u + 1, v + 1) - at(g, u + 1, v - 1) - at(g, u - 1, v + 1) + at(g, u - 1, v - 1)) / 4;
+        const tr = (dxx + dyy) / 2;
+        const det = Math.sqrt(((dxx - dyy) / 2) ** 2 + dxy * dxy);
+        const l1 = tr + det; // кривизна поперёк складки
+        const l2 = tr - det; // вдоль складки
+        if (l1 <= 0) continue;
+        let resp = s2 * Math.max(0, l1 - 1.5 * Math.abs(l2));
+        if (orientation !== 'any') {
+          // Собственный вектор λ1 — нормаль к складке
+          let nx = dxy, ny = l1 - dxx;
+          if (Math.abs(nx) + Math.abs(ny) < 1e-9) { nx = l1 - dyy; ny = dxy; }
+          const len = Math.hypot(nx, ny) || 1;
+          const along = orientation === 'h' ? ny / len : nx / len;
+          resp *= along * along;
+        }
+        const i = v * GRID_U + u;
+        if (resp > out[i]) out[i] = resp;
       }
-      out[v * GRID_U + u] = best;
     }
   }
-  if (orientation === 'h') return boxBlur(out, 2, true);
-  if (orientation === 'v') return boxBlur(out, 2, false);
+  // Немного сглаживаем вдоль линии, чтобы разрывы в один-два пикселя не мешали
+  if (orientation === 'h') return boxBlur(out, k(2), true);
+  if (orientation === 'v') return boxBlur(out, k(2), false);
   return boxBlur(boxBlur(out, 1, true), 1, false);
 }
 
@@ -234,9 +276,12 @@ function tracePath(
 
 const ON = 1.6;   // точка относится к линии
 /** Глубокая линия темнее окружающей кожи хотя бы на столько (доля яркости) */
-const DEEP_CONTRAST = 0.085;
+const DEEP_CONTRAST = 0.05;
+/** Резкость (мелкие детали к крупным): ниже — снимок размыт */
+const BLURRY_SHARPNESS = 1.1;
+const SOFT_SHARPNESS = 1.3;
 /** Слабее этого складка неотличима от рисунка кожи */
-const MIN_CONTRAST = 0.035;
+const MIN_CONTRAST = 0.027;
 
 function smooth(xs: number[], r: number): number[] {
   return xs.map((_, i) => {
@@ -264,7 +309,12 @@ interface LineStats {
 
 function lineStats(t: Trace, minLength: number): LineStats {
   const zs = smooth(t.z, 2);
-  const on = zs.map(z => z >= ON);
+  // Точка принадлежит линии, если отклик заметен и на фоне самой линии:
+  // иначе слабый шум у её концов «удлиняет» линию туда, где её нет
+  const sorted = [...zs].sort((a, b) => a - b);
+  const peak = sorted[Math.floor(sorted.length * 0.75)] ?? 0;
+  const onLevel = Math.max(ON, peak * 0.25);
+  const on = zs.map(z => z >= onLevel);
   // Протяжённость линии: от первой до последней устойчиво яркой точки
   let start = on.findIndex((x, i) => x && on[i + 1] && on[i + 2]);
   let end = on.length - 1 - [...on].reverse().findIndex((x, i, arr) => x && arr[i + 1] && arr[i + 2]);
@@ -277,7 +327,7 @@ function lineStats(t: Trace, minLength: number): LineStats {
 
   // Разрыв — провал заметной длины, по обе стороны от которого линия сильная
   let broken = false;
-  const gapMin = Math.max(5, Math.round(span * 0.07));
+  const gapMin = Math.max(k(5), Math.round(span * 0.07));
   const gapLevel = Math.max(ON, strength * 0.2);
   for (let i = start, run = 0; i <= end; i++) {
     if (zs[i] < gapLevel) run++;
@@ -297,8 +347,8 @@ function lineStats(t: Trace, minLength: number): LineStats {
   let links = 0;
   for (let i = 1; i < raw.length - 1; i++) {
     if (raw[i] > raw[i - 1] || raw[i] > raw[i + 1]) continue;
-    const left = Math.max(...raw.slice(Math.max(0, i - 6), i));
-    const right = Math.max(...raw.slice(i + 1, i + 7));
+    const left = Math.max(...raw.slice(Math.max(0, i - k(6)), i));
+    const right = Math.max(...raw.slice(i + 1, i + k(6) + 1));
     if (raw[i] < 0.7 * Math.min(left, right)) links++;
   }
   const chained = !broken && links >= Math.max(4, span / 22);
@@ -333,18 +383,18 @@ function hasFork(z: Grid, t: Trace, s: LineStats, along: 'u' | 'v', side: 'start
       const main = read(a, c);
       // Ближайший к линии пик с этой стороны
       let bestD = 0, best = 0;
-      for (let d = 3; d <= 22; d++) {
+      for (let d = k(3); d <= k(22); d++) {
         const cc = c + dir * d;
         if (cc < 0 || cc >= crossMax) break;
         const val = read(a, cc);
         if (val > best) { best = val; bestD = d; }
       }
-      const isBranch = main >= ON && best >= Math.max(ON * 1.4, main * 0.35) &&
-        (run === 0 ? bestD <= 7 : bestD >= lastD - 1 && bestD <= lastD + 3);
+      const isBranch = main >= ON && best >= Math.max(ON * 1.4, main * 0.28) &&
+        (run === 0 ? bestD <= k(7) : bestD >= lastD - 1 && bestD <= lastD + 3);
       if (isBranch) {
         run++;
         lastD = bestD;
-        if (run >= 6 && lastD >= 8) return true;
+        if (run >= k(6) && lastD >= k(8)) return true;
       } else {
         run = 0;
       }
@@ -374,53 +424,85 @@ export function analyzePalm(img: RgbaImage, landmarks: Point[]): PalmAnalysis {
 
   if (dist(landmarks[0], landmarks[9]) < 140) issues.push('too_small');
 
-  // Ладонь в стандартной сетке
+  // Ладонь в стандартной сетке. Клетка сетки на большом снимке занимает
+  // несколько пикселей — усредняем их, а не берём один (меньше шума)
+  const cellPx = dist(toImage(0, 0.5), toImage(1, 0.5)) / GRID_U;
+  const sub = Math.max(1, Math.min(4, Math.round(cellPx)));
   const gray = new Float32Array(GRID_U * GRID_V);
   for (let v = 0; v < GRID_V; v++) {
     for (let u = 0; u < GRID_U; u++) {
-      const p = toImage(u / (GRID_U - 1), v / (GRID_V - 1));
-      gray[v * GRID_U + u] = sampleGray(img, p.x, p.y);
+      let sum = 0;
+      for (let sy = 0; sy < sub; sy++) {
+        for (let sx = 0; sx < sub; sx++) {
+          const p = toImage((u + (sx + 0.5) / sub - 0.5) / (GRID_U - 1), (v + (sy + 0.5) / sub - 0.5) / (GRID_V - 1));
+          sum += sampleGray(img, p.x, p.y);
+        }
+      }
+      gray[v * GRID_U + u] = sum / (sub * sub);
     }
   }
   const brightness = median(Array.from(gray));
   if (brightness < 55) issues.push('too_dark');
   if (brightness > 235) issues.push('too_bright');
 
-  // Резкость: средний перепад между соседними точками сетки
-  let edge = 0;
-  for (let v = 1; v < GRID_V; v++) for (let u = 1; u < GRID_U; u++) {
-    edge += Math.abs(at(gray, u, v) - at(gray, u - 1, v)) + Math.abs(at(gray, u, v) - at(gray, u, v - 1));
-  }
-  if (edge / (GRID_U * GRID_V) < 0.9) issues.push('blurry');
+  const flat = flatField(gray);
 
-  // Лёгкое сглаживание убирает поры и шум матрицы, складки остаются
-  const soft = boxBlur(boxBlur(gray, 1, true), 1, false);
-  const rawH = valleyResponse(soft, 'h');
-  const rawV = valleyResponse(soft, 'v');
-  const rawA = valleyResponse(soft, 'any');
-  const floorOf = (raw: Grid) => median(Array.from(raw));
-  const floors = new Map<Grid, number>([[rawH, floorOf(rawH)], [rawV, floorOf(rawV)], [rawA, floorOf(rawA)]]);
+  // Резкость: доля мелких деталей (перепадов между соседними клетками)
+  // относительно перепадов на масштабе нескольких клеток — не зависит ни
+  // от яркости, ни от освещения. У размытого снимка мелкие детали гаснут
+  const coarse = gaussBlur(flat, 2 * K);
+  let fine = 0, broad = 0;
+  for (let v = 2; v < GRID_V - 2; v++) {
+    for (let u = 2; u < GRID_U - 2; u++) {
+      fine += Math.abs(at(flat, u, v) - at(flat, u - 1, v)) + Math.abs(at(flat, u, v) - at(flat, u, v - 1));
+      broad += Math.abs(at(coarse, u, v) - at(coarse, u - 2, v)) + Math.abs(at(coarse, u, v) - at(coarse, u, v - 2));
+    }
+  }
+  const sharpness = broad > 0 ? fine / broad : 0;
+  if (sharpness < BLURRY_SHARPNESS) issues.push('blurry');
+  const soft = sharpness < SOFT_SHARPNESS;
+  const rawH = ridgeResponse(flat, 'h');
+  const rawV = ridgeResponse(flat, 'v');
+  const rawA = ridgeResponse(flat, 'any');
+  // Для глубины — насколько складка темнее кожи по обе стороны от неё
+  const smoothFlat = boxBlur(boxBlur(flat, 1, true), 1, false);
   const zH = normalize(rawH);
   const zV = normalize(rawV);
   const zA = normalize(rawA);
 
-  // Глубина линии — насколько она темнее кожи вокруг, в долях яркости
-  const contrastOf = (raw: Grid, t: Trace, st: LineStats, along: 'u' | 'v') => {
-    if (!st.found) return 0;
-    const vals: number[] = [];
+  // Глубина линии — насколько она темнее кожи по обе стороны, в долях
+  // яркости (после выравнивания освещения)
+  const depthProfile = (t: Trace, st: LineStats, along: 'u' | 'v'): number[] => {
+    const crossMax = along === 'u' ? GRID_V : GRID_U;
+    const read = (a: number, c: number) => {
+      const cc = Math.min(crossMax - 1, Math.max(0, c));
+      return along === 'u' ? at(smoothFlat, a, cc) : at(smoothFlat, cc, a);
+    };
+    const depths: number[] = [];
+    const side = k(5);
     for (let i = st.start; i <= st.end; i++) {
-      const a = t.from + i;
-      let best = 0;
-      for (let dc = -1; dc <= 1; dc++) {
-        const c = t.cross[i] + dc;
-        const val = along === 'u' ? (c >= 0 && c < GRID_V ? at(raw, a, c) : 0) : (c >= 0 && c < GRID_U ? at(raw, c, a) : 0);
-        best = Math.max(best, val);
-      }
-      vals.push(best);
+      const a = t.from + i, c = t.cross[i];
+      const center = Math.min(read(a, c - 1), read(a, c), read(a, c + 1));
+      const skin = (read(a, c - side) + read(a, c + side)) / 2;
+      depths.push(Math.max(0, skin - center));
     }
-    // За вычетом «фона» — отклика обычной кожи без линий
-    return Math.max(0, median(vals) - (floors.get(raw) ?? 0)) / Math.max(brightness, 1);
+    return depths;
   };
+
+  /** «Цепочка» по профилю темноты: складка регулярно прерывается звеньями */
+  const isChain = (depths: number[]) => {
+    const d = smooth(depths, 1);
+    const w = k(6);
+    let links = 0;
+    for (let i = 1; i < d.length - 1; i++) {
+      if (d[i] > d[i - 1] || d[i] > d[i + 1]) continue;
+      const left = Math.max(...d.slice(Math.max(0, i - w), i));
+      const right = Math.max(...d.slice(i + 1, i + w + 1));
+      if (d[i] < 0.55 * Math.min(left, right)) links++;
+    }
+    return links >= Math.max(4, d.length / 22);
+  };
+
   const V = (f: number) => Math.round(f * (GRID_V - 1));
   const U = (f: number) => Math.round(f * (GRID_U - 1));
 
@@ -430,7 +512,7 @@ export function analyzePalm(img: RgbaImage, landmarks: Point[]): PalmAnalysis {
 
   // Линия ума — ниже линии сердца
   const heartAt = (a: number) => heartT.cross[a - heartT.from] ?? 0;
-  const headT = tracePath(zH, 'u', [U(0.02), U(0.85)], a => [Math.max(V(0.22), heartAt(a) + 10), V(0.62)]);
+  const headT = tracePath(zH, 'u', [U(0.02), U(0.85)], a => [Math.max(V(0.22), heartAt(a) + k(10)), V(0.62)]);
   const head = lineStats(headT, GRID_U * 0.3);
 
   // Линия жизни — дуга вокруг основания большого пальца, идёт сверху вниз
@@ -439,7 +521,7 @@ export function analyzePalm(img: RgbaImage, landmarks: Point[]): PalmAnalysis {
 
   // Линия судьбы — вертикальная по центру ладони, есть не у всех
   const fateT = tracePath(zV, 'v', [V(0.25), V(0.98)], () => [U(0.32), U(0.72)],
-    (a, c) => Math.abs(c - (lifeT.cross[a - lifeT.from] ?? -99)) < 8);
+    (a, c) => Math.abs(c - (lifeT.cross[a - lifeT.from] ?? -99)) < k(8));
   const fate = lineStats(fateT, GRID_V * 0.25);
 
   const pathOf = (t: Trace, s: LineStats, along: 'u' | 'v'): Point[] => {
@@ -459,9 +541,12 @@ export function analyzePalm(img: RgbaImage, landmarks: Point[]): PalmAnalysis {
     id: PalmLineId, t: Trace, st: LineStats, raw: Grid, z: Grid, along: 'u' | 'v',
     opts: { fork: boolean; curve: boolean; fallback: LineTrait[] }
   ): LineFinding => {
-    const contrast = contrastOf(raw, t, st, along);
+    const depths = st.found ? depthProfile(t, st, along) : [];
+    const contrast = median(depths);
     if (contrast < MIN_CONTRAST) st = { ...st, found: false };
-    const fork = opts.fork && st.found && hasFork(z, t, st, along, 'end');
+    if (st.found && !st.broken) st = { ...st, chained: st.chained || isChain(depths) };
+    // Ветвь отходит под углом — ищем её по отклику без учёта направления
+    const fork = opts.fork && st.found && hasFork(zA, t, st, along, 'end');
     return {
       id,
       found: st.found,
@@ -491,5 +576,6 @@ export function analyzePalm(img: RgbaImage, landmarks: Point[]): PalmAnalysis {
     measurements,
     lines,
     issues,
+    soft,
   };
 }

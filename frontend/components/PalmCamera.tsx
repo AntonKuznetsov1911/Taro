@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -20,15 +20,17 @@ import { PalmCameraProps } from './palmCameraTypes';
  * Веб-версия живёт в PalmCamera.web.tsx и работает через getUserMedia.
  */
 export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
-  const [facing, setFacing] = useState<CameraType>('back'); // ладонь снимают основной камерой
+  // Ладонь снимают только задней камерой: фронтальная хуже и снимает зеркально.
+  // Фонарик даёт ровный свет, при котором складки видны чётче
+  const [torch, setTorch] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [mountError, setMountError] = useState(false);
   const [notice, setNotice] = useState('');
   const cameraRef = useRef<CameraView>(null);
 
-  const toggleCameraFacing = useCallback(() => {
-    setFacing((current) => (current === 'back' ? 'front' : 'back'));
+  const toggleTorch = useCallback(() => {
+    setTorch((current) => !current);
   }, []);
 
   const header = (
@@ -185,18 +187,19 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
         <Text style={styles.headerTitle}>Хиромантия</Text>
         <TouchableOpacity
           style={styles.switchButton}
-          onPress={toggleCameraFacing}
-          accessibilityLabel="Сменить камеру"
+          onPress={toggleTorch}
+          accessibilityLabel="Фонарик"
         >
-          <Ionicons name="camera-reverse" size={20} color="#E8E8E8" />
-          <Text style={styles.switchButtonText}>Сменить</Text>
+          <Ionicons name={torch ? 'flash' : 'flash-outline'} size={20} color="#E8E8E8" />
+          <Text style={styles.switchButtonText}>Свет</Text>
         </TouchableOpacity>
       </View>
 
       <CameraView
         ref={cameraRef}
         style={styles.camera}
-        facing={facing}
+        facing="back"
+        enableTorch={torch}
         onMountError={() => setMountError(true)}
       >
         <LinearGradient
@@ -220,9 +223,6 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
                 • Разверните ладонь к камере{'\n'}
                 • Убедитесь, что линии видны четко{'\n'}
                 • Держите руку неподвижно
-              </Text>
-              <Text style={styles.cameraHint}>
-                Сейчас камера: {facing === 'back' ? 'основная' : 'фронтальная'}
               </Text>
             </View>
           </View>
@@ -252,14 +252,6 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.switchPill}
-              onPress={toggleCameraFacing}
-              disabled={isProcessing}
-            >
-              <Ionicons name="camera-reverse" size={18} color="#E8E8E8" />
-              <Text style={styles.switchPillText}>Сменить камеру</Text>
-            </TouchableOpacity>
           </View>
         </LinearGradient>
       </CameraView>
@@ -375,12 +367,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'left',
   },
-  cameraHint: {
-    marginTop: 10,
-    fontSize: 12,
-    color: '#BB6BD9',
-    textAlign: 'center',
-  },
   cameraControls: {
     alignItems: 'center',
     paddingBottom: 20,
@@ -411,23 +397,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
     marginLeft: 10,
-  },
-  switchPill: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.6)',
-    backgroundColor: 'rgba(155, 89, 182, 0.18)',
-  },
-  switchPillText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E8E8E8',
   },
   stateContainer: {
     flexGrow: 1,

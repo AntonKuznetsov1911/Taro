@@ -37,11 +37,11 @@ const ISSUE_MESSAGES: Record<PalmQualityIssue, string> = {
   too_small: 'Ладонь получилась слишком маленькой — поднесите руку ближе, чтобы она заняла почти всю рамку.',
   too_dark: 'Снимок слишком тёмный — линии не видны. Встаньте к окну или включите свет.',
   too_bright: 'Снимок пересвечен — линии теряются. Уйдите от прямого солнца или вспышки.',
-  blurry: 'Снимок размыт. Держите руку и телефон неподвижно и дайте камере сфокусироваться.',
+  blurry: 'Снимок размыт — линии не разглядеть. Держите руку и телефон неподвижно, не подносите телефон слишком близко (камера не фокусируется) или смените камеру.',
   no_lines: 'На ладони не удалось разглядеть линии. Сфотографируйте раскрытую ладонь при ровном боковом свете.',
 };
 
-const BLOCKING_ISSUES: PalmQualityIssue[] = ['too_small', 'too_dark', 'no_lines'];
+const BLOCKING_ISSUES: PalmQualityIssue[] = ['too_small', 'too_dark', 'blurry', 'no_lines'];
 
 const DEPTH_OPTIONS: Array<{ id: LineTrait; title: string }> = [
   { id: 'deep', title: 'Глубокая, чёткая' },
@@ -89,7 +89,12 @@ export default function CameraScreen() {
   }, [router]);
 
   const openResult = useCallback(
-    (photo: CapturedPalmPhoto, f: PalmFeatures, analysis: PalmAnalysis | null, size?: { width: number; height: number }) => {
+    (
+      photo: CapturedPalmPhoto,
+      f: PalmFeatures,
+      analysis: PalmAnalysis | null,
+      extra?: { width: number; height: number; enhancedUri?: string }
+    ) => {
       router.push({
         pathname: '/palmistry-result',
         params: {
@@ -98,8 +103,10 @@ export default function CameraScreen() {
           source: analysis ? 'auto' : 'manual',
           lines: analysis ? JSON.stringify(analysis.lines.map(l => ({ id: l.id, path: l.path }))) : '[]',
           measurements: analysis ? JSON.stringify(analysis.measurements) : '',
-          width: String(size?.width ?? photo.width ?? ''),
-          height: String(size?.height ?? photo.height ?? ''),
+          width: String(extra?.width ?? photo.width ?? ''),
+          height: String(extra?.height ?? photo.height ?? ''),
+          enhancedUri: extra?.enhancedUri ?? '',
+          soft: analysis?.soft ? '1' : '',
         },
       });
     },
@@ -145,7 +152,7 @@ export default function CameraScreen() {
       }
       setFeatures(analysis.features);
       setPhase('done');
-      openResult(photo, analysis.features, analysis, { width: result.width, height: result.height });
+      openResult(photo, analysis.features, analysis, { width: result.width, height: result.height, enhancedUri: result.enhancedUri });
     },
     [openResult]
   );
