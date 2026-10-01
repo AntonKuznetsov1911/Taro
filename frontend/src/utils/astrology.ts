@@ -57,8 +57,6 @@ export interface DailyAstrology {
   rulingPlanetRu: string;
   moon: MoonData;
   sunSign: ZodiacSign;
-  luckyNumbers: number[];
-  luckyColors: string[];
   favorableActivities: string[];
   unfavorableActivities: string[];
   overallEnergy: 'high' | 'medium' | 'low';
@@ -104,13 +102,6 @@ const WEEKDAY_PLANETS: { [key: number]: { planet: string, planetRu: string } } =
 };
 
 const WEEKDAYS_RU = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-
-const LUCKY_COLORS_BY_ELEMENT = {
-  fire: ['красный', 'оранжевый', 'золотой', 'алый'],
-  earth: ['зелёный', 'коричневый', 'бежевый', 'терракотовый'],
-  air: ['голубой', 'жёлтый', 'белый', 'серебряный'],
-  water: ['синий', 'фиолетовый', 'бирюзовый', 'серебристый'],
-};
 
 // ==================== ФУНКЦИИ ====================
 
@@ -287,13 +278,6 @@ export function getDailyAstrology(date: Date = new Date()): DailyAstrology {
   const dayOfWeek = date.getDay();
   const weekdayPlanet = WEEKDAY_PLANETS[dayOfWeek];
 
-  // Генерация счастливых чисел на основе даты и фазы луны
-  const seed = date.getDate() + date.getMonth() * 31 + Math.floor(moon.phase * 100);
-  const luckyNumbers = generateLuckyNumbers(seed, 5);
-
-  // Счастливые цвета на основе элемента знака луны
-  const luckyColors = LUCKY_COLORS_BY_ELEMENT[moon.moonSign.element].slice(0, 3);
-
   // Благоприятные/неблагоприятные активности на основе лунного дня и фазы
   const { favorable, unfavorable } = getActivitiesByMoonPhase(moon);
 
@@ -308,31 +292,11 @@ export function getDailyAstrology(date: Date = new Date()): DailyAstrology {
     rulingPlanetRu: weekdayPlanet.planetRu,
     moon,
     sunSign,
-    luckyNumbers,
-    luckyColors,
     favorableActivities: favorable,
     unfavorableActivities: unfavorable,
     overallEnergy: energy.level,
     energyDescription: energy.description,
   };
-}
-
-/**
- * Генерация счастливых чисел
- */
-function generateLuckyNumbers(seed: number, count: number): number[] {
-  const numbers: number[] = [];
-  let current = seed;
-
-  while (numbers.length < count) {
-    current = (current * 1103515245 + 12345) % 2147483648;
-    const num = (current % 49) + 1;
-    if (!numbers.includes(num)) {
-      numbers.push(num);
-    }
-  }
-
-  return numbers.sort((a, b) => a - b);
 }
 
 const WAXING_ACTIVITIES = {
@@ -473,8 +437,6 @@ export function formatAstrologyForReading(astrology: DailyAstrology): string {
     text += `⚠️ **Ретроградные планеты:** ${retrograde.join(', ')}\n\n`;
   }
 
-  text += `🍀 **Счастливые числа:** ${astrology.luckyNumbers.join(', ')}\n`;
-  text += `🎨 **Счастливые цвета:** ${astrology.luckyColors.join(', ')}\n\n`;
 
   text += `✨ **Энергия дня:** ${astrology.energyDescription}`;
 
