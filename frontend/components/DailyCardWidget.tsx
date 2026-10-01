@@ -147,7 +147,10 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
             <Text style={styles.title}>Карта дня</Text>
           </View>
           <View style={styles.headerRight}>
-            <Text style={styles.moonPhase}>{dailyCard.astrology?.moon.phaseNameRu || ''}</Text>
+            <Text style={styles.moonPhase}>
+              {dailyCard.astrology?.moon.phaseNameRu || ''}
+              {dailyCard.astrology?.moon.lunarDay ? ` · ${dailyCard.astrology.moon.lunarDay}-е лунные сутки` : ''}
+            </Text>
             <Text style={styles.date}>{new Date().toLocaleDateString('ru-RU', {
               day: 'numeric',
               month: 'long',

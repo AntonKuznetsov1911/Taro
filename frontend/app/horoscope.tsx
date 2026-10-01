@@ -16,7 +16,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
-import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, ZodiacSign, ZODIAC_SIGNS } from '../src/utils/astrology';
+import { getDailyAstrology, getRetrogradePlanets, getZodiacSign, formatLunarDayRange, ZodiacSign, ZODIAC_SIGNS } from '../src/utils/astrology';
+import { getLunarDayInfo } from '../src/data/lunarDays';
 import { getDailyCard } from '../src/utils/offlineApi';
 
 interface HoroscopeData {
@@ -35,6 +36,7 @@ interface HoroscopeData {
   favorableActivities: string[];
   unfavorableActivities: string[];
   retrograde: string[];
+  lunarDay?: { day: number; symbol: string; essence: string; range: string };
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -277,6 +279,12 @@ export default function HoroscopeScreen() {
       favorableActivities: astrology.favorableActivities,
       unfavorableActivities: astrology.unfavorableActivities,
       retrograde,
+      lunarDay: {
+        day: astrology.moon.lunarDay,
+        symbol: getLunarDayInfo(astrology.moon.lunarDay).symbol,
+        essence: getLunarDayInfo(astrology.moon.lunarDay).essence,
+        range: formatLunarDayRange(astrology.moon),
+      },
     };
 
       setHoroscope(horoscopeData);
@@ -445,6 +453,7 @@ export default function HoroscopeScreen() {
           </View>
 
           {/* Moon Info */}
+          {!!horoscope.moonPhase && (
           <View style={styles.moonSection}>
             <LinearGradient
               colors={['rgba(155, 89, 182, 0.15)', 'rgba(142, 68, 173, 0.25)']}
@@ -461,6 +470,17 @@ export default function HoroscopeScreen() {
                   <Text style={styles.moonValue}>{horoscope.moonSign}</Text>
                 </View>
               </View>
+              {horoscope.lunarDay && (
+                <View style={styles.lunarDaySection}>
+                  <Text style={styles.lunarDayTitle}>
+                    {horoscope.lunarDay.day}-е лунные сутки · «{horoscope.lunarDay.symbol}»
+                  </Text>
+                  {!!horoscope.lunarDay.range && (
+                    <Text style={styles.lunarDayRange}>{horoscope.lunarDay.range}</Text>
+                  )}
+                  <Text style={styles.lunarDayText}>{horoscope.lunarDay.essence}</Text>
+                </View>
+              )}
               {horoscope.retrograde.length > 0 && (
                 <View style={styles.retrogradeSection}>
                   <Text style={styles.retrogradeText}>
@@ -470,6 +490,7 @@ export default function HoroscopeScreen() {
               )}
             </LinearGradient>
           </View>
+          )}
 
           {/* Lucky Elements */}
           <View style={styles.luckySection}>
@@ -779,6 +800,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#BB6BD9',
+  },
+  lunarDaySection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+  },
+  lunarDayTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#BB6BD9',
+    textAlign: 'center',
+  },
+  lunarDayRange: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 4,
+  },
+  lunarDayText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    marginTop: 6,
   },
   retrogradeSection: {
     marginTop: 10,

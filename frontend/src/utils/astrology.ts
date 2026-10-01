@@ -8,6 +8,7 @@
 // «время / 2,5 дня по кругу» и был неверен 93% дней, а ретроградность
 // планет задавалась выдуманными окнами по дням года.
 import * as Astronomy from 'astronomy-engine';
+import { getLunarDayInfo } from '../data/lunarDays';
 
 // ==================== ТИПЫ ====================
 
@@ -17,6 +18,9 @@ export interface MoonData {
   phaseNameRu: string;
   illumination: number; // 0-100%
   lunarDay: number; // 1-30
+  /** Начало и конец текущих лунных суток (нет, если эфемерида недоступна) */
+  lunarDayStart?: Date;
+  lunarDayEnd?: Date;
   moonSign: ZodiacSign;
   isWaxing: boolean; // растущая
   isWaning: boolean; // убывающая
@@ -140,6 +144,62 @@ function moonSignIndexAt(date: Date): number {
   }
 }
 
+// Лунные сутки считаются для Москвы — как в большинстве русских лунных
+// календарей (время восхода Луны зависит от места)
+const LUNAR_OBSERVER = { latitude: 55.7558, longitude: 37.6173, height: 150 };
+
+interface LunarDayResult {
+  day: number;
+  start?: Date;
+  end?: Date;
+}
+
+// Расчёт занимает несколько миллисекунд, а экраны запрашивают Луну
+// многократно — запоминаем последние сутки
+let lunarCache: LunarDayResult | null = null;
+
+/**
+ * Лунные сутки по русской традиции: первые начинаются в момент новолуния,
+ * каждые следующие — с восходом Луны; в цикле 29 или 30 суток
+ */
+function calculateLunarDay(date: Date, phase: number): LunarDayResult {
+  if (lunarCache?.start && lunarCache.end && date >= lunarCache.start && date < lunarCache.end) {
+    return lunarCache;
+  }
+  try {
+    const observer = new Astronomy.Observer(LUNAR_OBSERVER.latitude, LUNAR_OBSERVER.longitude, LUNAR_OBSERVER.height);
+    const newMoon = Astronomy.SearchMoonPhase(0, date, -32);
+    if (!newMoon) throw new Error('new moon not found');
+
+    let day = 1;
+    let start = newMoon.date;
+    let cursor = newMoon;
+    let nextRise: Date | undefined;
+    for (;;) {
+      const rise = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, +1, cursor, 3);
+      if (!rise) break;
+      if (rise.date > date) {
+        nextRise = rise.date;
+        break;
+      }
+      day++;
+      start = rise.date;
+      cursor = rise.AddDays(1 / 1440);
+    }
+
+    // Сутки заканчиваются со следующим восходом или новым новолунием
+    const nextNewMoon = Astronomy.SearchMoonPhase(0, date, 32)?.date;
+    let end = nextRise;
+    if (nextNewMoon && (!end || nextNewMoon < end)) end = nextNewMoon;
+
+    lunarCache = { day: Math.min(day, 30), start, end };
+    return lunarCache;
+  } catch {
+    // Приближение по среднему циклу: число суток с новолуния
+    return { day: Math.min(Math.floor(phase * 29.53) + 1, 30) };
+  }
+}
+
 /**
  * Получить данные о луне на указанную дату
  */
@@ -167,8 +227,7 @@ export function getMoonData(date: Date = new Date()): MoonData {
     }
   }
 
-  // Расчёт лунного дня (приблизительно)
-  const lunarDay = Math.floor(phase * 29.53) + 1;
+  const lunar = calculateLunarDay(date, phase);
 
   // Знак Луны — по её настоящей эклиптической долготе (30° на знак)
   const moonSign = ZODIAC_SIGNS[moonSignIndexAt(date)];
@@ -178,7 +237,9 @@ export function getMoonData(date: Date = new Date()): MoonData {
     phaseName: moonPhase.name,
     phaseNameRu: moonPhase.nameRu,
     illumination: Math.round(fraction * 100),
-    lunarDay: Math.min(lunarDay, 30),
+    lunarDay: lunar.day,
+    lunarDayStart: lunar.start,
+    lunarDayEnd: lunar.end,
     moonSign,
     isWaxing: phase < 0.5,
     isWaning: phase >= 0.5,
@@ -274,44 +335,30 @@ function generateLuckyNumbers(seed: number, count: number): number[] {
   return numbers.sort((a, b) => a - b);
 }
 
+const WAXING_ACTIVITIES = {
+  favorable: ['Начало новых проектов', 'Важные переговоры', 'Новые знакомства'],
+  unfavorable: ['Расставания', 'Резкие отказы'],
+};
+const WANING_ACTIVITIES = {
+  favorable: ['Завершение проектов', 'Избавление от вредных привычек', 'Возврат долгов'],
+  unfavorable: ['Начало важных дел', 'Крупные покупки'],
+};
+
 /**
- * Получить активности по фазе луны
+ * Благоприятные и неблагоприятные дела: сначала по характеру лунных суток,
+ * затем — по растущей или убывающей Луне
  */
 function getActivitiesByMoonPhase(moon: MoonData): { favorable: string[], unfavorable: string[] } {
-  if (moon.isWaxing) {
-    // Растущая луна - начинания, рост
-    return {
-      favorable: [
-        'Начало новых проектов',
-        'Важные переговоры',
-        'Финансовые вложения',
-        'Укрепление здоровья',
-        'Новые знакомства',
-      ],
-      unfavorable: [
-        'Завершение дел',
-        'Хирургические операции',
-        'Расставания',
-      ],
-    };
-  } else {
-    // Убывающая луна - завершение, очищение
-    return {
-      favorable: [
-        'Завершение проектов',
-        'Уборка и очищение',
-        'Избавление от вредных привычек',
-        'Медитация и самоанализ',
-        'Возврат долгов',
-      ],
-      unfavorable: [
-        'Начало важных дел',
-        'Свадьбы',
-        'Крупные покупки',
-      ],
-    };
-  }
+  const day = getLunarDayInfo(moon.lunarDay);
+  const phase = moon.isWaxing ? WAXING_ACTIVITIES : WANING_ACTIVITIES;
+  const merge = (a: string[], b: string[]) => Array.from(new Set([...a, ...b]));
+  return {
+    favorable: merge(day.favorable, phase.favorable),
+    unfavorable: merge(day.unfavorable, phase.unfavorable),
+  };
 }
+
+const HEAVY_LUNAR_DAYS = [9, 15, 19, 23, 29];
 
 /**
  * Расчёт энергии дня
@@ -323,6 +370,11 @@ function calculateDayEnergy(moon: MoonData, dayOfWeek: number): { level: 'high' 
   }
   if (moon.phaseName === 'New Moon') {
     return { level: 'low', description: 'Новолуние — время для планирования и отдыха. Сохраняйте энергию для нового цикла.' };
+  }
+
+  // Традиционно самые тяжёлые лунные сутки
+  if (HEAVY_LUNAR_DAYS.includes(moon.lunarDay)) {
+    return { level: 'low', description: `${moon.lunarDay}-е лунные сутки считаются одними из самых тяжёлых в цикле. Не начинайте важного, берегите силы и нервы.` };
   }
 
   // Пятница и воскресенье - благоприятные дни
@@ -404,7 +456,11 @@ export function formatAstrologyForReading(astrology: DailyAstrology): string {
 
   let text = `🌙 **Лунный календарь**\n`;
   text += `${astrology.moon.emoji} ${astrology.moon.phaseNameRu} (${astrology.moon.illumination}%)\n`;
-  text += `Лунный день: ${astrology.moon.lunarDay}\n`;
+  const lunarDay = getLunarDayInfo(astrology.moon.lunarDay);
+  text += `${astrology.moon.lunarDay}-е лунные сутки — «${lunarDay.symbol}»`;
+  const range = formatLunarDayRange(astrology.moon);
+  text += range ? ` (${range})\n` : `\n`;
+  text += `${lunarDay.essence}\n`;
   text += `Луна в знаке ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n\n`;
 
   text += `☀️ **Солнце в знаке ${astrology.sunSign.nameRu}** ${astrology.sunSign.symbol}\n`;
@@ -423,4 +479,14 @@ export function formatAstrologyForReading(astrology: DailyAstrology): string {
   text += `✨ **Энергия дня:** ${astrology.energyDescription}`;
 
   return text;
+}
+
+/**
+ * «с 30 сент., 18:43 до 1 окт., 19:02» — границы текущих лунных суток
+ * по местному времени устройства
+ */
+export function formatLunarDayRange(moon: MoonData): string {
+  if (!moon.lunarDayStart || !moon.lunarDayEnd) return '';
+  const fmt = (d: Date) => d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return `с ${fmt(moon.lunarDayStart)} до ${fmt(moon.lunarDayEnd)}`;
 }
