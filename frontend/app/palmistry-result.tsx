@@ -48,13 +48,39 @@ function parseJson<T>(raw: unknown, fallback: T): T {
   }
 }
 
+/**
+ * Участок снимка с ладонью (доли ширины и высоты): найденные линии с
+ * запасом вокруг, в пропорциях 3:4 — чтобы ладонь была крупно
+ */
+function palmFocus(lines: Array<{ path: Point[] }>, photoW: number, photoH: number) {
+  const pts = lines.flatMap(l => l.path);
+  if (pts.length < 2) return null;
+  const xs = pts.map(p => p.x * photoW), ys = pts.map(p => p.y * photoH);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  let w = (Math.max(...xs) - Math.min(...xs)) * 1.9;
+  let h = (Math.max(...ys) - Math.min(...ys)) * 1.9;
+  // Не слишком крупно и в пропорциях 3:4
+  w = Math.max(w, h * 0.75, photoW * 0.35);
+  h = w / 0.75;
+  if (h > photoH) { h = photoH; w = h * 0.75; }
+  if (w > photoW) { w = photoW; h = w / 0.75; }
+  const x0 = Math.min(Math.max(0, cx - w / 2), photoW - w);
+  const y0 = Math.min(Math.max(0, cy - h / 2), photoH - h);
+  return { x: x0 / photoW, y: y0 / photoH, w: w / photoW, h: h / photoH };
+}
+
 /** Отрезки для отрисовки найденных линий поверх снимка */
-function buildSegments(lines: Array<{ id: PalmLineId; path: Point[] }>, width: number, height: number) {
+function buildSegments(
+  lines: Array<{ id: PalmLineId; path: Point[] }>,
+  width: number,
+  height: number,
+  offset: Point = { x: 0, y: 0 }
+) {
   const segments: Array<{ key: string; left: number; top: number; width: number; angle: number; color: string }> = [];
   for (const line of lines) {
     for (let i = 0; i < line.path.length - 1; i++) {
-      const a = { x: line.path[i].x * width, y: line.path[i].y * height };
-      const b = { x: line.path[i + 1].x * width, y: line.path[i + 1].y * height };
+      const a = { x: line.path[i].x * width - offset.x, y: line.path[i].y * height - offset.y };
+      const b = { x: line.path[i + 1].x * width - offset.x, y: line.path[i + 1].y * height - offset.y };
       const len = Math.hypot(b.x - a.x, b.y - a.y);
       if (len < 0.5) continue;
       segments.push({
@@ -89,8 +115,30 @@ export default function PalmistryResultScreen() {
 
   const photoW = Number(params.width) || 3;
   const photoH = Number(params.height) || 4;
-  const imageHeight = Math.round((IMAGE_WIDTH * photoH) / photoW);
-  const segments = useMemo(() => buildSegments(lines, IMAGE_WIDTH, imageHeight), [lines, imageHeight]);
+  const [zoomed, setZoomed] = useState(true);
+  const focus = useMemo(() => palmFocus(lines, photoW, photoH), [lines, photoW, photoH]);
+  // Крупный план ладони: снимок растягивается так, чтобы её участок
+  // заполнил рамку, лишнее обрезается
+  const view = zoomed && focus
+    ? {
+        frameH: Math.round(IMAGE_WIDTH / 0.75),
+        imgW: IMAGE_WIDTH / focus.w,
+        imgH: (IMAGE_WIDTH / focus.w) * (photoH / photoW),
+        left: -(focus.x * IMAGE_WIDTH) / focus.w,
+        top: -(focus.y * (IMAGE_WIDTH / focus.w) * (photoH / photoW)),
+      }
+    : {
+        frameH: Math.round((IMAGE_WIDTH * photoH) / photoW),
+        imgW: IMAGE_WIDTH,
+        imgH: Math.round((IMAGE_WIDTH * photoH) / photoW),
+        left: 0,
+        top: 0,
+      };
+  const imageHeight = view.frameH;
+  const segments = useMemo(
+    () => buildSegments(lines, view.imgW, view.imgH, { x: -view.left, y: -view.top }),
+    [lines, view.imgW, view.imgH, view.left, view.top]
+  );
 
   const [showLines, setShowLines] = useState(true);
   const [contrastView, setContrastView] = useState(false);
@@ -169,11 +217,11 @@ export default function PalmistryResultScreen() {
           ) : (
             <>
               {/* Снимок с найденными линиями */}
-              <View style={styles.imageWrap}>
+              <View style={[styles.imageWrap, { width: IMAGE_WIDTH + 4, height: imageHeight + 4 }]}>
                 {imageUri ? (
                   <Image
                     source={{ uri: contrastView && enhancedUri ? enhancedUri : imageUri }}
-                    style={{ width: IMAGE_WIDTH, height: imageHeight }}
+                    style={{ position: 'absolute', left: view.left, top: view.top, width: view.imgW, height: view.imgH }}
                   />
                 ) : (
                   <View style={[styles.imagePlaceholder, { width: IMAGE_WIDTH, height: imageHeight }]}>
@@ -203,12 +251,17 @@ export default function PalmistryResultScreen() {
               <View style={styles.toggleRow}>
                 {!!enhancedUri && (
                   <TouchableOpacity style={[styles.toggle, contrastView && styles.toggleActive]} onPress={() => setContrastView(v => !v)}>
-                    <Text style={styles.toggleText}>{contrastView ? 'Обычное фото' : 'Контраст линий'}</Text>
+                    <Text style={styles.toggleText}>{contrastView ? 'Обычное фото' : 'Контраст'}</Text>
+                  </TouchableOpacity>
+                )}
+                {!!focus && (
+                  <TouchableOpacity style={[styles.toggle, !zoomed && styles.toggleActive]} onPress={() => setZoomed(v => !v)}>
+                    <Text style={styles.toggleText}>{zoomed ? 'Весь снимок' : 'Крупно'}</Text>
                   </TouchableOpacity>
                 )}
                 {segments.length > 0 && (
                   <TouchableOpacity style={[styles.toggle, showLines && styles.toggleActive]} onPress={() => setShowLines(v => !v)}>
-                    <Text style={styles.toggleText}>{showLines ? 'Скрыть разметку' : 'Показать разметку'}</Text>
+                    <Text style={styles.toggleText}>{showLines ? 'Без разметки' : 'Разметка'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -256,9 +309,11 @@ export default function PalmistryResultScreen() {
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle" size={20} color="#9B59B6" />
                 <Text style={styles.infoText}>
-                  Линии находятся автоматически по контрасту складок на снимке — результат
-                  зависит от света и чёткости фото. Хиромантия — традиция толкования, а не
-                  наука: используйте чтение как повод задуматься о себе.
+                  {params.method === 'net'
+                    ? 'Линии нашла нейросеть, обученная на размеченных фотографиях ладоней (открытый проект «Fortune On Your Hand», лицензия Apache 2.0); глубина линий оценена по контрасту на снимке.'
+                    : 'Линии найдены по контрасту складок на снимке — результат зависит от света и чёткости фото.'}
+                  {' '}Хиромантия — традиция толкования, а не наука: используйте чтение как повод
+                  задуматься о себе.
                 </Text>
               </View>
 
@@ -310,7 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  toggleRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  toggleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 10 },
   toggle: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: 'rgba(155,89,182,0.2)', borderWidth: 1, borderColor: 'transparent' },
   toggleActive: { borderColor: '#BB6BD9' },
   softWarning: { marginTop: 10, fontSize: 12, lineHeight: 17, color: '#F1C40F', textAlign: 'center', maxWidth: 340 },

@@ -1,0 +1,9 @@
+palm_lines.onnx — нейросеть для поиска главных линий ладони (U-Net).
+
+Источник: проект «Fortune On Your Hand: View-Invariant Machine Palmistry»
+https://github.com/yeonsumia/palmistry
+Лицензия: Apache License 2.0 (см. LICENSE-palm-lines.txt).
+
+Изменения: веса из checkpoint_aug_epoch70.pth сконвертированы в ONNX
+(opset 17) и квантованы до uint8 (onnxruntime.quantization.quantize_dynamic)
+для работы в браузере. Архитектура и обучение не менялись.

@@ -7,11 +7,21 @@
 
 import type { HandLandmarker } from '@mediapipe/tasks-vision';
 import { analyzePalm, PalmAnalysis, Point } from './palmVision';
+import { analyzeLineMap, prepareNetInput } from './palmLineNet';
+import { loadPalmLineNet, runPalmLineNet } from './palmLineRunner.web';
 
 export type PalmDetectError = 'unsupported' | 'load_failed' | 'no_hand' | 'back_of_hand' | 'image_failed';
 
 export type PalmDetectResult =
-  | { ok: true; analysis: PalmAnalysis; width: number; height: number; enhancedUri?: string }
+  | {
+      ok: true;
+      analysis: PalmAnalysis;
+      width: number;
+      height: number;
+      enhancedUri?: string;
+      /** Чем найдены линии: нейросетью или запасным алгоритмом по контрасту */
+      method: 'net' | 'classic';
+    }
   | { ok: false; error: PalmDetectError };
 
 const BASE = `${process.env.EXPO_BASE_URL ?? ''}/mediapipe`;
@@ -45,7 +55,9 @@ function loadLandmarker(): Promise<HandLandmarker> {
 
 /** Начать загрузку модели заранее, пока человек наводит камеру */
 export function preloadPalmDetector(): void {
-  if (isPalmDetectionSupported()) void loadLandmarker().catch(() => undefined);
+  if (!isPalmDetectionSupported()) return;
+  void loadLandmarker().catch(() => undefined);
+  void loadPalmLineNet().catch(() => undefined);
 }
 
 export function isPalmDetectionSupported(): boolean {
@@ -110,10 +122,25 @@ export async function detectPalm(uri: string): Promise<PalmDetectResult> {
   const pixels = context.getImageData(0, 0, width, height);
 
   const landmarks: Point[] = hand.map(p => ({ x: p.x * width, y: p.y * height }));
-  const analysis = analyzePalm({ width, height, data: pixels.data }, landmarks);
+  const rgba = { width, height, data: pixels.data };
+
+  // Линии ищет нейросеть, обученная на размеченных фото ладоней. Если она
+  // не загрузилась (нет сети при первом запуске, старый браузер) — запасной
+  // алгоритм по контрасту складок
+  let analysis: PalmAnalysis;
+  let method: 'net' | 'classic' = 'net';
+  try {
+    const { tensor, canonToFlipped } = prepareNetInput(rgba, landmarks);
+    const prob = await runPalmLineNet(tensor);
+    analysis = analyzeLineMap(prob, rgba, landmarks, canonToFlipped);
+  } catch (error) {
+    console.warn('Palm line network unavailable, using classic detector', error);
+    analysis = analyzePalm(rgba, landmarks);
+    method = 'classic';
+  }
   const palmSize = Math.hypot(landmarks[0].x - landmarks[9].x, landmarks[0].y - landmarks[9].y);
   const enhancedUri = await enhanceLines(image, palmSize).catch(() => undefined);
-  return { ok: true, analysis, width, height, enhancedUri };
+  return { ok: true, analysis, width, height, enhancedUri, method };
 }
 
 /**

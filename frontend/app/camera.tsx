@@ -93,7 +93,7 @@ export default function CameraScreen() {
       photo: CapturedPalmPhoto,
       f: PalmFeatures,
       analysis: PalmAnalysis | null,
-      extra?: { width: number; height: number; enhancedUri?: string }
+      extra?: { width: number; height: number; enhancedUri?: string; method?: 'net' | 'classic' }
     ) => {
       router.push({
         pathname: '/palmistry-result',
@@ -107,6 +107,7 @@ export default function CameraScreen() {
           height: String(extra?.height ?? photo.height ?? ''),
           enhancedUri: extra?.enhancedUri ?? '',
           soft: analysis?.soft ? '1' : '',
+          method: extra?.method ?? '',
         },
       });
     },
@@ -152,7 +153,7 @@ export default function CameraScreen() {
       }
       setFeatures(analysis.features);
       setPhase('done');
-      openResult(photo, analysis.features, analysis, { width: result.width, height: result.height, enhancedUri: result.enhancedUri });
+      openResult(photo, analysis.features, analysis, { width: result.width, height: result.height, enhancedUri: result.enhancedUri, method: result.method });
     },
     [openResult]
   );
@@ -235,9 +236,9 @@ export default function CameraScreen() {
           {phase === 'analyzing' && (
             <View style={styles.statusBox}>
               <ActivityIndicator size="large" color="#9B59B6" />
-              <Text style={styles.statusTitle}>Распознаю руку и линии...</Text>
+              <Text style={styles.statusTitle}>Нейросеть ищет линии ладони...</Text>
               <Text style={styles.statusText}>
-                Первый раз загружается модель распознавания (около 8 МБ), дальше всё работает без интернета.
+                Обычно это несколько секунд. В первый раз загружаются модели распознавания (около 45 МБ) — дальше всё работает без интернета.
               </Text>
             </View>
           )}

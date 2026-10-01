@@ -6,7 +6,7 @@ import type { PalmAnalysis } from './palmVision';
 export type PalmDetectError = 'unsupported' | 'load_failed' | 'no_hand' | 'back_of_hand' | 'image_failed';
 
 export type PalmDetectResult =
-  | { ok: true; analysis: PalmAnalysis; width: number; height: number; enhancedUri?: string }
+  | { ok: true; analysis: PalmAnalysis; width: number; height: number; enhancedUri?: string; method: 'net' | 'classic' }
   | { ok: false; error: PalmDetectError };
 
 export function preloadPalmDetector(): void {}
