@@ -3,28 +3,54 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Tex
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   calculateLifePathNumber,
   calculateDestinyNumber,
   calculateSoulNumber,
+  calculatePersonalityNumber,
   calculatePersonalYear,
-  getNumberMeaning
+  hasNameLetters,
 } from '../src/data/numerologyKnowledge';
 import { useSettings } from '../src/contexts/SettingsContext';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { playComplete } from '../src/utils/sound';
 import { showAlert } from '../src/utils/alert';
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
 export default function NumerologyScreen() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [birthDate, setBirthDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const settings = useSettings();
+  const { profile } = useUserProfile();
+
+  // Если профиль заполнен — подставляем имя и дату рождения из него
+  const profileBirth = profile?.isComplete ? new Date(profile.birthDate) : null;
+  const [name, setName] = useState(profile?.isComplete ? profile.name : '');
+  // Отдельные поля вместо системного календаря: @react-native-community/datetimepicker
+  // в веб-версии ничего не рисует, и дата навсегда оставалась сегодняшней
+  const [day, setDay] = useState(profileBirth ? pad(profileBirth.getDate()) : '');
+  const [month, setMonth] = useState(profileBirth ? pad(profileBirth.getMonth() + 1) : '');
+  const [year, setYear] = useState(profileBirth ? String(profileBirth.getFullYear()) : '');
+
+  /** Проверенная дата в формате YYYY-MM-DD или null */
+  const getDateString = (): string | null => {
+    const d = Number(day), m = Number(month), y = Number(year);
+    if (!d || !m || !y || year.length !== 4) return null;
+    const date = new Date(y, m - 1, d);
+    // 31.02 и подобные даты Date молча переносит на следующий месяц
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+    if (y < 1900 || date > new Date()) return null;
+    return `${y}-${pad(m)}-${pad(d)}`;
+  };
 
   const handleAnalyze = () => {
-    if (!name.trim()) {
-      showAlert('Внимание', 'Пожалуйста, введите ваше имя');
+    if (!hasNameLetters(name)) {
+      showAlert('Внимание', 'Введите имя буквами — по ним считаются числа судьбы и души');
+      return;
+    }
+    const dateString = getDateString();
+    if (!dateString) {
+      showAlert('Внимание', 'Введите настоящую дату рождения: день, месяц и год (например, 15.03.1990)');
       return;
     }
 
@@ -35,25 +61,16 @@ export default function NumerologyScreen() {
       volume: settings.effectsVolume,
     });
 
-    // Дата берётся по локальным полям, а не toISOString(): тот переводит
-    // полночь в UTC и во всех российских часовых поясах (UTC+2…+12) сдвигает
-    // календарный день на сутки назад — расчёт шёл бы по чужой дате рождения
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const dateString = `${birthDate.getFullYear()}-${pad(birthDate.getMonth() + 1)}-${pad(birthDate.getDate())}`;
-    const lifePathNumber = calculateLifePathNumber(dateString);
-    const destinyNumber = calculateDestinyNumber(name);
-    const soulNumber = calculateSoulNumber(name);
-    const personalYear = calculatePersonalYear(dateString);
-
     router.push({
       pathname: '/numerology-result',
       params: {
-        name,
+        name: name.trim(),
         birthDate: dateString,
-        lifePathNumber,
-        destinyNumber,
-        soulNumber,
-        personalYear
+        lifePathNumber: calculateLifePathNumber(dateString),
+        destinyNumber: calculateDestinyNumber(name),
+        soulNumber: calculateSoulNumber(name),
+        personalityNumber: calculatePersonalityNumber(name),
+        personalYear: calculatePersonalYear(dateString),
       }
     });
   };
@@ -83,7 +100,7 @@ export default function NumerologyScreen() {
               <Text style={styles.label}>Ваше полное имя</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Например: Иван Петров"
+                placeholder="Например: Иванова Мария Сергеевна"
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 value={name}
                 onChangeText={setName}
@@ -92,26 +109,40 @@ export default function NumerologyScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Дата рождения</Text>
-              <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-                <Text style={styles.dateText}>{birthDate.toLocaleDateString('ru-RU')}</Text>
-                <Ionicons name="calendar-outline" size={20} color="#2ECC71" />
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={birthDate}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(false);
-                    if (selectedDate) setBirthDate(selectedDate);
-                  }}
+              <View style={styles.dateRow}>
+                <TextInput
+                  style={[styles.input, styles.dateField]}
+                  placeholder="ДД"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  value={day}
+                  onChangeText={t => setDay(t.replace(/\D/g, ''))}
                 />
-              )}
+                <TextInput
+                  style={[styles.input, styles.dateField]}
+                  placeholder="ММ"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  value={month}
+                  onChangeText={t => setMonth(t.replace(/\D/g, ''))}
+                />
+                <TextInput
+                  style={[styles.input, styles.yearField]}
+                  placeholder="ГГГГ"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  value={year}
+                  onChangeText={t => setYear(t.replace(/\D/g, ''))}
+                />
+              </View>
             </View>
 
             <View style={styles.infoBox}>
               <Ionicons name="information-circle" size={20} color="#2ECC71" />
-              <Text style={styles.infoText}>Мы вычислим 4 главных числа: Жизненного Пути, Судьбы, Души и Личного Года</Text>
+              <Text style={styles.infoText}>Мы вычислим главные числа: Жизненного Пути (по дате), Судьбы, Души и Личности (по полному имени — лучше указать фамилию, имя и отчество) и вашего Личного Года</Text>
             </View>
 
             <TouchableOpacity style={styles.analyzeButton} onPress={handleAnalyze}>
@@ -143,6 +174,9 @@ const styles = StyleSheet.create({
   inputGroup: { gap: 10 },
   label: { fontSize: 16, fontWeight: '600', color: '#E8E8E8' },
   input: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 15, padding: 15, color: '#E8E8E8', fontSize: 16, borderWidth: 1, borderColor: 'rgba(46,204,113,0.3)' },
+  dateRow: { flexDirection: 'row', gap: 10 },
+  dateField: { width: 70, textAlign: 'center' },
+  yearField: { flex: 1, textAlign: 'center' },
   dateButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 15, padding: 15, borderWidth: 1, borderColor: 'rgba(46,204,113,0.3)' },
   dateText: { fontSize: 16, color: '#E8E8E8' },
   infoBox: { flexDirection: 'row', backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 12, padding: 15, borderWidth: 1, borderColor: 'rgba(46,204,113,0.3)', gap: 10 },

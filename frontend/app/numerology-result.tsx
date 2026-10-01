@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Sta
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getNumberMeaning } from '../src/data/numerologyKnowledge';
+import { getNumberMeaning, PERSONAL_YEAR_MEANINGS } from '../src/data/numerologyKnowledge';
 
 export default function NumerologyResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { name, lifePathNumber, destinyNumber, soulNumber, personalYear } = params;
+  const { name, lifePathNumber, destinyNumber, soulNumber, personalityNumber, personalYear } = params;
 
   // Параметр может отсутствовать при прямом переходе — приводим безопасно
   const toNumber = (value: unknown): number | null => {
@@ -21,31 +21,37 @@ export default function NumerologyResultScreen() {
   const destinyValue = toNumber(destinyNumber);
   const soulValue = toNumber(soulNumber);
   const yearValue = toNumber(personalYear);
+  const personalityValue = toNumber(personalityNumber);
 
   const lifePath = lifePathValue !== null ? getNumberMeaning(lifePathValue) : undefined;
   const destiny = destinyValue !== null ? getNumberMeaning(destinyValue) : undefined;
   const soul = soulValue !== null ? getNumberMeaning(soulValue) : undefined;
-  const year = yearValue !== null ? getNumberMeaning(yearValue) : undefined;
+  const personality = personalityValue !== null ? getNumberMeaning(personalityValue) : undefined;
+  const yearMeaning = yearValue !== null ? PERSONAL_YEAR_MEANINGS[yearValue] : undefined;
 
-  const hasData = Boolean(lifePath || destiny || soul || year);
+  const hasData = Boolean(lifePath || destiny || soul || yearMeaning);
 
   const handleShare = async () => {
     try {
-      await Share.share({ message: `Моя нумерология:\nЧисло Жизненного Пути: ${lifePathNumber}\nЧисло Судьбы: ${destinyNumber}\nЧисло Души: ${soulNumber}\nЛичный Год: ${personalYear}` });
+      await Share.share({ message: `Моя нумерология:\nЧисло Жизненного Пути: ${lifePathNumber}\nЧисло Судьбы: ${destinyNumber}\nЧисло Души: ${soulNumber}\nЧисло Личности: ${personalityNumber ?? '—'}\nЛичный Год: ${personalYear}` });
     } catch (error) {
       console.error(error);
     }
   };
 
-  const NumberCard = ({ number, title, data }: any) => (
+  // Каждое число описывает свою сторону: раньше под всеми четырьмя стоял
+  // один и тот же текст «жизненного пути»
+  const NumberCard = ({ number, title, subtitle, description }: {
+    number: number | null; title: string; subtitle?: string; description?: string;
+  }) => (
     <View style={styles.numberCard}>
       <LinearGradient colors={['rgba(46,204,113,0.15)', 'rgba(39,174,96,0.1)']} style={styles.cardGradient}>
         <View style={styles.numberBadge}>
           <Text style={styles.numberValue}>{number}</Text>
         </View>
         <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardSubtitle}>{data?.titleRu}</Text>
-        <Text style={styles.cardDescription}>{data?.personality}</Text>
+        {!!subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
+        {!!description && <Text style={styles.cardDescription}>{description}</Text>}
       </LinearGradient>
     </View>
   );
@@ -93,14 +99,56 @@ export default function NumerologyResultScreen() {
             <Text style={styles.subtitle}>Нумерологический портрет</Text>
           </View>
 
-          {!!lifePath && <NumberCard number={lifePathValue} title="Число Жизненного Пути" data={lifePath} />}
-          {!!destiny && <NumberCard number={destinyValue} title="Число Судьбы" data={destiny} />}
-          {!!soul && <NumberCard number={soulValue} title="Число Души" data={soul} />}
-          {!!year && <NumberCard number={yearValue} title="Личный Год" data={year} />}
+          {!!lifePath && (
+            <NumberCard
+              number={lifePathValue}
+              title="Число Жизненного Пути"
+              subtitle={`${lifePath.titleRu} · кто вы по природе`}
+              description={lifePath.personality}
+            />
+          )}
+          {!!destiny && (
+            <NumberCard
+              number={destinyValue}
+              title="Число Судьбы"
+              subtitle={`${destiny.titleRu} · ваши таланты и призвание`}
+              description={`${destiny.lifePath} Сильные стороны: ${destiny.strengths.slice(0, 3).join(', ').toLowerCase()}.`}
+            />
+          )}
+          {soul ? (
+            <NumberCard
+              number={soulValue}
+              title="Число Души"
+              subtitle={`${soul.titleRu} · чего вы хотите в глубине`}
+              description={soul.spiritualMeaning}
+            />
+          ) : soulValue === 0 && (
+            <NumberCard
+              number={0}
+              title="Число Души"
+              description="В имени нет гласных букв, поэтому число души не рассчитывается."
+            />
+          )}
+          {!!personality && (
+            <NumberCard
+              number={personalityValue}
+              title="Число Личности"
+              subtitle={`${personality.titleRu} · каким вас видят другие`}
+              description={`Окружающие замечают в вас: ${personality.strengths.slice(0, 2).join(', ').toLowerCase()}.`}
+            />
+          )}
+          {!!yearMeaning && (
+            <NumberCard
+              number={yearValue}
+              title={`Личный Год ${new Date().getFullYear()}`}
+              subtitle={yearMeaning.title}
+              description={yearMeaning.text}
+            />
+          )}
 
           {lifePath && (
             <View style={styles.detailsSection}>
-              <Text style={styles.sectionTitle}>Детальный анализ</Text>
+              <Text style={styles.sectionTitle}>Ваш жизненный путь подробно</Text>
               <View style={styles.detailCard}>
                 <Text style={styles.detailLabel}>Сильные стороны:</Text>
                 {lifePath.strengths.map((s, i) => (

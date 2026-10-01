@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FULL_TAROT_DECK } from '../src/data/tarotCards';
+import { calculateDestinyNumber, rootNumber, hasNameLetters, MASTER_NUMBERS } from '../src/data/numerologyKnowledge';
 
 /** Устойчивый код имени: одинаковые имена всегда дают одинаковое число */
 function nameCode(name: string): number {
@@ -28,7 +29,9 @@ function nameCode(name: string): number {
 
 /** Разброс 0..9, выведенный из пары имён, вместо случайной добавки */
 function nameSpread(name1: string, name2: string): number {
-  return (nameCode(name1) ^ nameCode(name2)) % 10;
+  // >>> 0: XOR в JS возвращает знаковое число, и разброс бывал отрицательным —
+  // балл проваливался ниже минимума, а уровень в тексте становился undefined
+  return ((nameCode(name1) ^ nameCode(name2)) >>> 0) % 10;
 }
 import { getDailyAstrology } from '../src/utils/astrology';
 import { useSettings } from '../src/contexts/SettingsContext';
@@ -43,57 +46,66 @@ interface CompatibilityResult {
   created_at: string;
 }
 
-// Расчет нумерологического числа имени
+/** Число имени по стандартной пифагоровой таблице (общей с нумерологией) */
 function calculateNameNumber(name: string): number {
-  const letterValues: { [key: string]: number } = {
-    'а': 1, 'б': 2, 'в': 3, 'г': 4, 'д': 5, 'е': 6, 'ё': 7, 'ж': 8, 'з': 9,
-    'и': 1, 'й': 2, 'к': 3, 'л': 4, 'м': 5, 'н': 6, 'о': 7, 'п': 8, 'р': 9,
-    'с': 1, 'т': 2, 'у': 3, 'ф': 4, 'х': 5, 'ц': 6, 'ч': 7, 'ш': 8, 'щ': 9,
-    'ъ': 1, 'ы': 2, 'ь': 3, 'э': 4, 'ю': 5, 'я': 6,
-    'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8, 'i': 9,
-    'j': 1, 'k': 2, 'l': 3, 'm': 4, 'n': 5, 'o': 6, 'p': 7, 'q': 8, 'r': 9,
-    's': 1, 't': 2, 'u': 3, 'v': 4, 'w': 5, 'x': 6, 'y': 7, 'z': 8,
-  };
-
-  let sum = 0;
-  for (const char of name.toLowerCase()) {
-    sum += letterValues[char] || 0;
-  }
-
-  while (sum > 9 && sum !== 11 && sum !== 22) {
-    sum = String(sum).split('').map(Number).reduce((a, b) => a + b, 0);
-  }
-
-  return sum;
+  return calculateDestinyNumber(name);
 }
+
+/**
+ * Числа делятся на три «семьи», внутри которых совместимость естественная:
+ * 1-5-7 (ум, независимость), 2-4-8 (практичность, надёжность),
+ * 3-6-9 (чувства, творчество). Мастер-числа сравниваются по корню
+ * (11 → 2, 22 → 4, 33 → 6) — раньше 22 сравнивалось с 1–9 как «двадцать два»,
+ * и имена вроде Мария или Антон получали 40% почти с кем угодно.
+ */
+const NUMBER_FAMILIES: Array<{ members: number[]; theme: string }> = [
+  { members: [1, 5, 7], theme: 'ума, свободы и независимости' },
+  { members: [2, 4, 8], theme: 'практичности, надёжности и опоры' },
+  { members: [3, 6, 9], theme: 'чувств, заботы и творчества' },
+];
+
+function familyOf(root: number) {
+  return NUMBER_FAMILIES.find(f => f.members.includes(root));
+}
+
+type PairKind = 'mirror' | 'natural' | 'different';
+
+function pairKind(root1: number, root2: number): PairKind {
+  if (root1 === root2) return 'mirror';
+  return familyOf(root1) === familyOf(root2) ? 'natural' : 'different';
+}
+
+const PAIR_BASE: Record<PairKind, number> = { natural: 88, mirror: 80, different: 64 };
 
 // Генерация анализа совместимости
 function generateCompatibilityAnalysis(name1: string, name2: string): CompatibilityResult {
   const num1 = calculateNameNumber(name1);
   const num2 = calculateNameNumber(name2);
-  // Карты пары тоже закреплены за именами, а не тасуются при каждом открытии
+  const root1 = rootNumber(num1);
+  const root2 = rootNumber(num2);
+  const kind = pairKind(root1, root2);
+
+  // Карта закреплена за самим именем и не зависит от того, в какое поле его
+  // ввели. Если обоим выпала одна карта, следующую берёт тот, чьё имя дальше
+  // по алфавиту — так результат тоже не зависит от порядка
   const deck = FULL_TAROT_DECK;
-  const cards = [
-    deck[nameCode(name1) % deck.length],
-    deck[(nameCode(name2) + 1) % deck.length],
-  ];
+  let id1 = nameCode(name1) % deck.length;
+  let id2 = nameCode(name2) % deck.length;
+  if (id1 === id2) {
+    if (name1.trim().toLowerCase().localeCompare(name2.trim().toLowerCase(), 'ru') > 0) id1 = (id1 + 1) % deck.length;
+    else id2 = (id2 + 1) % deck.length;
+  }
+  const cards = [deck[id1], deck[id2]];
   const astrology = getDailyAstrology();
 
-  // Расчет совместимости на основе нумерологии
-  const diff = Math.abs(num1 - num2);
-  const baseScore = 100 - (diff * 5);
-
-  // Бонусы за особые комбинации
-  let bonus = 0;
-  if (num1 === num2) bonus += 15; // Одинаковые числа
-  if ((num1 + num2) === 11 || (num1 + num2) === 22) bonus += 10; // Мастер-числа
-  if (Math.abs(num1 - num2) === 3 || Math.abs(num1 - num2) === 6) bonus += 5; // Гармоничные числа
+  // Мастер-число у кого-то из пары — небольшой бонус к потенциалу союза
+  const masterBonus = MASTER_NUMBERS.includes(num1) || MASTER_NUMBERS.includes(num2) ? 4 : 0;
 
   // Одна и та же пара имён обязана давать один и тот же результат:
   // нумерология детерминирована, поэтому вместо случайной добавки берём
-  // устойчивый разброс, выведенный из самих имён
+  // устойчивый разброс, выведенный из самих имён (XOR симметричен)
   const spread = nameSpread(name1, name2);
-  const score = Math.min(99, Math.max(40, baseScore + bonus + spread));
+  const score = Math.min(99, PAIR_BASE[kind] + masterBonus + spread);
 
   const compatibilityLevels = {
     high: ['исключительная гармония', 'глубокая духовная связь', 'идеальное дополнение'],
@@ -101,7 +113,7 @@ function generateCompatibilityAnalysis(name1: string, name2: string): Compatibil
     low: ['возможность для роста', 'уроки друг для друга', 'путь к пониманию'],
   };
 
-  const level = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+  const level = score >= 85 ? 'high' : score >= 70 ? 'medium' : 'low';
   const levelText = compatibilityLevels[level][spread % 3];
 
   const analysis = `💕 **Анализ совместимости имён**
@@ -114,10 +126,10 @@ function generateCompatibilityAnalysis(name1: string, name2: string): Compatibil
 
 ### 🔢 Нумерология имён
 
-**${name1}** — число имени **${num1}**
+**${name1}** — число имени **${describeNumber(num1)}**
 Энергия: ${getNumberMeaning(num1)}
 
-**${name2}** — число имени **${num2}**
+**${name2}** — число имени **${describeNumber(num2)}**
 Энергия: ${getNumberMeaning(num2)}
 
 ---
@@ -134,11 +146,11 @@ ${cards[1].upright_meaning}
 
 ### ✨ Анализ энергий
 
-${getCompatibilityText(num1, num2, name1, name2)}
+${getCompatibilityText(kind, root1, root2, name1, name2)}
 
 ### 🌙 Космический контекст
 
-Луна в фазе "${astrology.moon.phaseNameRu}" усиливает ${astrology.moon.isWaxing ? 'потенциал новых начинаний в отношениях' : 'глубину эмоциональной связи'}.
+Луна в фазе «${astrology.moon.phaseNameRu}» усиливает ${astrology.moon.isWaxing ? 'потенциал новых начинаний в отношениях' : 'глубину эмоциональной связи'}.
 
 ---
 
@@ -150,7 +162,7 @@ ${getCompatibilityText(num1, num2, name1, name2)}
 
 ---
 
-*Помните: Любовь строится день за днём через понимание, терпение и искреннюю заботу друг о друге.* 💖`;
+*Помните: любовь строится день за днём через понимание, терпение и искреннюю заботу друг о друге.* 💖`;
 
   return {
     name1,
@@ -159,6 +171,10 @@ ${getCompatibilityText(num1, num2, name1, name2)}
     analysis,
     created_at: new Date().toISOString(),
   };
+}
+
+function describeNumber(num: number): string {
+  return MASTER_NUMBERS.includes(num) ? `${num} (мастер-число, корень ${rootNumber(num)})` : String(num);
 }
 
 function getNumberMeaning(num: number): string {
@@ -174,26 +190,19 @@ function getNumberMeaning(num: number): string {
     9: 'завершение, мудрость, гуманизм',
     11: 'интуиция, духовное прозрение',
     22: 'мастерство, большие свершения',
+    33: 'служение, безусловная любовь',
   };
-  return meanings[num] || 'уникальный путь';
+  return meanings[num] || meanings[rootNumber(num)];
 }
 
-function getCompatibilityText(num1: number, num2: number, name1: string, name2: string): string {
-  const sum = num1 + num2;
-
-  if (num1 === num2) {
-    return `${name1} и ${name2} обладают одинаковой числовой вибрацией, что создаёт глубокое понимание на интуитивном уровне. Вы как зеркала друг для друга — видите свои сильные стороны и точки роста.`;
+function getCompatibilityText(kind: PairKind, root1: number, root2: number, name1: string, name2: string): string {
+  if (kind === 'mirror') {
+    return `${name1} и ${name2} обладают одинаковой числовой вибрацией (${root1}). Вы понимаете друг друга с полуслова и смотрите на мир похоже — но и слабые стороны у вас общие, поэтому важно не усиливать их вместе.`;
   }
-
-  if (sum === 11 || sum === 22) {
-    return `Сумма ваших чисел образует мастер-число ${sum}! Это указывает на кармическую связь и высокий духовный потенциал отношений. Вместе вы способны достичь значительных высот.`;
+  if (kind === 'natural') {
+    return `Числа ${root1} и ${root2} принадлежат одной семье — семье ${familyOf(root1)!.theme}. Это естественная совместимость: у вас схожие ценности и общий ритм жизни, вам легко договариваться.`;
   }
-
-  if (Math.abs(num1 - num2) <= 2) {
-    return `Близкие числовые вибрации ${name1} и ${name2} создают гармоничный резонанс. Вы интуитивно понимаете друг друга и движетесь в одном направлении.`;
-  }
-
-  return `Разные числовые вибрации ${name1} (${num1}) и ${name2} (${num2}) создают интересную динамику. Это союз, где противоположности дополняют друг друга, принося баланс и новые перспективы.`;
+  return `Число ${root1} относится к семье ${familyOf(root1)!.theme}, а ${root2} — к семье ${familyOf(root2)!.theme}. Вы по-разному смотрите на жизнь: это союз, где противоположности дополняют друг друга, но требуют терпения и уважения к чужому способу жить.`;
 }
 
 export default function CompatibilityScreen() {
@@ -207,6 +216,10 @@ export default function CompatibilityScreen() {
   const analyzeCompatibility = async () => {
     if (!name1.trim() || !name2.trim()) {
       showAlert('Внимание', 'Пожалуйста, введите оба имени');
+      return;
+    }
+    if (!hasNameLetters(name1) || !hasNameLetters(name2)) {
+      showAlert('Внимание', 'Имена должны состоять из букв — по ним считается нумерология');
       return;
     }
 
@@ -235,19 +248,17 @@ export default function CompatibilityScreen() {
   };
 
   const getCompatibilityColor = (score: number) => {
-    if (score >= 80) return '#27AE60'; // Green
-    if (score >= 60) return '#F39C12'; // Orange
-    if (score >= 40) return '#E67E22'; // Orange-Red
-    return '#E74C3C'; // Red
+    // Пороги совпадают с уровнями текста в анализе (85 / 70)
+    if (score >= 85) return '#27AE60'; // Green
+    if (score >= 70) return '#F39C12'; // Orange
+    return '#E67E22'; // Orange-Red
   };
 
   const getCompatibilityEmoji = (score: number) => {
-    if (score >= 90) return '💕';
-    if (score >= 80) return '❤️';
-    if (score >= 70) return '💖';
-    if (score >= 60) return '💛';
-    if (score >= 40) return '🧡';
-    return '💔';
+    if (score >= 92) return '💕';
+    if (score >= 85) return '❤️';
+    if (score >= 70) return '💛';
+    return '🧡';
   };
 
   if (result) {

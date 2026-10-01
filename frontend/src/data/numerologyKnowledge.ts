@@ -308,53 +308,101 @@ export const LIFE_PATH_NUMBERS: NumberMeaning[] = [
   }
 ];
 
-// Helper function to calculate life path number from date of birth
-export function calculateLifePathNumber(dateString: string): number {
-  // dateString format: YYYY-MM-DD
-  const cleanDate = dateString.replace(/-/g, '');
-  let sum = 0;
+/**
+ * Пифагорова таблица соответствия букв числам.
+ *
+ * Кириллица — стандартная русская таблица из 33 букв (по 9 в ряд):
+ * А1 Б2 В3 Г4 Д5 Е6 Ё7 Ж8 З9 / И1 Й2 К3 Л4 М5 Н6 О7 П8 Р9 /
+ * С1 Т2 У3 Ф4 Х5 Ц6 Ч7 Ш8 Щ9 / Ъ1 Ы2 Ь3 Э4 Ю5 Я6.
+ * Раньше здесь была таблица без «Ё» со сдвигом всех следующих букв на
+ * единицу — 27 из 33 букв давали неверное значение.
+ */
+export const LETTER_VALUES: Record<string, number> = {
+  'а': 1, 'б': 2, 'в': 3, 'г': 4, 'д': 5, 'е': 6, 'ё': 7, 'ж': 8, 'з': 9,
+  'и': 1, 'й': 2, 'к': 3, 'л': 4, 'м': 5, 'н': 6, 'о': 7, 'п': 8, 'р': 9,
+  'с': 1, 'т': 2, 'у': 3, 'ф': 4, 'х': 5, 'ц': 6, 'ч': 7, 'ш': 8, 'щ': 9,
+  'ъ': 1, 'ы': 2, 'ь': 3, 'э': 4, 'ю': 5, 'я': 6,
+  'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8, 'i': 9,
+  'j': 1, 'k': 2, 'l': 3, 'm': 4, 'n': 5, 'o': 6, 'p': 7, 'q': 8, 'r': 9,
+  's': 1, 't': 2, 'u': 3, 'v': 4, 'w': 5, 'x': 6, 'y': 7, 'z': 8,
+};
 
-  for (const digit of cleanDate) {
-    sum += parseInt(digit);
+export const MASTER_NUMBERS = [11, 22, 33];
+
+const RUSSIAN_VOWELS = 'аеёиоуыэюя';
+const LATIN_VOWELS = 'aeiou';
+
+/** Сумма цифр, повторяемая до одной цифры; мастер-числа сохраняются */
+export function reduceNumber(n: number, masters: number[] = MASTER_NUMBERS): number {
+  let sum = Math.abs(Math.trunc(n));
+  while (sum > 9 && !masters.includes(sum)) {
+    sum = String(sum).split('').reduce((acc, d) => acc + Number(d), 0);
   }
-
-  // Keep reducing until we get a single digit or master number
-  while (sum > 9 && ![11, 22, 33].includes(sum)) {
-    const digits = sum.toString().split('');
-    sum = digits.reduce((acc, digit) => acc + parseInt(digit), 0);
-  }
-
   return sum;
 }
 
-// Helper function to calculate destiny number from name
-export function calculateDestinyNumber(name: string): number {
-  const letterValues: Record<string, number> = {
-    'а': 1, 'б': 2, 'в': 3, 'г': 4, 'д': 5, 'е': 6, 'ё': 6, 'ж': 7, 'з': 8, 'и': 9,
-    'й': 1, 'к': 2, 'л': 3, 'м': 4, 'н': 5, 'о': 6, 'п': 7, 'р': 8, 'с': 9,
-    'т': 1, 'у': 2, 'ф': 3, 'х': 4, 'ц': 5, 'ч': 6, 'ш': 7, 'щ': 8, 'ъ': 9,
-    'ы': 1, 'ь': 2, 'э': 3, 'ю': 4, 'я': 5,
-    'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8, 'i': 9,
-    'j': 1, 'k': 2, 'l': 3, 'm': 4, 'n': 5, 'o': 6, 'p': 7, 'q': 8, 'r': 9,
-    's': 1, 't': 2, 'u': 3, 'v': 4, 'w': 5, 'x': 6, 'y': 7, 'z': 8,
-  };
+/** Мастер-число сводится к своему корню: 11 → 2, 22 → 4, 33 → 6 */
+export function rootNumber(n: number): number {
+  return reduceNumber(n, []);
+}
 
-  const cleanName = name.toLowerCase().replace(/\s/g, '');
+/** Есть ли в строке хотя бы одна буква, по которой можно считать */
+export function hasNameLetters(name: string): boolean {
+  return [...name.toLowerCase()].some(ch => ch in LETTER_VALUES);
+}
+
+/** «Y» — гласная, только если звучит как гласная: Mary, Lynn — да, Yana, Maya — нет */
+function isLatinYVowel(word: string, index: number): boolean {
+  const prev = word[index - 1];
+  const next = word[index + 1];
+  const isVowel = (ch?: string) => !!ch && LATIN_VOWELS.includes(ch);
+  if (index === 0 && isVowel(next)) return false;
+  if (isVowel(prev) && isVowel(next)) return false;
+  return true;
+}
+
+function isVowelAt(word: string, index: number): boolean {
+  const ch = word[index];
+  if (RUSSIAN_VOWELS.includes(ch) || LATIN_VOWELS.includes(ch)) return true;
+  if (ch === 'y') return isLatinYVowel(word, index);
+  return false;
+}
+
+function sumLetters(name: string, filter: (word: string, index: number) => boolean): number {
   let sum = 0;
-
-  for (const char of cleanName) {
-    if (letterValues[char]) {
-      sum += letterValues[char];
+  for (const word of name.toLowerCase().split(/[^a-zа-яё]+/)) {
+    for (let i = 0; i < word.length; i++) {
+      if (word[i] in LETTER_VALUES && filter(word, i)) sum += LETTER_VALUES[word[i]];
     }
   }
-
-  // Keep reducing
-  while (sum > 9 && ![11, 22, 33].includes(sum)) {
-    const digits = sum.toString().split('');
-    sum = digits.reduce((acc, digit) => acc + parseInt(digit), 0);
-  }
-
   return sum;
+}
+
+/**
+ * Число жизненного пути — классический способ: день, месяц и год сводятся
+ * по отдельности (с мастер-числами), затем складываются и сводятся снова.
+ * Так не теряются «скрытые» мастер-числа и не появляются лишние.
+ * dateString — YYYY-MM-DD.
+ */
+export function calculateLifePathNumber(dateString: string): number {
+  const [year, month, day] = dateString.split('-').map(Number);
+  if (!year || !month || !day) return 0;
+  return reduceNumber(reduceNumber(day) + reduceNumber(month) + reduceNumber(year));
+}
+
+/** Число судьбы (выражения) — сумма всех букв полного имени */
+export function calculateDestinyNumber(name: string): number {
+  return reduceNumber(sumLetters(name, () => true));
+}
+
+/** Число души — сумма гласных */
+export function calculateSoulNumber(name: string): number {
+  return reduceNumber(sumLetters(name, isVowelAt));
+}
+
+/** Число личности — сумма согласных (включая Й, Ъ, Ь) */
+export function calculatePersonalityNumber(name: string): number {
+  return reduceNumber(sumLetters(name, (w, i) => !isVowelAt(w, i)));
 }
 
 // Get number meaning
@@ -362,42 +410,27 @@ export function getNumberMeaning(number: number): NumberMeaning | undefined {
   return LIFE_PATH_NUMBERS.find(n => n.number === number);
 }
 
-// Calculate soul number (from vowels in name)
-export function calculateSoulNumber(name: string): number {
-  const vowels = 'аеёиоуыэюяaeiouy';
-  const letterValues: Record<string, number> = {
-    'а': 1, 'е': 6, 'ё': 6, 'и': 9, 'о': 6, 'у': 2, 'ы': 1, 'э': 3, 'ю': 4, 'я': 5,
-    'a': 1, 'e': 5, 'i': 9, 'o': 6, 'u': 3, 'y': 7
-  };
-
-  const cleanName = name.toLowerCase().replace(/\s/g, '');
-  let sum = 0;
-
-  for (const char of cleanName) {
-    if (vowels.includes(char) && letterValues[char]) {
-      sum += letterValues[char];
-    }
-  }
-
-  while (sum > 9 && ![11, 22, 33].includes(sum)) {
-    const digits = sum.toString().split('');
-    sum = digits.reduce((acc, digit) => acc + parseInt(digit), 0);
-  }
-
-  return sum;
+/**
+ * Личный год: день и месяц рождения плюс текущий календарный год, каждое
+ * сведено по цифрам, итог — от 1 до 9 (мастер-числа здесь не сохраняются).
+ * Раньше складывались сырые числа (3 + 15 + 2026) с сохранением 11, и в
+ * 2026 году личный год 2 не выпадал никому — вместо него всегда было 11.
+ */
+export function calculatePersonalYear(birthDate: string, currentYear: number = new Date().getFullYear()): number {
+  const [, month, day] = birthDate.split('-').map(Number);
+  if (!month || !day) return 0;
+  return reduceNumber(rootNumber(day) + rootNumber(month) + rootNumber(currentYear), []);
 }
 
-// Personal year number (current year + birth day/month)
-export function calculatePersonalYear(birthDate: string): number {
-  const [year, month, day] = birthDate.split('-');
-  const currentYear = new Date().getFullYear();
-
-  let sum = parseInt(month) + parseInt(day) + currentYear;
-
-  while (sum > 9 && ![11, 22, 33].includes(sum)) {
-    const digits = sum.toString().split('');
-    sum = digits.reduce((acc, digit) => acc + parseInt(digit), 0);
-  }
-
-  return sum;
-}
+/** Что сулит личный год — цикл из девяти лет */
+export const PERSONAL_YEAR_MEANINGS: Record<number, { title: string; text: string }> = {
+  1: { title: 'Год начинаний', text: 'Начало нового девятилетнего цикла. Время закладывать основы, начинать проекты и действовать самостоятельно.' },
+  2: { title: 'Год партнёрства', text: 'Год терпения и сотрудничества. Важны отношения, договорённости и умение ждать, пока посеянное прорастёт.' },
+  3: { title: 'Год самовыражения', text: 'Творчество, общение и радость. Хорошее время, чтобы показать себя, учиться и расширять круг знакомств.' },
+  4: { title: 'Год труда', text: 'Год порядка и усилий. Наводите систему, укрепляйте фундамент — работа сейчас окупится позже.' },
+  5: { title: 'Год перемен', text: 'Свобода, движение и неожиданные повороты. Хорошо для переездов, путешествий и смелых решений.' },
+  6: { title: 'Год ответственности', text: 'В центре — семья, дом и забота о близких. Время для обязательств и гармонии в отношениях.' },
+  7: { title: 'Год осмысления', text: 'Год уединения, учёбы и внутренней работы. Не торопите события — ищите ответы внутри себя.' },
+  8: { title: 'Год достижений', text: 'Деньги, власть и результаты. Время для карьерных шагов и крупных решений — усилия прошлых лет приносят плоды.' },
+  9: { title: 'Год завершений', text: 'Конец девятилетнего цикла. Отпускайте отжившее, подводите итоги и освобождайте место для нового.' },
+};
