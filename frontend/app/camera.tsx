@@ -18,12 +18,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { PalmCamera } from '../components/PalmCamera';
 import { CapturedPalmPhoto } from '../components/palmCameraTypes';
-import { generateOfflinePalmResult } from '../src/utils/offlineApi';
+import {
+  PalmFeatures,
+  HAND_SHAPE_OPTIONS,
+  LINE_TRAIT_OPTIONS,
+  PALM_LINE_STEPS,
+  generatePalmReading,
+  isPalmFeaturesComplete,
+} from '../src/utils/palmReading';
 
 export default function CameraScreen() {
   const router = useRouter();
   const [captured, setCaptured] = useState<CapturedPalmPhoto | null>(null);
   const [question, setQuestion] = useState<string>('');
+  // Офлайн-приложение не распознаёт линии на фото — их описывает сам человек,
+  // глядя на снимок
+  const [features, setFeatures] = useState<Partial<PalmFeatures>>({});
+  const setFeature = useCallback(<K extends keyof PalmFeatures>(key: K, value: PalmFeatures[K]) => {
+    setFeatures(prev => ({ ...prev, [key]: value }));
+    setNotice('');
+  }, []);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   // Alert.alert на react-native-web ничего не показывает,
   // поэтому все сообщения выводим прямо на экране.
@@ -45,6 +59,7 @@ export default function CameraScreen() {
   const retakePicture = useCallback(() => {
     setCaptured(null);
     setQuestion('');
+    setFeatures({});
     setNotice('');
   }, []);
 
@@ -54,8 +69,8 @@ export default function CameraScreen() {
       return;
     }
 
-    if (!question.trim()) {
-      setNotice('Пожалуйста, введите вопрос для гадания.');
+    if (!isPalmFeaturesComplete(features)) {
+      setNotice('Отметьте форму руки и вид каждой линии — по ним строится толкование.');
       return;
     }
 
@@ -63,16 +78,15 @@ export default function CameraScreen() {
       setIsAnalyzing(true);
       setNotice('');
 
-      // Толкование генерируется офлайн — интернет не нужен.
-      const data = await generateOfflinePalmResult(question.trim());
+      const interpretation = generatePalmReading(features, question.trim() || undefined);
 
       router.push({
         pathname: '/palmistry-result',
         params: {
           imageUri: captured.uri,
           question: question.trim(),
-          interpretation: data.interpretation,
-          palmLines: JSON.stringify(data.lines),
+          interpretation,
+          palmLines: '[]',
         },
       });
     } catch (error) {
@@ -81,7 +95,7 @@ export default function CameraScreen() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [captured, question, router]);
+  }, [captured, question, features, router]);
 
   if (!captured) {
     return <PalmCamera onCaptured={handleCaptured} onBack={goBack} />;
@@ -107,7 +121,7 @@ export default function CameraScreen() {
             >
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Предварительный просмотр</Text>
+            <Text style={styles.headerTitle}>Ваша ладонь</Text>
             <View style={styles.placeholder} />
           </View>
 
@@ -119,14 +133,56 @@ export default function CameraScreen() {
             <Image source={{ uri: captured.uri }} style={styles.previewImage} />
 
             <View style={styles.instructionBox}>
-              <Text style={styles.instructionTitle}>✨ Проверьте снимок</Text>
+              <Text style={styles.instructionTitle}>✨ Опишите свою ладонь</Text>
               <Text style={styles.instructionText}>
-                Убедитесь, что линии ладони хорошо видны. Если снимок получился нечетким, сделайте новое фото.
+                Посмотрите на снимок или на свою руку и отметьте, что видите. Читают обычно ведущую руку — правую у правшей.
               </Text>
             </View>
 
+            <View style={styles.featureGroup}>
+              <Text style={styles.featureTitle}>Форма руки</Text>
+              <View style={styles.chips}>
+                {HAND_SHAPE_OPTIONS.map(option => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[styles.chipWide, features.hand === option.id && styles.chipSelected]}
+                    onPress={() => setFeature('hand', option.id)}
+                  >
+                    <Text style={[styles.chipText, features.hand === option.id && styles.chipTextSelected]}>{option.title}</Text>
+                    <Text style={styles.chipHint}>{option.hint}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {PALM_LINE_STEPS.map(step => (
+              <View key={step.id} style={styles.featureGroup}>
+                <Text style={styles.featureTitle}>{step.title}</Text>
+                <Text style={styles.featureWhere}>{step.where}</Text>
+                <View style={styles.chips}>
+                  {LINE_TRAIT_OPTIONS.map(option => (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={[styles.chip, features[step.id] === option.id && styles.chipSelected]}
+                      onPress={() => setFeature(step.id, option.id)}
+                    >
+                      <Text style={[styles.chipText, features[step.id] === option.id && styles.chipTextSelected]}>{option.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  {step.optional && (
+                    <TouchableOpacity
+                      style={[styles.chip, features[step.id] === 'none' && styles.chipSelected]}
+                      onPress={() => setFeature('fate_line', 'none')}
+                    >
+                      <Text style={[styles.chipText, features[step.id] === 'none' && styles.chipTextSelected]}>Не вижу</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ))}
+
             <View style={styles.questionContainer}>
-              <Text style={styles.questionLabel}>Ваш вопрос:</Text>
+              <Text style={styles.questionLabel}>Ваш вопрос (необязательно):</Text>
               <TextInput
                 style={styles.questionInput}
                 placeholder="Например: Что меня ждет в ближайшем будущем?"
@@ -175,7 +231,7 @@ export default function CameraScreen() {
                 {isAnalyzing ? (
                   <>
                     <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={styles.primaryButtonText}>Анализ...</Text>
+                    <Text style={styles.primaryButtonText}>Толкование...</Text>
                   </>
                 ) : (
                   <>
@@ -256,6 +312,62 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(155, 89, 182, 0.5)',
     marginBottom: 20,
+  },
+  featureGroup: {
+    width: '100%',
+    maxWidth: 360,
+    marginTop: 18,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E8E8E8',
+    marginBottom: 4,
+  },
+  featureWhere: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 8,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  chipWide: {
+    width: '48%',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 89, 182, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  chipSelected: {
+    backgroundColor: 'rgba(155, 89, 182, 0.45)',
+    borderColor: '#BB6BD9',
+  },
+  chipText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  chipTextSelected: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  chipHint: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.55)',
+    marginTop: 2,
   },
   questionContainer: {
     width: '100%',

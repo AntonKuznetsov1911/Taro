@@ -249,16 +249,16 @@ export default function PalmistryResultScreen() {
                   {showGuide ? '🤲 Скрыть линии' : '✨ Показать линии'}
                 </Text>
               </TouchableOpacity>
-            ) : (
-              <Text style={styles.noLinesText}>Линии ладони не распознаны</Text>
-            )}
+            ) : null}
           </View>
 
           {/* Question */}
-          <View style={styles.questionSection}>
-            <Text style={styles.questionLabel}>Ваш вопрос:</Text>
-            <Text style={styles.questionText}>{question || 'Вопрос не указан'}</Text>
-          </View>
+          {!!question && (
+            <View style={styles.questionSection}>
+              <Text style={styles.questionLabel}>Ваш вопрос:</Text>
+              <Text style={styles.questionText}>{question}</Text>
+            </View>
+          )}
 
           {/* Divider */}
           <View style={styles.divider} />
