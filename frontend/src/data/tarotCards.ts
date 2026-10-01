@@ -299,13 +299,3 @@ export function getRandomCards(count: number): TarotCard[] {
 export function getCardById(id: number): TarotCard | undefined {
   return FULL_TAROT_DECK.find(card => card.id === id);
 }
-
-// Helper function to generate reading interpretation
-export function generateOfflineReading(cards: TarotCard[], question?: string): string {
-  const cardDescriptions = cards.map((card, index) => {
-    const position = index === 0 ? "Прошлое" : index === 1 ? "Настоящее" : "Будущее";
-    return `${position}: ${card.name} - ${card.upright_meaning}`;
-  }).join("\n\n");
-
-  return `🔮 Расклад Таро ${question ? `на вопрос: "${question}"` : ""}\n\n${cardDescriptions}\n\n✨ Совет: Карты указывают на важный этап вашего пути. Прислушайтесь к своей интуиции и доверьтесь процессу.`;
-}

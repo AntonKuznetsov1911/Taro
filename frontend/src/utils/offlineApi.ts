@@ -1,6 +1,7 @@
 // Offline API - Полная офлайн функциональность для GitHub Pages
 import type { ImageSourcePropType } from 'react-native';
-import { getRandomCards, generateOfflineReading, MAJOR_ARCANA, FULL_TAROT_DECK, TarotCard, getCardById } from '../data/tarotCards';
+import { getRandomCards, MAJOR_ARCANA, FULL_TAROT_DECK, TarotCard, getCardById } from '../data/tarotCards';
+import { resolveSpread, resolveCategory, CATEGORY_LENS, SUIT_THEMES, SpreadDef, CategoryId } from '../data/spreads';
 import { getDailyAstrology, formatAstrologyForReading, getMoonData, getRetrogradePlanets, DailyAstrology, ZodiacSign, getZodiacCompatibility } from './astrology';
 import { generateMysticalCardBack } from './tarotCardImages';
 import { getTarotCardImage } from './tarotCardAssets';
@@ -11,98 +12,130 @@ export interface PersonalizationContext {
   profile?: UserProfile | null;
 }
 
+/** Карта в раскладе: ориентация решается один раз и дальше используется
+ *  и для картинки, и для текста — иначе они расходятся */
+export type DrawnCard = TarotCard & { is_reversed: boolean };
+
 export interface OfflineReadingResult {
-  cards: TarotCard[];
+  cards: DrawnCard[];
+  positions: string[];
   interpretation: string;
   question?: string;
   timestamp: string;
 }
+
+// При обычном перемешивании колоды половина карт ложится перевёрнутой
+const REVERSAL_PROBABILITY = 0.5;
 
 /**
  * Генерация офлайн гадания на картах Таро
  */
 export async function generateOfflineTarotReading(
   question?: string,
-  cardCount: number = 3,
+  spreadId?: string,
+  categoryId?: string,
   context?: PersonalizationContext
 ): Promise<OfflineReadingResult> {
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  const cards = getRandomCards(cardCount);
-  const interpretation = generateDetailedInterpretation(cards, question, context?.profile);
+  const spread = resolveSpread(spreadId);
+  const category = resolveCategory(categoryId);
+  const cards: DrawnCard[] = getRandomCards(spread.cards).map(card => ({
+    ...card,
+    is_reversed: Math.random() < REVERSAL_PROBABILITY,
+  }));
+  const interpretation = generateDetailedInterpretation(cards, spread, category, question, context?.profile);
 
   return {
     cards,
+    positions: spread.positions.map(p => p.title),
     interpretation,
     question,
     timestamp: new Date().toISOString()
   };
 }
 
-/**
- * Генерация детальной интерпретации карт с астрологическим контекстом
- */
-function generateDetailedInterpretation(cards: TarotCard[], question?: string, profile?: UserProfile | null): string {
-  const positions = cards.length === 1 ? ['Ответ'] :
-                    cards.length === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
-                    ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
+/** Первая фраза значения — для коротких ссылок на карту в выводе */
+function firstClause(text: string): string {
+  return text.split(/[.,;]/)[0].trim().toLowerCase();
+}
 
+/**
+ * Толкование: каждая карта читается через свою позицию и тему вопроса,
+ * в конце — вывод по раскладу в целом
+ */
+function generateDetailedInterpretation(
+  cards: DrawnCard[],
+  spread: SpreadDef,
+  category: CategoryId,
+  question?: string,
+  profile?: UserProfile | null
+): string {
+  const lens = CATEGORY_LENS[category];
   const astrology = getDailyAstrology();
   const retrograde = getRetrogradePlanets();
+  const greeting = profile?.name ? `${profile.name}, карты` : 'Карты';
 
-  // Персонализированное приветствие
-  const greeting = profile?.name ? `Дорогой(ая) ${profile.name}` : 'Дорогой искатель';
+  let text = `🔮 **${spread.name} · ${lens.name}**\n\n`;
+  if (question) text += `*Ваш вопрос: «${question}»*\n\n`;
+  text += `${greeting} показывают, что происходит ${lens.area}.\n\n`;
 
-  let interpretation = `🔮 **Мистическое Гадание на Таро**\n\n`;
-
-  if (question) {
-    interpretation += `*Ваш вопрос: "${question}"*\n\n`;
-  }
-
-  // Персонализированный астрологический контекст
-  interpretation += `---\n`;
-  interpretation += `### ${astrology.moon.emoji} Космический Контекст\n\n`;
-
-  if (profile?.sunSign) {
-    interpretation += `**Ваш знак:** ${profile.sunSign.nameRu} ${profile.sunSign.symbol}\n`;
-    const compatibility = getZodiacCompatibility(profile.sunSign, astrology.moon.moonSign);
-    interpretation += `**Гармония с Луной:** ${compatibility.score}%\n\n`;
-  }
-
-  interpretation += `**Луна:** ${astrology.moon.phaseNameRu} в знаке ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}\n`;
-  interpretation += `**Лунный день:** ${astrology.moon.lunarDay} | **Освещённость:** ${astrology.moon.illumination}%\n`;
-  interpretation += `**День:** ${astrology.dayOfWeekRu} — день ${astrology.rulingPlanetRu}\n`;
-
-  if (retrograde.length > 0) {
-    interpretation += `⚠️ **Ретроград:** ${retrograde.join(', ')}\n`;
-    if (profile?.sunSign) {
-      interpretation += `*Влияние на знак ${profile.sunSign.nameRu}: будьте внимательны в коммуникации*\n`;
-    }
-  }
-  interpretation += `\n---\n\n`;
-
-  interpretation += `${greeting}, карты раскрывают глубокую мудрость для вашего пути...\n\n`;
-
+  text += `## 🃏 Карты расклада\n\n`;
   cards.forEach((card, index) => {
-    const position = positions[index] || `Карта ${index + 1}`;
-    const isReversed = Math.random() < 0.3;
-    const meaning = isReversed ? card.reversed_meaning : card.upright_meaning;
+    const position = spread.positions[index] ?? { title: `Карта ${index + 1}`, hint: '' };
+    const meaning = card.is_reversed ? card.reversed_meaning : card.upright_meaning;
 
-    interpretation += `### ✨ **${position}**: ${card.name}${isReversed ? ' (Перевёрнутая)' : ''}\n\n`;
-    interpretation += `${meaning}\n\n`;
-    interpretation += `*Ключевые слова*: ${card.keywords.join(', ')}\n\n`;
+    text += `### ${index + 1}. ${position.title}: ${card.name}${card.is_reversed ? ' (перевёрнутая)' : ''}\n\n`;
+    if (position.hint) text += `*Позиция: ${position.hint}.*\n\n`;
+    text += `${meaning}.\n\n`;
+    if (card.is_reversed) {
+      // Ключевые слова описывают прямое положение — для перевёрнутой карты
+      // говорим о них как о заблокированных
+      text += `Темы карты — ${card.keywords.slice(0, 2).join(' и ')} — сейчас ${lens.area} заблокированы или проявляются с трудом.\n\n`;
+    } else {
+      text += `${lens.area[0].toUpperCase()}${lens.area.slice(1)} на первый план выходят ${card.keywords.slice(0, 2).join(' и ')}.\n\n`;
+    }
   });
 
-  interpretation += `---\n\n`;
-  interpretation += `## 💫 **Итог**\n\n`;
-  interpretation += `${astrology.energyDescription}\n\n`;
-  interpretation += `Карты несут для вас важное послание. Доверяйте своей интуиции и следуйте мудрости, открывшейся здесь. `;
-  interpretation += `Помните, что именно вы держите ключ к своей судьбе.\n\n`;
-  interpretation += `🍀 **Счастливые числа:** ${astrology.luckyNumbers.join(', ')}\n`;
-  interpretation += `🎨 **Счастливые цвета:** ${astrology.luckyColors.join(', ')}\n\n`;
-  interpretation += `*Пусть звёзды освещают ваш путь!* ⭐\n`;
+  // Вывод по раскладу
+  text += `## 💫 Общий вывод и рекомендации\n\n`;
+  const majors = cards.filter(c => c.type === 'major').length;
+  const reversed = cards.filter(c => c.is_reversed).length;
+  const suitCounts = new Map<string, number>();
+  cards.filter(c => c.type !== 'major').forEach(c => suitCounts.set(c.suit, (suitCounts.get(c.suit) ?? 0) + 1));
+  const [topSuit, topCount] = [...suitCounts.entries()].sort((a, b) => b[1] - a[1])[0] ?? ['', 0];
 
-  return interpretation;
+  if (cards.length > 1 && majors * 2 >= cards.length) {
+    text += `- В раскладе много старших арканов (${majors} из ${cards.length}): ситуацию определяют крупные жизненные силы, а не мелкие обстоятельства.\n`;
+  } else if (cards.length === 1 && majors === 1) {
+    text += `- Выпал старший аркан — вопрос важнее, чем может казаться.\n`;
+  }
+  if (topSuit && (topCount >= 2 || cards.length === 1)) {
+    const theme = SUIT_THEMES[topSuit];
+    text += `- Преобладает масть ${theme.name}: главное здесь — ${theme.theme}.`;
+    text += topSuit === lens.keySuit ? ' Это прямо отвечает на тему вашего вопроса.\n' : '\n';
+  }
+  if (cards.length > 1 && reversed * 2 > cards.length) {
+    text += `- Больше половины карт перевёрнуты: энергия заблокирована, многое зависит от того, что вы пока не решаетесь признать или сделать.\n`;
+  }
+  if (cards.length > 1) {
+    const last = cards[cards.length - 1];
+    const lastPos = spread.positions[cards.length - 1]?.title ?? 'Итог';
+    text += `- Карта «${last.name}» в позиции «${lastPos}» говорит: ${firstClause(last.is_reversed ? last.reversed_meaning : last.upright_meaning)}.\n`;
+  }
+  text += `\n**Совет:** ${lens.advice}\n\n`;
+
+  // Астрологический фон — отдельно от вывода по картам
+  text += `## 🌙 Космический контекст\n\n`;
+  if (profile?.sunSign) {
+    const compatibility = getZodiacCompatibility(profile.sunSign, astrology.moon.moonSign);
+    text += `**Ваш знак:** ${profile.sunSign.nameRu} ${profile.sunSign.symbol} · **гармония с Луной:** ${compatibility.score}%\n\n`;
+  }
+  text += `**Луна:** ${astrology.moon.phaseNameRu} в знаке ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol} · ${astrology.moon.lunarDay}-й лунный день\n\n`;
+  if (retrograde.length > 0) text += `**Ретроградные планеты:** ${retrograde.join(', ')}\n\n`;
+  text += `${astrology.energyDescription}\n`;
+
+  return text;
 }
 
 /**
@@ -125,20 +158,6 @@ export function generateTarotCardSVG(card: TarotCard, _isReversed: boolean = fal
 }
 
 /**
- * Получить все карты Таро (офлайн)
- */
-export async function getOfflineTarotDeck(): Promise<TarotCard[]> {
-  return FULL_TAROT_DECK;
-}
-
-/**
- * Получить карту по ID
- */
-export async function getOfflineCardById(id: number): Promise<TarotCard | null> {
-  return getCardById(id) || null;
-}
-
-/**
  * Получить карту дня с астрологическим контекстом
  */
 export async function getOfflineDailyCard(): Promise<{
@@ -152,22 +171,34 @@ export async function getOfflineDailyCard(): Promise<{
   const today = new Date();
   const astrology = getDailyAstrology(today);
 
-  // Используем дату и фазу луны для выбора карты
-  const dayIndex = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate() + Math.floor(astrology.moon.phase * 10)) % MAJOR_ARCANA.length;
-  const card = MAJOR_ARCANA[dayIndex];
-
-  // Перевёрнутость зависит от фазы луны и лунного дня
-  const isReversed = astrology.moon.lunarDay === 9 || astrology.moon.lunarDay === 15 || astrology.moon.lunarDay === 29;
+  // Карта дня зависит только от календарной даты: раньше в расчёт входила
+  // текущая фаза Луны, и карта менялась посреди дня, а выбор шёл только из
+  // 22 старших арканов и почти по порядку день за днём
+  const dateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  let hash = 2166136261;
+  for (let i = 0; i < dateKey.length; i++) {
+    hash = Math.imul(hash ^ dateKey.charCodeAt(i), 16777619) >>> 0;
+  }
+  // Перемешиваем биты, чтобы соседние даты давали несвязанные карты
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
+  hash ^= hash >>> 16;
+  hash >>>= 0;
+  const card = FULL_TAROT_DECK[hash % FULL_TAROT_DECK.length];
+  const isReversed = ((hash >>> 16) & 1) === 1;
 
   const moonContext = astrology.moon.isWaxing
     ? 'Растущая луна усиливает энергию карты'
     : 'Убывающая луна призывает к рефлексии';
 
+  const meaningHint = firstClause(isReversed ? card.reversed_meaning : card.upright_meaning);
   const messages = [
-    `${astrology.moon.emoji} ${moonContext}. ${card.name} направляет вас сегодня. «${card.keywords[0]}» — ключ к успеху.`,
+    `${astrology.moon.emoji} ${moonContext}. ${card.name}${isReversed ? ' (перевёрнутая)' : ''} направляет вас сегодня: ${meaningHint}.`,
     `${astrology.moon.emoji} ${astrology.moon.phaseNameRu}. Энергия карты «${card.name}» освещает ваш путь.`,
     `${astrology.moon.emoji} Луна в знаке ${astrology.moon.moonSign.nameRu}. ${card.name} несёт важное послание.`,
-    `${astrology.moon.emoji} ${moonContext}. Карта «${card.name}» говорит о темах: ${card.keywords.slice(0, 2).join(' и ')}.`
+    `${astrology.moon.emoji} ${moonContext}. Карта «${card.name}» говорит: ${meaningHint}.`
   ];
 
   return {
@@ -176,277 +207,6 @@ export async function getOfflineDailyCard(): Promise<{
     is_reversed: isReversed,
     astrology
   };
-}
-
-/**
- * Генерация офлайн анализа совместимости
- */
-export async function generateOfflineCompatibility(name1: string, name2: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const cards = getRandomCards(2);
-  const score = Math.floor(Math.random() * 30) + 65;
-
-  const levelText = score >= 85 ? 'исключительная гармония' :
-                    score >= 75 ? 'сильная совместимость' :
-                    score >= 65 ? 'хороший потенциал' : 'возможность для роста';
-
-  return `💕 **Анализ совместимости имён**
-
-## ${name1} & ${name2}
-
-**Показатель совместимости: ${score}%** — ${levelText}
-
----
-
-### 🎴 Карта для ${name1}: **${cards[0].name}**
-${cards[0].upright_meaning}
-
-*Эта энергия олицетворяет вклад ${name1} в отношения.*
-
-### 🎴 Карта для ${name2}: **${cards[1].name}**
-${cards[1].upright_meaning}
-
-*Эта энергия олицетворяет вклад ${name2} в отношения.*
-
----
-
-### ✨ **Анализ**
-
-Космические энергии ваших имён создают узор ${levelText.toLowerCase()}. ${cards[0].name} и ${cards[1].name} вместе указывают на отношения, в которых оба партнёра могут расти и учиться друг у друга.
-
-**Сильные стороны:**
-- Взаимодополняющие энергии, создающие баланс
-- Прочный фундамент для взаимопонимания
-- Потенциал глубокой эмоциональной связи
-
-**Совет:**
-${cards[0].keywords[0]} и ${cards[1].keywords[0]} — развивайте эти качества в вашей связи.
-
----
-
-💫 *Помните: Любовь строится день за днём через понимание, терпение и искреннюю заботу друг о друге.*`;
-}
-
-/**
- * Генерация офлайн гороскопа с реальными астрологическими данными
- */
-export async function generateOfflineHoroscope(sign: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 600));
-
-  const card = getRandomCards(1)[0];
-  const astrology = getDailyAstrology();
-  const retrograde = getRetrogradePlanets();
-  const today = new Date().toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-  const moodRating = astrology.overallEnergy === 'high' ? 9 : astrology.overallEnergy === 'medium' ? 7 : 5;
-
-  return `🌟 **Ежедневный гороскоп для ${sign}**
-*${today}*
-
----
-
-### ${astrology.moon.emoji} **Лунный календарь**
-
-**Фаза:** ${astrology.moon.phaseNameRu} (${astrology.moon.illumination}%)
-**Лунный день:** ${astrology.moon.lunarDay}
-**Луна в:** ${astrology.moon.moonSign.nameRu} ${astrology.moon.moonSign.symbol}
-**Стихия луны:** ${astrology.moon.moonSign.elementRu}
-
-### ☀️ **Солнце в ${astrology.sunSign.nameRu}** ${astrology.sunSign.symbol}
-
-**Управляющая планета дня:** ${astrology.rulingPlanetRu}
-${retrograde.length > 0 ? `\n⚠️ **Ретроградные планеты:** ${retrograde.join(', ')}` : ''}
-
----
-
-### 🎴 Карта дня: **${card.name}**
-
-${card.upright_meaning}
-
----
-
-### ✨ **Прогноз на сегодня**
-
-**Энергия дня:** ${'⭐'.repeat(moodRating)}${'☆'.repeat(10 - moodRating)} (${moodRating}/10)
-
-${astrology.energyDescription}
-
-Энергия ${card.name} влияет на ваш день, принося темы ${card.keywords.slice(0, 3).join(', ')}. ${astrology.moon.isWaxing ? 'Растущая луна благоприятствует новым начинаниям.' : 'Убывающая луна способствует завершению дел и очищению.'}
-
-### ✅ **Благоприятно сегодня**
-${astrology.favorableActivities.slice(0, 3).map(a => `• ${a}`).join('\n')}
-
-### ⛔ **Лучше отложить**
-${astrology.unfavorableActivities.map(a => `• ${a}`).join('\n')}
-
-### 💕 **Любовь и отношения**
-${astrology.moon.moonSign.element === 'water' || astrology.moon.moonSign.element === 'fire'
-  ? 'Эмоции обострены. Романтика витает в воздухе! Открыто выражайте свои чувства сегодня.'
-  : 'Сосредоточьтесь на любви к себе и внутренней гармонии. Правильные связи последуют.'}
-
-### 💼 **Карьера и цели**
-${astrology.overallEnergy === 'high'
-  ? 'Профессиональный успех в центре внимания. Действуйте смело в своих проектах.'
-  : 'Терпение и планирование будут вам полезны. Закладывайте фундамент для будущего успеха.'}
-
-### 🍀 **Счастливые элементы**
-- **Числа:** ${astrology.luckyNumbers.join(', ')}
-- **Цвета:** ${astrology.luckyColors.join(', ')}
-- **Лучшее время:** ${10 + Math.floor(moodRating / 3)}:00
-
----
-
-💫 *Доверяйте космическому руководству и максимально используйте энергию этого дня!*`;
-}
-
-/**
- * Генерация офлайн чтения по ладони
- */
-export async function generateOfflinePalmistry(question?: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  const cards = getRandomCards(3);
-
-  return `🤲 **Чтение по линиям ладони**
-
-*"${question || 'Расскажи о моей судьбе'}"*
-
----
-
-### 📍 **Линия жизни**
-Линия жизни раскрывает вашу жизненную силу и важные события. ${cards[0].upright_meaning}
-
-**Ключевой совет:** Сосредоточьтесь на ${cards[0].keywords[0]} для усиления жизненной энергии.
-
-### 💖 **Линия сердца**
-Линия сердца показывает вашу эмоциональную природу и отношения. ${cards[1].upright_meaning}
-
-**Ключевой совет:** Проявляйте ${cards[1].keywords[0]} в делах сердечных.
-
-### 🧠 **Линия головы**
-Линия головы указывает на ваш мыслительный подход и образ мышления. ${cards[2].upright_meaning}
-
-**Ключевой совет:** Применяйте ${cards[2].keywords[0]} в принятии решений.
-
----
-
-### ✨ **Общее руководство**
-
-Линии на вашей ладони рассказывают историю о ${cards.map(c => c.keywords[0]).join(', ')}. Ваша судьба написана не только на руке, но и в выборах, которые вы делаете каждый день.
-
-**Практические советы:**
-1. Больше доверяйте своей интуиции
-2. Действуйте в направлении своих мечт
-3. Поддерживайте баланс во всех сферах жизни
-
----
-
-💫 *Будущее в ваших руках. Линии — это направления, а не цепи.*`;
-}
-
-/**
- * Генерация офлайн чтения рун
- */
-export async function generateOfflineRunes(question?: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 700));
-
-  const runes = ['ᚠ Феху', 'ᚢ Уруз', 'ᚦ Турисаз', 'ᚨ Ансуз', 'ᚱ Райдо', 'ᚲ Кеназ',
-                 'ᚷ Гебо', 'ᚹ Вуньо', 'ᚺ Хагалаз', 'ᚾ Наутиз'];
-  const selectedRunes = runes.sort(() => Math.random() - 0.5).slice(0, 3);
-
-  return `ᚠ **Гадание на рунах**
-
-*Вопрос: "${question || 'Какое руководство дают руны?'}"*
-
----
-
-### Прошлое: **${selectedRunes[0]}**
-Эта руна говорит о заложенных основах и усвоенных уроках.
-
-### Настоящее: **${selectedRunes[1]}**
-Текущие энергии, окружающие ваш вопрос.
-
-### Будущее: **${selectedRunes[2]}**
-Возможный путь вперёд, основанный на текущих траекториях.
-
----
-
-### ✨ **Толкование**
-
-Древняя скандинавская мудрость течёт через эти руны, предлагая руководство для вашего пути. Комбинация указывает на время трансформации и роста.
-
-**Ключевое послание:** Доверяйте процессу перемен. То, что заканчивается, создаёт пространство для новых начинаний.
-
----
-
-💫 *Пусть мудрость предков освещает ваш путь.*`;
-}
-
-/**
- * Генерация офлайн нумерологического чтения
- */
-export async function generateOfflineNumerology(birthDate: string, name?: string): Promise<string> {
-  await new Promise(resolve => setTimeout(resolve, 600));
-
-  // Расчёт числа жизненного пути
-  const digits = birthDate.replace(/\D/g, '').split('').map(Number);
-  let lifePathNumber = digits.reduce((a, b) => a + b, 0);
-  while (lifePathNumber > 9 && lifePathNumber !== 11 && lifePathNumber !== 22) {
-    lifePathNumber = String(lifePathNumber).split('').map(Number).reduce((a, b) => a + b, 0);
-  }
-
-  const meanings: { [key: number]: string } = {
-    1: 'Лидерство, независимость, оригинальность',
-    2: 'Партнёрство, дипломатия, чувствительность',
-    3: 'Творчество, самовыражение, радость',
-    4: 'Стабильность, дисциплина, упорный труд',
-    5: 'Свобода, приключения, перемены',
-    6: 'Ответственность, любовь, забота',
-    7: 'Духовность, анализ, мудрость',
-    8: 'Власть, изобилие, успех',
-    9: 'Гуманизм, завершение, мудрость',
-    11: 'Интуиция, духовное прозрение, просветление',
-    22: 'Мастер-строитель, видение, практический идеализм',
-  };
-
-  return `🔢 **Нумерологический расчёт**${name ? ` для ${name}` : ''}
-
-*Дата рождения: ${birthDate}*
-
----
-
-### 🌟 **Ваше Число Жизненного Пути: ${lifePathNumber}**
-
-**Основное значение:** ${meanings[lifePathNumber] || 'Уникальный духовный путь'}
-
-${lifePathNumber === 11 || lifePathNumber === 22 ?
-`⚡ *Внимание: Мастер-Число!* Вы несёте усиленную вибрацию Мастер-Числа, указывающую на особое жизненное предназначение и потенциал.` : ''}
-
----
-
-### ✨ **Подробный анализ**
-
-**Сильные стороны:**
-Люди с Числом Пути ${lifePathNumber} от природы одарены в ${meanings[lifePathNumber]?.split(', ').slice(0, 2).join(' и ') || 'уникальных способностях'}.
-
-**Вызовы:**
-Рост приходит через баланс ${lifePathNumber === 1 ? 'независимости и сотрудничества' :
-lifePathNumber === 2 ? 'потребностей других с вашими собственными' :
-'природных талантов с практическим применением'}.
-
-**Жизненное предназначение:**
-Ваша душа выбрала этот путь, чтобы познать и воплотить ${meanings[lifePathNumber]?.split(', ')[0] || 'ваши уникальные дары'}.
-
----
-
-### 💫 **Энергия личного года**
-
-Основываясь на текущих космических циклах, этот год — для ${lifePathNumber % 2 === 0 ? 'строительства и укрепления' : 'инициации и расширения'}.
-
----
-
-💫 *Ваши числа рассказывают историю безграничного потенциала. Живите своей правдой!*`;
 }
 
 /**

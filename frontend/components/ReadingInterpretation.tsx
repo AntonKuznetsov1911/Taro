@@ -15,6 +15,7 @@ import * as Clipboard from 'expo-clipboard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { stripMarkdown } from '../src/utils/stripMarkdown';
 import { favoritesStorage } from '../src/utils/storage';
+import { resolveSpread } from '../src/data/spreads';
 
 interface ReadingInterpretationProps {
   interpretation: string;
@@ -55,7 +56,7 @@ export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
       const shareContent = `🔮 Гадание Таро
 
 Вопрос: "${question}"
-Расклад: ${spreadType}
+Расклад: ${resolveSpread(spreadType).name}
 
 ${stripMarkdown(interpretation)}
 
@@ -259,6 +260,9 @@ function parseInterpretationSections(interpretation: string): Array<{
       } else if (title.includes('рекомендации') || title.includes('план')) {
         key = 'recommendations';
         icon = '💫';
+      } else if (title.includes('Космическ')) {
+        key = 'cosmos';
+        icon = '🌙';
       } else if (title.includes('пророчество') || title.includes('Заключ')) {
         key = 'conclusion';
         icon = '🌙';

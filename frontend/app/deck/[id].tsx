@@ -36,7 +36,7 @@ function generateCardInterpretation(card: TarotCard, isReversed: boolean): strin
 
 ${baseMeaning}
 
-${isReversed ? '⚠️ В перевёрнутом положении карта призывает к осторожности и самоанализу. ' : '✨ В прямом положении карта приносит позитивную энергию. '}${advices[dayIndex % advices.length]}
+${isReversed ? '⚠️ В перевёрнутом положении энергия карты заблокирована, ослаблена или обращена внутрь. ' : '✨ В прямом положении энергия карты проявляется открыто и в полную силу. '}${advices[dayIndex % advices.length]}
 
 ${conclusions[dayIndex % conclusions.length]}`;
 }

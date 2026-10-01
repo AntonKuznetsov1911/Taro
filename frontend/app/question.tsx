@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playShuffle } from '../src/utils/sound';
+import { resolveSpread, pluralCards } from '../src/data/spreads';
 
 const CATEGORIES = {
   love: { name: 'Любовь', icon: '❤️', color: '#FF6B9D' },
@@ -24,15 +25,9 @@ const CATEGORIES = {
   general: { name: 'Общие вопросы', icon: '🔮', color: '#9B59B6' }
 };
 
-const SPREADS = {
-  one_card: { name: 'Одна карта', cards: 1 },
-  three_cards: { name: 'Три карты', cards: 3 },
-  celtic_cross: { name: 'Кельтский крест', cards: 10 }
-};
 
 // Значения по умолчанию, если параметры не переданы (глубокая ссылка, обновление страницы)
 const DEFAULT_CATEGORY_KEY: keyof typeof CATEGORIES = 'general';
-const DEFAULT_SPREAD_KEY: keyof typeof SPREADS = 'three_cards';
 
 export default function QuestionScreen() {
   const router = useRouter();
@@ -46,12 +41,10 @@ export default function QuestionScreen() {
   const categoryKey = (category && category in CATEGORIES
     ? category
     : DEFAULT_CATEGORY_KEY) as keyof typeof CATEGORIES;
-  const spreadKey = (spread && spread in SPREADS
-    ? spread
-    : DEFAULT_SPREAD_KEY) as keyof typeof SPREADS;
+  const spreadInfo = resolveSpread(spread);
+  const spreadKey = spreadInfo.id;
 
   const categoryInfo = CATEGORIES[categoryKey];
-  const spreadInfo = SPREADS[spreadKey];
 
   const handleSubmit = async () => {
     if (!question.trim()) {
@@ -122,7 +115,7 @@ export default function QuestionScreen() {
               <View style={styles.selectionCard}>
                 <Text style={styles.selectionIcon}>🎴</Text>
                 <Text style={styles.selectionText}>{spreadInfo.name}</Text>
-                <Text style={styles.selectionSubtext}>{spreadInfo.cards} карт</Text>
+                <Text style={styles.selectionSubtext}>{pluralCards(spreadInfo.cards)}</Text>
               </View>
             </View>
 

@@ -20,6 +20,7 @@ import { ReadingInterpretation } from '../components/ReadingInterpretation';
 import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
 import { getOfflineCardBack, generateOfflineTarotReading, generateTarotCardSVG } from '../src/utils/offlineApi';
 import { readingsStorage } from '../src/utils/storage';
+import { resolveSpread, resolveCategory } from '../src/data/spreads';
 
 interface TarotCard {
   id: number;
@@ -73,32 +74,24 @@ export default function ReadingScreen() {
 
   const createReading = async () => {
     try {
-      const cardCount = spread === 'one_card' ? 1 : spread === 'three_cards' ? 3 : 10;
-      const positions = cardCount === 1 ? ['Ответ'] :
-                        cardCount === 3 ? ['Прошлое', 'Настоящее', 'Будущее'] :
-                        ['Ситуация', 'Препятствие', 'Прошлое', 'Будущее', 'Сознательное', 'Подсознательное', 'Совет', 'Внешнее влияние', 'Надежды', 'Итог'];
+      // Расклад, тема и ориентация каждой карты решаются в одном месте —
+      // в генераторе; картинка и текст толкования берут их оттуда
+      const spreadDef = resolveSpread(spread);
+      const offlineResult = await generateOfflineTarotReading(question, spreadDef.id, category);
 
-      const offlineResult = await generateOfflineTarotReading(question, cardCount);
-
-      const cardsWithImages = offlineResult.cards.map(card => {
-        // Переворот решается один раз: иначе картинка и флаг расходятся,
-        // и перевёрнутая карта показывается с прямым изображением
-        const isReversed = Math.random() < 0.3;
-        return {
-          ...card,
-          name_en: card.name_en || card.name,
-          is_reversed: isReversed,
-          image: generateTarotCardSVG(card, isReversed),
-        };
-      });
+      const cardsWithImages = offlineResult.cards.map(card => ({
+        ...card,
+        name_en: card.name_en || card.name,
+        image: generateTarotCardSVG(card, card.is_reversed),
+      }));
 
       const data: TarotReading = {
         id: Date.now().toString(),
         question: question || 'Общий расклад',
-        category: category || 'general',
-        spread_type: spread || 'three',
+        category: resolveCategory(category),
+        spread_type: spreadDef.id,
         cards: cardsWithImages,
-        positions: positions.slice(0, cardCount),
+        positions: offlineResult.positions,
         interpretation: offlineResult.interpretation,
         created_at: new Date().toISOString()
       };

@@ -206,6 +206,8 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
                     </Text>
                   )}
                   <Text style={styles.message} numberOfLines={2}>{dailyCard.message}</Text>
+                  {/* Ключевые слова описывают прямое положение карты */}
+                  {!dailyCard.is_reversed && (
                   <View style={styles.keywords}>
                     {dailyCard.card.keywords.slice(0, 2).map((keyword, index) => (
                       <View key={index} style={styles.keywordBadge}>
@@ -213,6 +215,7 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
                       </View>
                     ))}
                   </View>
+                  )}
                 </View>
               </View>
             </Animated.View>
