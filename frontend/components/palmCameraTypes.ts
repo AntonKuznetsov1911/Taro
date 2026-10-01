@@ -10,6 +10,9 @@ export interface CapturedPalmPhoto {
   uri: string;
   /** Изображение в base64 без префикса data:. Может быть пустым на нативе. */
   base64: string;
+  /** Размеры снимка в пикселях (если известны) */
+  width?: number;
+  height?: number;
 }
 
 export interface PalmCameraProps {

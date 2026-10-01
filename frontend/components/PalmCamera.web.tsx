@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent } from 'react-native';
 import {
   View,
   Text,
@@ -32,7 +33,9 @@ type ErrorKind = 'unsupported' | 'denied' | 'notfound' | 'busy' | 'unknown';
 
 /** Максимальная сторона готового снимка — держим файл небольшим. */
 const MAX_OUTPUT_SIZE = 1280;
-const JPEG_QUALITY = 0.85;
+const JPEG_QUALITY = 0.9;
+/** Видоискатель и снимок — 3:4: в кадр помещается ладонь с пальцами */
+const FRAME_ASPECT = 3 / 4;
 
 const ERROR_MESSAGES: Record<ErrorKind, { title: string; text: string }> = {
   unsupported: {
@@ -94,18 +97,34 @@ const hasGetUserMedia = (): boolean =>
   !!navigator.mediaDevices &&
   typeof navigator.mediaDevices.getUserMedia === 'function';
 
+interface CropRect { x: number; y: number; width: number; height: number }
+
+/**
+ * Часть кадра, видимая в видоискателе: видео заполняет рамку 3:4
+ * (object-fit: cover), поэтому лишнее по краям обрезается так же
+ */
+const frameCrop = (width: number, height: number): CropRect => {
+  if (width / height > FRAME_ASPECT) {
+    const w = Math.round(height * FRAME_ASPECT);
+    return { x: Math.round((width - w) / 2), y: 0, width: w, height };
+  }
+  const h = Math.round(width / FRAME_ASPECT);
+  return { x: 0, y: Math.round((height - h) / 2), width, height: h };
+};
+
 /** Рисует кадр (видео или картинку) на canvas с ограничением по размеру. */
 const drawToCanvas = (
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
-  mirror: boolean
+  mirror: boolean,
+  crop: CropRect = { x: 0, y: 0, width: sourceWidth, height: sourceHeight }
 ): HTMLCanvasElement | null => {
   if (!sourceWidth || !sourceHeight) return null;
 
-  const scale = Math.min(1, MAX_OUTPUT_SIZE / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const scale = Math.min(1, MAX_OUTPUT_SIZE / Math.max(crop.width, crop.height));
+  const width = Math.max(1, Math.round(crop.width * scale));
+  const height = Math.max(1, Math.round(crop.height * scale));
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -120,7 +139,7 @@ const drawToCanvas = (
     context.translate(width, 0);
     context.scale(-1, 1);
   }
-  context.drawImage(source, 0, 0, width, height);
+  context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
   return canvas;
 };
 
@@ -142,7 +161,7 @@ const canvasToPhoto = async (canvas: HTMLCanvasElement): Promise<CapturedPalmPho
     );
   });
 
-  return { uri, base64 };
+  return { uri, base64, width: canvas.width, height: canvas.height };
 };
 
 export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
@@ -154,6 +173,14 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
   const [cameraCount, setCameraCount] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+
+  // Рамка 3:4 — максимально большая, какая помещается на экране
+  const handleAreaLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    const w = Math.min(width - 24, height * FRAME_ASPECT);
+    if (w > 0) setFrameSize({ width: Math.round(w), height: Math.round(w / FRAME_ASPECT) });
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -346,7 +373,11 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
     setIsCapturing(true);
     setNotice('');
     try {
-      const canvas = drawToCanvas(video, video.videoWidth, video.videoHeight, facing === 'front');
+      // В снимок попадает ровно то, что видно в рамке
+      const canvas = drawToCanvas(
+        video, video.videoWidth, video.videoHeight, facing === 'front',
+        frameCrop(video.videoWidth, video.videoHeight)
+      );
       if (!canvas) {
         setNotice('Не удалось сделать снимок. Попробуйте ещё раз.');
         return;
@@ -422,7 +453,6 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
   );
 
   const canSwitch = cameraCount > 1;
-  const facingLabel = facing === 'back' ? 'основная' : 'фронтальная';
 
   const fileInput = (
     <input
@@ -516,53 +546,35 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
           )}
         </View>
 
-        <View style={styles.cameraArea}>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video ref={videoRef} autoPlay playsInline muted style={videoStyle} />
+        <Text style={styles.hintLine}>
+          Ладонь целиком в рамке, пальцы вместе, свет ровный
+        </Text>
 
-          <LinearGradient
-            colors={['rgba(0, 0, 0, 0.6)', 'transparent', 'transparent', 'rgba(0, 0, 0, 0.6)']}
-            style={styles.cameraOverlay}
-            pointerEvents="box-none"
-          >
-            <View style={styles.palmGuideContainer} pointerEvents="none">
-              <View style={styles.palmOutline}>
-                <Text style={styles.guideText}>Разместите левую руку здесь</Text>
-                <Text style={styles.guideSubtext}>
-                  Ладонь должна полностью помещаться в рамку
+        <View style={styles.cameraArea} onLayout={handleAreaLayout}>
+          <View style={[styles.frame, frameSize ?? styles.frameFallback]}>
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video ref={videoRef} autoPlay playsInline muted style={videoStyle} />
+
+            {/* Уголки рамки — сам снимок совпадает с рамкой */}
+            <View style={[styles.corner, styles.cornerTL]} pointerEvents="none" />
+            <View style={[styles.corner, styles.cornerTR]} pointerEvents="none" />
+            <View style={[styles.corner, styles.cornerBL]} pointerEvents="none" />
+            <View style={[styles.corner, styles.cornerBR]} pointerEvents="none" />
+
+            {status === 'starting' && (
+              <View style={styles.startingOverlay}>
+                <ActivityIndicator size="large" color="#9B59B6" />
+                <Text style={styles.startingTitle}>Запускаем камеру...</Text>
+                <Text style={styles.startingText}>
+                  Если браузер спросит разрешение — нажмите «Разрешить».
                 </Text>
+                <TouchableOpacity style={styles.secondaryAction} onPress={handlePickFile}>
+                  <Ionicons name="images-outline" size={20} color="#E8E8E8" />
+                  <Text style={styles.secondaryActionText}>Выбрать фото ладони</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-
-            <View style={styles.instructionPanel} pointerEvents="none">
-              <View style={styles.instructionBox}>
-                <Text style={styles.instructionTitle}>🤲 Инструкция</Text>
-                <Text style={styles.instructionText}>
-                  • Поместите левую руку в рамку{'\n'}
-                  • Разверните ладонь к камере{'\n'}
-                  • Убедитесь, что линии видны четко{'\n'}
-                  • Держите руку неподвижно
-                </Text>
-                {canSwitch && (
-                  <Text style={styles.cameraHint}>Сейчас камера: {facingLabel}</Text>
-                )}
-              </View>
-            </View>
-          </LinearGradient>
-
-          {status === 'starting' && (
-            <View style={styles.startingOverlay}>
-              <ActivityIndicator size="large" color="#9B59B6" />
-              <Text style={styles.startingTitle}>Запускаем камеру...</Text>
-              <Text style={styles.startingText}>
-                Если браузер спросит разрешение — нажмите «Разрешить».
-              </Text>
-              <TouchableOpacity style={styles.secondaryAction} onPress={handlePickFile}>
-                <Ionicons name="images-outline" size={20} color="#E8E8E8" />
-                <Text style={styles.secondaryActionText}>Выбрать фото ладони</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         <View style={styles.cameraControls}>
@@ -657,75 +669,38 @@ const styles = StyleSheet.create({
   },
   cameraArea: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hintLine: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  frame: {
     position: 'relative',
     overflow: 'hidden',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(155, 89, 182, 0.8)',
     backgroundColor: '#000011',
   },
-  cameraOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    padding: 20,
+  frameFallback: {
+    width: 300,
+    height: 400,
   },
-  palmGuideContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  corner: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderColor: '#FFFFFF',
   },
-  palmOutline: {
-    width: 280,
-    height: 320,
-    maxWidth: '100%',
-    borderWidth: 3,
-    borderColor: 'rgba(155, 89, 182, 0.8)',
-    borderRadius: 20,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(155, 89, 182, 0.1)',
-  },
-  guideText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  guideSubtext: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-  },
-  instructionPanel: {
-    alignSelf: 'center',
-    marginVertical: 10,
-  },
-  instructionBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 15,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.5)',
-    maxWidth: 320,
-  },
-  instructionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  instructionText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 18,
-    textAlign: 'left',
-  },
-  cameraHint: {
-    marginTop: 10,
-    fontSize: 12,
-    color: '#BB6BD9',
-    textAlign: 'center',
-  },
+  cornerTL: { top: 10, left: 10, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 10 },
+  cornerTR: { top: 10, right: 10, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 10 },
+  cornerBL: { bottom: 10, left: 10, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 10 },
+  cornerBR: { bottom: 10, right: 10, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 10 },
   startingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 17, 0.85)',

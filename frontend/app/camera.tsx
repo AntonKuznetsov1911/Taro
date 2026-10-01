@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,254 +8,320 @@ import {
   StatusBar,
   Image,
   ActivityIndicator,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PalmCamera } from '../components/PalmCamera';
 import { CapturedPalmPhoto } from '../components/palmCameraTypes';
 import {
+  HandShapeId,
+  LineTrait,
   PalmFeatures,
+  PalmLineId,
   HAND_SHAPE_OPTIONS,
-  LINE_TRAIT_OPTIONS,
   PALM_LINE_STEPS,
-  generatePalmReading,
   isPalmFeaturesComplete,
 } from '../src/utils/palmReading';
+import { detectPalm, preloadPalmDetector } from '../src/utils/palmDetector';
+import type { PalmAnalysis, PalmQualityIssue } from '../src/utils/palmVision';
+
+// Хиромантия: снимок → автоматический разбор ладони → толкование.
+// Ручное описание остаётся запасным путём, если руку не удалось
+// распознать, и способом поправить распознанное.
+
+type Phase = 'camera' | 'analyzing' | 'failed' | 'manual' | 'done';
+
+const ISSUE_MESSAGES: Record<PalmQualityIssue, string> = {
+  too_small: 'Ладонь получилась слишком маленькой — поднесите руку ближе, чтобы она заняла почти всю рамку.',
+  too_dark: 'Снимок слишком тёмный — линии не видны. Встаньте к окну или включите свет.',
+  too_bright: 'Снимок пересвечен — линии теряются. Уйдите от прямого солнца или вспышки.',
+  blurry: 'Снимок размыт. Держите руку и телефон неподвижно и дайте камере сфокусироваться.',
+  no_lines: 'На ладони не удалось разглядеть линии. Сфотографируйте раскрытую ладонь при ровном боковом свете.',
+};
+
+const BLOCKING_ISSUES: PalmQualityIssue[] = ['too_small', 'too_dark', 'no_lines'];
+
+const DEPTH_OPTIONS: Array<{ id: LineTrait; title: string }> = [
+  { id: 'deep', title: 'Глубокая, чёткая' },
+  { id: 'shallow', title: 'Тонкая' },
+];
+const SHAPE_OPTIONS: Array<{ id: LineTrait; title: string }> = [
+  { id: 'straight', title: 'Прямая' },
+  { id: 'curved', title: 'Изогнутая' },
+];
+const EXTRA_OPTIONS: Array<{ id: LineTrait; title: string }> = [
+  { id: 'broken', title: 'Разрывы' },
+  { id: 'chained', title: 'Цепочка' },
+  { id: 'forked', title: 'Раздвоение' },
+];
+
+function parseFeatures(raw: unknown): Partial<PalmFeatures> {
+  if (typeof raw !== 'string' || !raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function CameraScreen() {
   const router = useRouter();
-  const [captured, setCaptured] = useState<CapturedPalmPhoto | null>(null);
-  const [question, setQuestion] = useState<string>('');
-  // Офлайн-приложение не распознаёт линии на фото — их описывает сам человек,
-  // глядя на снимок
-  const [features, setFeatures] = useState<Partial<PalmFeatures>>({});
-  const setFeature = useCallback(<K extends keyof PalmFeatures>(key: K, value: PalmFeatures[K]) => {
-    setFeatures(prev => ({ ...prev, [key]: value }));
-    setNotice('');
+  const params = useLocalSearchParams();
+  // С экрана результата можно вернуться поправить распознанное
+  const editUri = typeof params.imageUri === 'string' ? params.imageUri : '';
+  const [captured, setCaptured] = useState<CapturedPalmPhoto | null>(
+    editUri ? { uri: editUri, base64: '' } : null
+  );
+  const [phase, setPhase] = useState<Phase>(editUri ? 'manual' : 'camera');
+  const [features, setFeatures] = useState<Partial<PalmFeatures>>(() => parseFeatures(params.features));
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    preloadPalmDetector();
   }, []);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // Alert.alert на react-native-web ничего не показывает,
-  // поэтому все сообщения выводим прямо на экране.
-  const [notice, setNotice] = useState<string>('');
 
   const goBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   }, [router]);
 
-  const handleCaptured = useCallback((photo: CapturedPalmPhoto) => {
-    setNotice('');
-    setCaptured(photo);
-  }, []);
-
-  const retakePicture = useCallback(() => {
-    setCaptured(null);
-    setQuestion('');
-    setFeatures({});
-    setNotice('');
-  }, []);
-
-  const proceedWithImage = useCallback(async () => {
-    if (!captured?.uri) {
-      setNotice('Не удалось получить изображение. Сделайте снимок ещё раз.');
-      return;
-    }
-
-    if (!isPalmFeaturesComplete(features)) {
-      setNotice('Отметьте форму руки и вид каждой линии — по ним строится толкование.');
-      return;
-    }
-
-    try {
-      setIsAnalyzing(true);
-      setNotice('');
-
-      const interpretation = generatePalmReading(features, question.trim() || undefined);
-
+  const openResult = useCallback(
+    (photo: CapturedPalmPhoto, f: PalmFeatures, analysis: PalmAnalysis | null, size?: { width: number; height: number }) => {
       router.push({
         pathname: '/palmistry-result',
         params: {
-          imageUri: captured.uri,
-          question: question.trim(),
-          interpretation,
-          palmLines: '[]',
+          imageUri: photo.uri,
+          features: JSON.stringify(f),
+          source: analysis ? 'auto' : 'manual',
+          lines: analysis ? JSON.stringify(analysis.lines.map(l => ({ id: l.id, path: l.path }))) : '[]',
+          measurements: analysis ? JSON.stringify(analysis.measurements) : '',
+          width: String(size?.width ?? photo.width ?? ''),
+          height: String(size?.height ?? photo.height ?? ''),
         },
       });
-    } catch (error) {
-      console.error('Error analyzing palm:', error);
-      setNotice('Не удалось проанализировать ладонь. Попробуйте ещё раз.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [captured, question, features, router]);
+    },
+    [router]
+  );
 
-  if (!captured) {
-    return <PalmCamera onCaptured={handleCaptured} onBack={goBack} />;
+  const handleCaptured = useCallback(
+    async (photo: CapturedPalmPhoto) => {
+      setCaptured(photo);
+      setNotice('');
+      setPhase('analyzing');
+      const result = await detectPalm(photo.uri);
+
+      if (!result.ok) {
+        if (result.error === 'unsupported' || result.error === 'load_failed') {
+          setNotice(
+            result.error === 'load_failed'
+              ? 'Не удалось загрузить распознавание руки (нужен интернет при первом запуске). Опишите ладонь сами — это займёт минуту.'
+              : 'На этом устройстве автоматическое распознавание недоступно. Опишите ладонь сами — это займёт минуту.'
+          );
+          setPhase('manual');
+        } else {
+          setNotice(
+            result.error === 'no_hand'
+              ? 'Рука на снимке не найдена. Сфотографируйте раскрытую ладонь целиком, вместе с пальцами.'
+              : result.error === 'back_of_hand'
+                ? 'Похоже, на снимке тыльная сторона руки. Разверните руку ладонью к камере и сфотографируйте ещё раз.'
+                : 'Не удалось прочитать снимок. Попробуйте ещё раз.'
+          );
+          setPhase('failed');
+        }
+        return;
+      }
+
+      const { analysis } = result;
+      const blocking = analysis.issues.filter(i => BLOCKING_ISSUES.includes(i));
+      if (blocking.length) {
+        // Снимок непригоден — распознанному не доверяем, поля остаются пустыми
+        setFeatures({});
+        setNotice(ISSUE_MESSAGES[blocking[0]]);
+        setPhase('failed');
+        return;
+      }
+      setFeatures(analysis.features);
+      setPhase('done');
+      openResult(photo, analysis.features, analysis, { width: result.width, height: result.height });
+    },
+    [openResult]
+  );
+
+  const retake = useCallback(() => {
+    setCaptured(null);
+    setFeatures({});
+    setNotice('');
+    setPhase('camera');
+  }, []);
+
+  // ---------- Ручное описание ----------
+
+  const lineTraits = (id: PalmLineId): LineTrait[] => {
+    const v = features[id];
+    return Array.isArray(v) ? v : [];
+  };
+
+  const TRAIT_ORDER: LineTrait[] = ['deep', 'shallow', 'straight', 'curved', 'broken', 'chained', 'forked'];
+  const setLineTraits = (id: PalmLineId, traits: LineTrait[]) => {
+    // Порядок как в описании: глубина, форма, особенности
+    const sorted = [...traits].sort((a, b) => TRAIT_ORDER.indexOf(a) - TRAIT_ORDER.indexOf(b));
+    setFeatures(prev => ({ ...prev, [id]: sorted }));
+    setNotice('');
+  };
+
+  const pickExclusive = (id: PalmLineId, group: LineTrait[], value: LineTrait) => {
+    const rest = lineTraits(id).filter(t => !group.includes(t));
+    setLineTraits(id, [value, ...rest]);
+  };
+
+  const toggleExtra = (id: PalmLineId, value: LineTrait) => {
+    const traits = lineTraits(id);
+    setLineTraits(id, traits.includes(value) ? traits.filter(t => t !== value) : [...traits, value]);
+  };
+
+  const submitManual = () => {
+    if (!captured) return;
+    const depthMissing = PALM_LINE_STEPS.some(step => {
+      if (step.id === 'fate_line' && features.fate_line === 'none') return false;
+      return !lineTraits(step.id).some(t => t === 'deep' || t === 'shallow');
+    });
+    if (!features.hand || depthMissing || !isPalmFeaturesComplete(features)) {
+      setNotice('Отметьте форму руки и глубину каждой линии (или «Не вижу» для линии судьбы).');
+      return;
+    }
+    openResult(captured, features, null);
+  };
+
+  if (phase === 'camera' || !captured) {
+    return <PalmCamera onCaptured={photo => void handleCaptured(photo)} onBack={goBack} />;
   }
+
+  const chip = (selected: boolean, title: string, onPress: () => void, key: string) => (
+    <TouchableOpacity key={key} style={[styles.chip, selected && styles.chipSelected]} onPress={onPress}>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{title}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <LinearGradient
-          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
-          style={styles.background}
-        >
-          <StatusBar barStyle="light-content" backgroundColor="#000011" />
+      <LinearGradient colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']} style={styles.background}>
+        <StatusBar barStyle="light-content" backgroundColor="#000011" />
 
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={retakePicture}
-              disabled={isAnalyzing}
-            >
-              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Ваша ладонь</Text>
-            <View style={styles.placeholder} />
-          </View>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={retake} disabled={phase === 'analyzing'}>
+            <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Ваша ладонь</Text>
+          <View style={styles.placeholder} />
+        </View>
 
-          <ScrollView
-            style={styles.scrollContainer}
-            contentContainerStyle={styles.previewContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Image source={{ uri: captured.uri }} style={styles.previewImage} />
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Image
+            source={{ uri: captured.uri }}
+            style={[styles.previewImage, phase === 'manual' && styles.previewImageSmall]}
+            resizeMode="contain"
+          />
 
-            <View style={styles.instructionBox}>
-              <Text style={styles.instructionTitle}>✨ Опишите свою ладонь</Text>
-              <Text style={styles.instructionText}>
-                Посмотрите на снимок или на свою руку и отметьте, что видите. Читают обычно ведущую руку — правую у правшей.
+          {phase === 'analyzing' && (
+            <View style={styles.statusBox}>
+              <ActivityIndicator size="large" color="#9B59B6" />
+              <Text style={styles.statusTitle}>Распознаю руку и линии...</Text>
+              <Text style={styles.statusText}>
+                Первый раз загружается модель распознавания (около 8 МБ), дальше всё работает без интернета.
               </Text>
             </View>
+          )}
 
-            <View style={styles.featureGroup}>
-              <Text style={styles.featureTitle}>Форма руки</Text>
-              <View style={styles.chips}>
-                {HAND_SHAPE_OPTIONS.map(option => (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[styles.chipWide, features.hand === option.id && styles.chipSelected]}
-                    onPress={() => setFeature('hand', option.id)}
-                  >
-                    <Text style={[styles.chipText, features.hand === option.id && styles.chipTextSelected]}>{option.title}</Text>
-                    <Text style={styles.chipHint}>{option.hint}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+          {phase === 'failed' && (
+            <View style={styles.statusBox}>
+              <Ionicons name="alert-circle-outline" size={40} color="#F1C40F" />
+              <Text style={styles.statusText}>{notice}</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={retake}>
+                <Ionicons name="camera" size={20} color="#FFF" />
+                <Text style={styles.primaryButtonText}>Переснять</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => { setNotice(''); setPhase('manual'); }}>
+                <Text style={styles.linkButtonText}>Описать ладонь вручную</Text>
+              </TouchableOpacity>
             </View>
+          )}
 
-            {PALM_LINE_STEPS.map(step => (
-              <View key={step.id} style={styles.featureGroup}>
-                <Text style={styles.featureTitle}>{step.title}</Text>
-                <Text style={styles.featureWhere}>{step.where}</Text>
+          {phase === 'done' && (
+            <View style={styles.statusBox}>
+              <Text style={styles.statusText}>Ладонь распознана.</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={retake}>
+                <Ionicons name="camera" size={20} color="#FFF" />
+                <Text style={styles.primaryButtonText}>Новый снимок</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => setPhase('manual')}>
+                <Text style={styles.linkButtonText}>Поправить распознанное</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {phase === 'manual' && (
+            <>
+              <Text style={styles.manualTitle}>Опишите, что видите на ладони</Text>
+              {!!notice && <Text style={styles.notice}>{notice}</Text>}
+
+              <View style={styles.group}>
+                <Text style={styles.groupTitle}>Форма руки</Text>
                 <View style={styles.chips}>
-                  {LINE_TRAIT_OPTIONS.map(option => (
+                  {HAND_SHAPE_OPTIONS.map(o => (
                     <TouchableOpacity
-                      key={option.id}
-                      style={[styles.chip, features[step.id] === option.id && styles.chipSelected]}
-                      onPress={() => setFeature(step.id, option.id)}
+                      key={o.id}
+                      style={[styles.chipWide, features.hand === o.id && styles.chipSelected]}
+                      onPress={() => setFeatures(prev => ({ ...prev, hand: o.id as HandShapeId }))}
                     >
-                      <Text style={[styles.chipText, features[step.id] === option.id && styles.chipTextSelected]}>{option.title}</Text>
+                      <Text style={[styles.chipText, features.hand === o.id && styles.chipTextSelected]}>{o.title}</Text>
+                      <Text style={styles.chipHint}>{o.hint}</Text>
                     </TouchableOpacity>
                   ))}
-                  {step.optional && (
-                    <TouchableOpacity
-                      style={[styles.chip, features[step.id] === 'none' && styles.chipSelected]}
-                      onPress={() => setFeature('fate_line', 'none')}
-                    >
-                      <Text style={[styles.chipText, features[step.id] === 'none' && styles.chipTextSelected]}>Не вижу</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
-            ))}
 
-            <View style={styles.questionContainer}>
-              <Text style={styles.questionLabel}>Ваш вопрос (необязательно):</Text>
-              <TextInput
-                style={styles.questionInput}
-                placeholder="Например: Что меня ждет в ближайшем будущем?"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                value={question}
-                onChangeText={(value) => {
-                  setQuestion(value);
-                  if (notice) setNotice('');
-                }}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-                editable={!isAnalyzing}
-              />
-              <Text style={styles.characterCount}>{question.length}/200</Text>
-              {!!notice && <Text style={styles.notice}>{notice}</Text>}
-            </View>
-          </ScrollView>
+              {PALM_LINE_STEPS.map(step => {
+                const traits = lineTraits(step.id);
+                const none = step.id === 'fate_line' && features.fate_line === 'none';
+                return (
+                  <View key={step.id} style={styles.group}>
+                    <Text style={styles.groupTitle}>{step.title}</Text>
+                    <Text style={styles.groupHint}>{step.where}</Text>
+                    <View style={styles.chips}>
+                      {DEPTH_OPTIONS.map(o => chip(!none && traits.includes(o.id), o.title, () => pickExclusive(step.id, ['deep', 'shallow'], o.id), o.id))}
+                      {step.optional && chip(none, 'Не вижу', () => setFeatures(prev => ({ ...prev, fate_line: 'none' })), 'none')}
+                    </View>
+                    {!none && (
+                      <View style={styles.chips}>
+                        {SHAPE_OPTIONS.map(o => chip(traits.includes(o.id), o.title, () => pickExclusive(step.id, ['straight', 'curved'], o.id), o.id))}
+                        {EXTRA_OPTIONS.map(o => chip(traits.includes(o.id), o.title, () => toggleExtra(step.id, o.id), o.id))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
 
-          <View style={styles.bottomActions}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={retakePicture}
-              disabled={isAnalyzing}
-            >
-              <LinearGradient
-                colors={['rgba(231, 76, 60, 0.8)', 'rgba(192, 57, 43, 0.9)']}
-                style={styles.buttonGradient}
-              >
-                <Ionicons name="camera" size={20} color="#FFF" />
-                <Text style={styles.secondaryButtonText}>Переснять</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.primaryButton, isAnalyzing && styles.buttonDisabled]}
-              onPress={() => void proceedWithImage()}
-              disabled={isAnalyzing}
-            >
-              <LinearGradient
-                colors={isAnalyzing ?
-                  ['rgba(100, 100, 100, 0.5)', 'rgba(80, 80, 80, 0.7)'] :
-                  ['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
-                style={styles.buttonGradient}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={styles.primaryButtonText}>Толкование...</Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="sparkles" size={20} color="#FFF" />
-                    <Text style={styles.primaryButtonText}>Гадать</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </KeyboardAvoidingView>
+              <TouchableOpacity style={[styles.primaryButton, { alignSelf: 'stretch' }]} onPress={submitManual}>
+                <Ionicons name="sparkles" size={20} color="#FFF" />
+                <Text style={styles.primaryButtonText}>Получить толкование</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={retake}>
+                <Text style={styles.linkButtonText}>Сделать новый снимок</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000011',
-  },
-  background: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#000011' },
+  background: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -265,76 +331,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#E8E8E8',
-  },
-  placeholder: {
-    width: 40,
-  },
-  instructionBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.5)',
-    maxWidth: 320,
-  },
-  instructionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  instructionText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 18,
-    textAlign: 'left',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  previewContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-  },
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#E8E8E8' },
+  placeholder: { width: 40 },
+  content: { alignItems: 'center', padding: 20, paddingBottom: 40 },
   previewImage: {
     width: 300,
     height: 400,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(155, 89, 182, 0.5)',
+    borderRadius: 18,
+    backgroundColor: '#000',
     marginBottom: 20,
   },
-  featureGroup: {
-    width: '100%',
-    maxWidth: 360,
-    marginTop: 18,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 4,
-  },
-  featureWhere: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 8,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
+  previewImageSmall: { width: 180, height: 240 },
+  statusBox: { alignItems: 'center', gap: 12, maxWidth: 340 },
+  statusTitle: { fontSize: 17, fontWeight: '600', color: '#E8E8E8', textAlign: 'center' },
+  statusText: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.8)', textAlign: 'center' },
+  manualTitle: { fontSize: 17, fontWeight: '600', color: '#E8E8E8', marginBottom: 6 },
+  notice: { fontSize: 13, color: '#F1C40F', textAlign: 'center', marginVertical: 6, maxWidth: 360 },
+  group: { width: '100%', maxWidth: 380, marginTop: 16 },
+  groupTitle: { fontSize: 16, fontWeight: '600', color: '#E8E8E8' },
+  groupHint: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -352,97 +369,22 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155, 89, 182, 0.5)',
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
-  chipSelected: {
-    backgroundColor: 'rgba(155, 89, 182, 0.45)',
-    borderColor: '#BB6BD9',
-  },
-  chipText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
-  },
-  chipTextSelected: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-  chipHint: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.55)',
-    marginTop: 2,
-  },
-  questionContainer: {
-    width: '100%',
-    maxWidth: 320,
-    marginTop: 20,
-  },
-  questionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E8E8E8',
-    marginBottom: 10,
-  },
-  questionInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
-    padding: 15,
-    color: '#E8E8E8',
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(155, 89, 182, 0.5)',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  characterCount: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-    textAlign: 'right',
-    marginTop: 5,
-  },
-  notice: {
-    fontSize: 13,
-    color: '#F1C40F',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  bottomActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 40,
-    paddingBottom: 40,
-  },
+  chipSelected: { backgroundColor: 'rgba(155, 89, 182, 0.45)', borderColor: '#BB6BD9' },
+  chipText: { fontSize: 13, color: 'rgba(255, 255, 255, 0.85)' },
+  chipTextSelected: { color: '#FFF', fontWeight: '600' },
+  chipHint: { fontSize: 11, color: 'rgba(255, 255, 255, 0.55)', marginTop: 2 },
   primaryButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
-    flex: 1,
-    marginLeft: 10,
-  },
-  secondaryButton: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    elevation: 10,
-    flex: 1,
-    marginRight: 10,
-  },
-  buttonGradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 28,
+    borderRadius: 25,
+    backgroundColor: 'rgba(142, 68, 173, 0.95)',
   },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    marginLeft: 8,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-    marginLeft: 8,
-  },
+  primaryButtonText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+  linkButton: { paddingVertical: 12 },
+  linkButtonText: { fontSize: 14, color: '#BB6BD9', fontWeight: '600' },
 });

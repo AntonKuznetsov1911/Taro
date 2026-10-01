@@ -1,10 +1,9 @@
-// Толкование ладони по описанию самого пользователя.
+// Толкование ладони по классической хиромантии.
 //
-// Приложение работает офлайн и не умеет распознавать линии на фото: раньше
-// снимок просто игнорировался, текст собирался из случайных карт Таро, а
-// «линии» рисовались поверх любого фото по одним и тем же координатам.
-// Теперь человек смотрит на свою ладонь (на снимке) и отмечает, что видит,
-// а толкование строится из базы классической хиромантии.
+// Признаки ладони приходят из автоматического разбора снимка
+// (palmVision.ts) или, если распознать не удалось, из ручного описания.
+// Каждая линия описывается набором признаков: глубина, форма и особенности
+// (разрывы, «цепочка», раздвоение).
 
 import { PALM_LINES, HAND_SHAPES } from '../data/palmistryKnowledge';
 
@@ -14,11 +13,11 @@ export type PalmLineId = 'heart_line' | 'head_line' | 'life_line' | 'fate_line';
 
 export interface PalmFeatures {
   hand: HandShapeId;
-  heart_line: LineTrait;
-  head_line: LineTrait;
-  life_line: LineTrait;
+  heart_line: LineTrait[];
+  head_line: LineTrait[];
+  life_line: LineTrait[];
   /** Линия судьбы есть не у всех */
-  fate_line: LineTrait | 'none';
+  fate_line: LineTrait[] | 'none';
 }
 
 export const HAND_SHAPE_OPTIONS: Array<{ id: HandShapeId; title: string; hint: string }> = [
@@ -57,17 +56,22 @@ function lineById(id: PalmLineId) {
 }
 
 export function isPalmFeaturesComplete(f: Partial<PalmFeatures>): f is PalmFeatures {
-  return !!(f.hand && f.heart_line && f.head_line && f.life_line && f.fate_line);
+  const lineOk = (x: unknown) => Array.isArray(x) && x.length > 0;
+  return !!(f.hand && lineOk(f.heart_line) && lineOk(f.head_line) && lineOk(f.life_line) &&
+    (f.fate_line === 'none' || lineOk(f.fate_line)));
 }
 
+/** Как получены признаки — для честной подписи в толковании */
+export type PalmSource = 'auto' | 'manual';
+
 /** Толкование детерминировано: одинаковое описание даёт одинаковый текст */
-export function generatePalmReading(features: PalmFeatures, question?: string): string {
+export function generatePalmReading(features: PalmFeatures, source: PalmSource = 'manual'): string {
   const hand = HAND_SHAPES.find(h => h.id === features.hand)!;
   const traitTitle = (t: LineTrait) => LINE_TRAIT_OPTIONS.find(o => o.id === t)!.title.toLowerCase();
 
-  let text = `🖐 **Чтение ладони**\n\n`;
-  if (question) text += `*Ваш вопрос: «${question}»*\n\n`;
-  text += `Толкование составлено по тому, как вы сами описали свою ладонь, — по правилам классической хиромантии.\n\n`;
+  let text = source === 'auto'
+    ? `Толкование составлено по автоматическому разбору фото — по правилам классической хиромантии.\n\n`
+    : `Толкование составлено по тому, как вы сами описали свою ладонь, — по правилам классической хиромантии.\n\n`;
 
   text += `## ✋ Форма руки: ${hand.nameRu}\n\n`;
   text += `*Стихия: ${hand.element}. ${hand.characteristics}.*\n\n`;
@@ -76,20 +80,24 @@ export function generatePalmReading(features: PalmFeatures, question?: string): 
   text += `## 📖 Главные линии\n\n`;
   for (const step of PALM_LINE_STEPS) {
     const line = lineById(step.id);
-    const trait = features[step.id];
+    const traits = features[step.id];
     text += `### ${line.nameRu}\n\n`;
-    if (trait === 'none') {
+    if (traits === 'none') {
       text += `Линия судьбы не выражена. Это не плохой знак: такие люди не следуют заранее заданному сценарию и сами выбирают направление, часто меняя его в течение жизни.\n\n`;
       continue;
     }
-    text += `*Вы отметили: ${traitTitle(trait)}.*\n\n`;
-    text += `${line.meanings[trait]}.\n\n`;
+    text += `*${source === 'auto' ? 'На снимке' : 'Вы отметили'}: ${traits.map(traitTitle).join(', ')}.*\n\n`;
+    text += traits.map(t => `${line.meanings[t]}.`).join(' ') + `\n\n`;
   }
 
   // Вывод: что в руке сильнее всего
   text += `## 💫 Общий вывод\n\n`;
-  const deepLines = PALM_LINE_STEPS.filter(s => features[s.id] === 'deep').map(s => s.title.toLowerCase());
-  const troubled = PALM_LINE_STEPS.filter(s => features[s.id] === 'broken' || features[s.id] === 'chained')
+  const has = (id: PalmLineId, t: LineTrait) => {
+    const traits = features[id];
+    return Array.isArray(traits) && traits.includes(t);
+  };
+  const deepLines = PALM_LINE_STEPS.filter(s => has(s.id, 'deep')).map(s => s.title.toLowerCase());
+  const troubled = PALM_LINE_STEPS.filter(s => has(s.id, 'broken') || has(s.id, 'chained'))
     .map(s => s.prepositional);
 
   text += `Ваша рука говорит о человеке, для которого главное — ${HAND_ELEMENT_THEMES[features.hand]}.`;
