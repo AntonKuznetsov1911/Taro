@@ -25,8 +25,6 @@ const { width } = Dimensions.get('window');
 interface Answer {
   questionId: string;
   optionId: string;
-  keywords: string[];
-  arcana?: string;
 }
 
 export default function AstroPersonalityScreen() {
@@ -34,6 +32,9 @@ export default function AstroPersonalityScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  // Пока идёт переход к следующему вопросу, новые нажатия игнорируются:
+  // раньше двойное касание последнего ответа открывало анализ дважды
+  const advancingRef = useRef(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -41,10 +42,13 @@ export default function AstroPersonalityScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const currentQuestion = ASTRO_PSYCHOLOGY_QUESTIONS[currentIndex];
-  const progress = ((currentIndex + 1) / ASTRO_PSYCHOLOGY_QUESTIONS.length) * 100;
+  // Доля уже отвеченных вопросов
+  const progress = (currentIndex / ASTRO_PSYCHOLOGY_QUESTIONS.length) * 100;
   const categoryInfo = CATEGORY_INFO[currentQuestion.category];
 
   const handleAnswer = (option: QuestionOption) => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     setSelectedOption(option.id);
 
     // Haptic feedback simulation with scale animation
@@ -65,11 +69,11 @@ export default function AstroPersonalityScreen() {
       const answer: Answer = {
         questionId: currentQuestion.id,
         optionId: option.id,
-        keywords: option.keywords,
-        arcana: option.arcana,
       };
 
-      const newAnswers = [...answers, answer];
+      // Ответ на вопрос заменяет прежний: после возврата назад старый ответ
+      // не должен оставаться в подсчёте
+      const newAnswers = [...answers.slice(0, currentIndex), answer];
       setAnswers(newAnswers);
 
       if (currentIndex < ASTRO_PSYCHOLOGY_QUESTIONS.length - 1) {
@@ -87,7 +91,8 @@ export default function AstroPersonalityScreen() {
           }),
         ]).start(() => {
           setCurrentIndex(currentIndex + 1);
-          setSelectedOption(null);
+          setSelectedOption(newAnswers[currentIndex + 1]?.optionId ?? null);
+          advancingRef.current = false;
           slideAnim.setValue(50);
           Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -110,17 +115,22 @@ export default function AstroPersonalityScreen() {
   };
 
   const navigateToAnalysis = (finalAnswers: Answer[]) => {
-    // Navigate to loading/analysis screen
+    // В адрес передаются только id ответов — портрет по ним
+    // восстанавливается и после перезагрузки страницы
     router.push({
       pathname: '/astro-analysis',
       params: {
-        answers: JSON.stringify(finalAnswers),
+        answers: finalAnswers.map(a => a.optionId).join(','),
       },
     });
+    advancingRef.current = false;
+    setSelectedOption(null);
   };
 
   const handleBack = () => {
+    if (advancingRef.current) return;
     if (currentIndex > 0) {
+      advancingRef.current = true;
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -134,8 +144,9 @@ export default function AstroPersonalityScreen() {
         }),
       ]).start(() => {
         setCurrentIndex(currentIndex - 1);
-        setAnswers(answers.slice(0, -1));
-        setSelectedOption(null);
+        // Прежний ответ остаётся выделенным — его можно оставить или сменить
+        setSelectedOption(answers[currentIndex - 1]?.optionId ?? null);
+        advancingRef.current = false;
         slideAnim.setValue(-50);
         Animated.parallel([
           Animated.timing(fadeAnim, {
@@ -269,9 +280,6 @@ export default function AstroPersonalityScreen() {
                       </View>
                       <Text style={styles.optionText}>{option.text}</Text>
                     </View>
-                    {option.arcana && (
-                      <Text style={styles.arcanaText}>🔮 {option.arcana}</Text>
-                    )}
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
@@ -281,7 +289,7 @@ export default function AstroPersonalityScreen() {
             <View style={styles.quoteContainer}>
               <Ionicons name="sparkles" size={16} color="#9B59B6" />
               <Text style={styles.quoteText}>
-                Ваши ответы создают уникальный энергетический портрет
+                Отвечайте честно — правильных и неправильных ответов нет
               </Text>
             </View>
           </ScrollView>
@@ -454,13 +462,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#E8E8E8',
     lineHeight: 21,
-  },
-  arcanaText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 8,
-    fontStyle: 'italic',
-    textAlign: 'right',
   },
   quoteContainer: {
     flexDirection: 'row',

@@ -25,7 +25,14 @@ interface TarotReading {
   cards: TarotCard[];
   interpretation: string;
   created_at: string;
+  // Поля астропсихологического портрета
+  dominant_arcana?: string[];
+  life_path?: string;
+  current_phase?: string;
+  advice?: string;
 }
+
+const TAROT_SPREADS = ['one_card', 'three_cards', 'celtic_cross'];
 
 interface EnhancedHistoryCardProps {
   reading: TarotReading;
@@ -141,7 +148,8 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
 
         {/* Question */}
         <Text style={styles.question} numberOfLines={isExpanded ? undefined : 2}>
-          "{reading.question}"
+          {/* В кавычках — только вопрос, заданный пользователем в раскладе */}
+          {TAROT_SPREADS.includes(reading.spread_type) ? `«${reading.question}»` : reading.question}
         </Text>
 
         {/* Tags */}
@@ -180,6 +188,35 @@ export const EnhancedHistoryCard: React.FC<EnhancedHistoryCardProps> = ({
                     • {card.name} {card.is_reversed ? '(перевёрнутая)' : ''}
                   </Text>
                 ))}
+              </View>
+            )}
+
+            {reading.spread_type === 'astro_personality' && (
+              <View style={styles.cardsPreview}>
+                {!!reading.dominant_arcana?.length && (
+                  <>
+                    <Text style={styles.sectionLabel}>Архетипы:</Text>
+                    <Text style={styles.cardName}>{reading.dominant_arcana.join(' · ')}</Text>
+                  </>
+                )}
+                {!!reading.life_path && (
+                  <>
+                    <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Жизненный путь:</Text>
+                    <Text style={styles.cardName}>{reading.life_path}</Text>
+                  </>
+                )}
+                {!!reading.current_phase && (
+                  <>
+                    <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Текущая фаза:</Text>
+                    <Text style={styles.cardName}>{reading.current_phase}</Text>
+                  </>
+                )}
+                {!!reading.advice && (
+                  <>
+                    <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Совет:</Text>
+                    <Text style={styles.cardName}>{reading.advice}</Text>
+                  </>
+                )}
               </View>
             )}
 

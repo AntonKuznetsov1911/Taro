@@ -34,6 +34,8 @@ const SPREADS = [
   { id: 'one_card', name: 'Одна карта' },
   { id: 'three_cards', name: 'Три карты' },
   { id: 'celtic_cross', name: 'Кельтский крест' },
+  { id: 'palmistry', name: 'Хиромантия' },
+  { id: 'astro_personality', name: 'Астропортрет' },
 ];
 
 export const HistoryFilters: React.FC<HistoryFiltersProps> = ({

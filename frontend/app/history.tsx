@@ -49,7 +49,9 @@ const CATEGORIES = {
 const SPREADS = {
   one_card: 'Одна карта',
   three_cards: 'Три карты',
-  celtic_cross: 'Кельтский крест'
+  celtic_cross: 'Кельтский крест',
+  astro_personality: 'Астропсихологический портрет',
+  palmistry: 'Хиромантия',
 };
 
 export default function HistoryScreen() {

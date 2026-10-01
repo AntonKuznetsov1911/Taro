@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,42 +16,40 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { readingsStorage } from '../src/utils/storage';
 import { stripMarkdown } from '../src/utils/stripMarkdown';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
+import { generateAstroPortrait, isCompleteAnswerSet, parseAnswerIds } from '../src/utils/astroPersonality';
 
-// Безопасный разбор JSON из параметров навигации
-const parseStringList = (raw: unknown): string[] => {
-  if (typeof raw !== 'string' || raw.length === 0) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
-  } catch (error) {
-    console.warn('Не удалось разобрать данные портрета:', error);
-    return [];
-  }
-};
+const ARCANA_ROLES = ['Основа личности', 'Внутренний потенциал', 'Направление развития'];
 
 export default function AstroResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-
-  const {
-    analysisId,
-    personalityAnalysis,
-    dominantArcana,
-    characterTraits,
-    lifePath,
-    currentPhase,
-    advice,
-  } = params;
+  const { profile, isLoading: profileLoading } = useUserProfile();
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  const analysisText =
-    typeof personalityAnalysis === 'string' ? personalityAnalysis.trim() : '';
-  const hasAnalysis = analysisText.length > 0;
+  // Портрет строится из id ответов и даты рождения из профиля: адрес
+  // короткий, а результат одинаков при каждом открытии
+  const answerIds = useMemo(() => parseAnswerIds(params.answers), [params.answers]);
+  const portrait = useMemo(() => {
+    if (!isCompleteAnswerSet(answerIds)) return null;
+    try {
+      return generateAstroPortrait(answerIds, profile?.birthDate);
+    } catch (error) {
+      console.warn('Не удалось составить портрет:', error);
+      return null;
+    }
+  }, [answerIds, profile?.birthDate]);
 
-  const arcanaList: string[] = parseStringList(dominantArcana);
-  const traitsList: string[] = parseStringList(characterTraits);
+  const analysisId = typeof params.id === 'string' && params.id ? params.id : `astro-${answerIds.join('')}`;
+  const analysisText = portrait?.personality_analysis ?? '';
+  const hasAnalysis = analysisText.length > 0;
+  const arcanaList = portrait?.dominant_arcana ?? [];
+  const traitsList = portrait?.character_traits ?? [];
+  const lifePath = portrait?.life_path ?? '';
+  const currentPhase = portrait?.current_phase ?? '';
+  const advice = portrait?.advice ?? '';
 
   const handleShare = async () => {
     try {
@@ -69,7 +67,7 @@ export default function AstroResultScreen() {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      const readingId = (analysisId as string) || `astro-${Date.now()}`;
+      const readingId = analysisId;
       const existing = await readingsStorage.getReadings();
 
       if (existing.some((r) => r?.id === readingId)) {
@@ -89,9 +87,10 @@ export default function AstroResultScreen() {
         interpretation: analysisText,
         dominant_arcana: arcanaList,
         character_traits: traitsList,
-        life_path: (lifePath as string) || '',
-        current_phase: (currentPhase as string) || '',
-        advice: (advice as string) || '',
+        life_path: lifePath,
+        current_phase: currentPhase,
+        advice,
+        answers: answerIds,
         created_at: new Date().toISOString(),
       });
 
@@ -109,15 +108,19 @@ export default function AstroResultScreen() {
     router.push('/astro-personality');
   };
 
-  const hasAnyContent =
-    hasAnalysis ||
-    arcanaList.length > 0 ||
-    traitsList.length > 0 ||
-    !!lifePath ||
-    !!currentPhase ||
-    !!advice;
+  // Пока профиль загружается, не показываем портрет без натального аркана
+  if (profileLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#000011', '#1a0033', '#2d1b69', '#0f0f23']}
+          style={styles.background}
+        />
+      </SafeAreaView>
+    );
+  }
 
-  if (!hasAnyContent) {
+  if (!portrait) {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
@@ -126,7 +129,7 @@ export default function AstroResultScreen() {
         >
           <StatusBar barStyle="light-content" backgroundColor="#000011" />
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
               <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Ваш портрет</Text>
@@ -167,7 +170,7 @@ export default function AstroResultScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
             <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Ваш портрет</Text>
@@ -192,7 +195,9 @@ export default function AstroResultScreen() {
               </LinearGradient>
             </View>
             <Text style={styles.heroTitle}>Астропсихологический портрет</Text>
-            <Text style={styles.heroSubtitle}>Уникальный разбор вашей личности</Text>
+            <Text style={styles.heroSubtitle}>
+              {profile?.birthDate ? 'По вашим ответам и знаку рождения' : 'По вашим ответам на тест'}
+            </Text>
           </View>
 
           {/* Dominant Arcana */}
@@ -210,7 +215,10 @@ export default function AstroResultScreen() {
                       style={styles.arcanaCardGradient}
                     >
                       <Text style={styles.arcanaEmoji}>🎴</Text>
-                      <Text style={styles.arcanaText}>{arcana}</Text>
+                      <View>
+                        <Text style={styles.arcanaText}>{arcana}</Text>
+                        <Text style={styles.arcanaRole}>{ARCANA_ROLES[index]}</Text>
+                      </View>
                     </LinearGradient>
                   </View>
                 ))}
@@ -273,7 +281,7 @@ export default function AstroResultScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="book" size={24} color="#9B59B6" />
-              <Text style={styles.sectionTitle}>Глубинный анализ</Text>
+              <Text style={styles.sectionTitle}>Разбор архетипов</Text>
             </View>
             <View style={styles.analysisCard}>
               {hasAnalysis ? (
@@ -295,7 +303,7 @@ export default function AstroResultScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="bulb" size={24} color="#9B59B6" />
-                <Text style={styles.sectionTitle}>Послание Вселенной</Text>
+                <Text style={styles.sectionTitle}>Совет</Text>
               </View>
               <View style={styles.adviceCard}>
                 <LinearGradient
@@ -312,8 +320,9 @@ export default function AstroResultScreen() {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#9B59B6" />
             <Text style={styles.infoText}>
-              Этот портрет отражает вашу суть здесь и сейчас. Вы постоянно развиваетесь,
-              и ваша энергия меняется. Возвращайтесь к анализу через время - он может раскрыть новые грани.
+              Портрет основан на символике старших арканов Таро и предназначен для
+              самопознания, а не для психологической диагностики. Ответы о текущем
+              состоянии меняются со временем — пройдите тест снова через пару месяцев.
             </Text>
           </View>
 
@@ -461,6 +470,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#E8E8E8',
+  },
+  arcanaRole: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 2,
   },
   pathCard: {
     borderRadius: 15,

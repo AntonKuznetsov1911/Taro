@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { generateOfflineAstroPersonality } from '../src/utils/offlineApi';
+import { parseAnswerIds, isCompleteAnswerSet } from '../src/utils/astroPersonality';
 
 const MYSTICAL_MESSAGES = [
   '✨ Звёзды выстраиваются в уникальный узор...',
@@ -132,46 +132,34 @@ export default function AstroAnalysisScreen() {
     ).start();
   };
 
-  const performAnalysis = async () => {
-    try {
-      const answersData = params.answers ? JSON.parse(params.answers as string) : {};
+  const performAnalysis = () => {
+    const answerIds = parseAnswerIds(params.answers);
 
-      // Use offline astro personality analysis
-      const result = await generateOfflineAstroPersonality(answersData, params.name as string || undefined);
-
-      if (!isMounted.current) return;
-
-      // Wait at least 3 seconds for dramatic effect
+    // Без полного набора ответов портрет не составить — раньше вместо него
+    // выдавались случайные карты, включая младшие арканы
+    if (!isCompleteAnswerSet(answerIds)) {
+      setError('Ответы не найдены. Пройдите тест заново.');
       navigationTimeout.current = setTimeout(() => {
         navigationTimeout.current = null;
         if (!isMounted.current) return;
-        router.replace({
-          pathname: '/astro-result',
-          params: {
-            analysisId: result.id,
-            personalityAnalysis: result.personality_analysis,
-            dominantArcana: JSON.stringify(result.dominant_arcana),
-            characterTraits: JSON.stringify(result.character_traits),
-            lifePath: result.life_path,
-            currentPhase: result.current_phase,
-            advice: result.advice,
-          },
-        });
-      }, 3000);
-    } catch (err) {
-      console.error('Analysis error:', err);
-      if (!isMounted.current) return;
-      setError('Не удалось создать анализ. Попробуйте еще раз.');
-      navigationTimeout.current = setTimeout(() => {
-        navigationTimeout.current = null;
-        if (!isMounted.current) return;
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/astro-personality');
-        }
-      }, 3000);
+        router.replace('/astro-personality');
+      }, 2500);
+      return;
     }
+
+    // Пауза для атмосферы; сам портрет строится на экране результата из
+    // id ответов, поэтому он открывается и после перезагрузки страницы
+    navigationTimeout.current = setTimeout(() => {
+      navigationTimeout.current = null;
+      if (!isMounted.current) return;
+      router.replace({
+        pathname: '/astro-result',
+        params: {
+          answers: answerIds.join(','),
+          id: `astro-${Date.now()}`,
+        },
+      });
+    }, 3500);
   };
 
   const spin = rotation.interpolate({
