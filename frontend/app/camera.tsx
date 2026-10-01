@@ -101,7 +101,12 @@ export default function CameraScreen() {
           imageUri: photo.uri,
           features: JSON.stringify(f),
           source: analysis ? 'auto' : 'manual',
-          lines: analysis ? JSON.stringify(analysis.lines.map(l => ({ id: l.id, path: l.path }))) : '[]',
+          lines: analysis
+            ? JSON.stringify([
+                ...analysis.lines.map(l => ({ id: l.id, path: l.path })),
+                ...(analysis.minorLines ?? []).map(path => ({ id: 'minor', path })),
+              ])
+            : '[]',
           measurements: analysis ? JSON.stringify(analysis.measurements) : '',
           width: String(extra?.width ?? photo.width ?? ''),
           height: String(extra?.height ?? photo.height ?? ''),

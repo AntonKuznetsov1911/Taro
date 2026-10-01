@@ -117,12 +117,70 @@ export function applyH(H: number[], x: number, y: number): Point {
 
 export interface NetInput {
   tensor: Float32Array; // 1×3×256×256, RGB в [0, 1]
-  /** Из «стандартной позы» (пиксели исходного размера) в отражённый снимок */
+  /** Из «стандартной позы» (пиксели карты 256×256) в отражённый снимок */
   canonToFlipped: Homography;
+  /** Точки руки в стандартной позе (пиксели карты) */
+  pose: Point[];
+}
+
+/**
+ * Во сколько раз ладонь крупнее, чем в исходной «стандартной позе», где в
+ * кадр 256×256 помещается вся рука с пальцами и ладонь занимает ~70 px:
+ * тонкие складки тогда меньше пикселя и пропадают. Сеть свёрточная, и на
+ * крупной ладони видит больше; при слишком сильном увеличении линии
+ * выходят из масштаба, на котором она обучена, — 1,6 подобрано по снимкам
+ */
+export const NET_ZOOM = 1.6;
+/** Масштабы, на которых запускается сеть, и масштаб общей карты */
+export const NET_ZOOMS = [1.0, 1.6];
+export const MAP_ZOOM = 1.3;
+
+/** Стандартная поза в квадратном кадре: центр ладони — в центре кадра */
+export function poseTargets(zoom: number): Point[] {
+  const pts = TARGET.map(([x, y]) => ({ x: x * NET_SIZE, y: y * NET_SIZE }));
+  const palm = PALM_POINTS.map(i => pts[i]);
+  const cx = palm.reduce((a, p) => a + p.x, 0) / palm.length;
+  const cy = palm.reduce((a, p) => a + p.y, 0) / palm.length;
+  return pts.map(p => ({ x: NET_SIZE / 2 + (p.x - cx) * zoom, y: NET_SIZE * 0.5 + (p.y - cy) * zoom }));
+}
+
+/**
+ * Маска руки по её точкам: ладонь (с запасом к краям, где холмы) и пальцы.
+ * Всё остальное — фон. Отделять фон по цвету ненадёжно: деревянный стол
+ * или бежевая стена «похожи на кожу»
+ */
+function handMask(pose: Point[]): (x: number, y: number) => boolean {
+  const palmIdx = [0, 1, 2, 5, 9, 13, 17];
+  const c = palmIdx.reduce((a, i) => ({ x: a.x + pose[i].x / 7, y: a.y + pose[i].y / 7 }), { x: 0, y: 0 });
+  // Ладонь шире линии точек: край у мизинца и холм у большого пальца
+  const palmPoly = palmIdx.map(i => ({ x: c.x + (pose[i].x - c.x) * 1.28, y: c.y + (pose[i].y - c.y) * 1.18 }));
+  const width = Math.hypot(pose[5].x - pose[17].x, pose[5].y - pose[17].y);
+  const fingers = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
+  const radius = width * 0.17;
+  const inPoly = (x: number, y: number) => {
+    let inside = false;
+    for (let i = 0, j = palmPoly.length - 1; i < palmPoly.length; j = i++) {
+      const a = palmPoly[i], b = palmPoly[j];
+      if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  };
+  const nearSeg = (x: number, y: number, a: Point, b: Point, r: number) => {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(x - a.x - t * dx, y - a.y - t * dy) <= r;
+  };
+  return (x, y) => {
+    if (inPoly(x, y)) return true;
+    for (const f of fingers) {
+      for (let k = 0; k < f.length - 1; k++) if (nearSeg(x, y, pose[f[k]], pose[f[k + 1]], radius)) return true;
+    }
+    return nearSeg(x, y, pose[0], pose[1], radius * 1.3);
+  };
 }
 
 /** HSV как в OpenCV: H 0–180, S и V 0–255 */
-function isSkin(r: number, g: number, b: number): boolean {
+export function isSkin(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   const v = max;
   const s = max === 0 ? 0 : ((max - min) / max) * 255;
@@ -174,18 +232,20 @@ function palmColorGain(img: RgbaImage, landmarks: Point[]): number[] {
 }
 
 /**
- * Снимок → вход сети: отражение, перенос руки в стандартную позу,
- * фон (всё, что не похоже на кожу) — белый, размер 256×256
+ * Снимок → вход сети: отражение (как в исходном проекте), перенос руки в
+ * стандартную позу с увеличенной ладонью, фон — белый, размер 256×256
  */
-export function prepareNetInput(img: RgbaImage, landmarks: Point[]): NetInput {
-  const { width: W, height: H } = img;
+export function prepareNetInput(img: RgbaImage, landmarks: Point[], zoom = NET_ZOOM): NetInput {
+  const { width: W } = img;
   const flipped = landmarks.map(p => ({ x: W - 1 - p.x, y: p.y }));
-  const target = TARGET.map(([x, y]) => ({ x: x * W, y: y * H }));
+  const target = poseTargets(zoom);
   // Подгоняем по точкам самой ладони (запястье, основание большого пальца,
   // суставы у оснований пальцев): от них зависит, где окажутся линии, а
   // положение кончиков пальцев у всех разное
   const toCanon = fitHomography(PALM_POINTS.map(i => flipped[i]), PALM_POINTS.map(i => target[i]));
   const canonToFlipped = inv3(toCanon);
+  const pose = flipped.map(p => applyH(toCanon, p.x, p.y));
+  const isHand = handMask(pose);
 
   const N = NET_SIZE;
   const tensor = new Float32Array(3 * N * N);
@@ -193,29 +253,55 @@ export function prepareNetInput(img: RgbaImage, landmarks: Point[]): NetInput {
   const gain = palmColorGain(img, landmarks);
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
-      // Ближайший пиксель уменьшения (как resize NEAREST после warpPerspective)
-      const cx = Math.floor((i * W) / N), cy = Math.floor((j * H) / N);
-      const s = applyH(canonToFlipped, cx, cy);
-      // Отражённая координата → исходная; края повторяются (BORDER_REPLICATE)
+      if (!isHand(i + 0.5, j + 0.5)) {
+        for (let c = 0; c < 3; c++) tensor[c * N * N + j * N + i] = 1;
+        continue;
+      }
+      const s = applyH(canonToFlipped, i + 0.5, j + 0.5);
+      // Отражённая координата → исходная; края повторяются
       const fx = Math.min(W - 1.001, Math.max(0, W - 1 - s.x));
-      const fy = Math.min(H - 1.001, Math.max(0, s.y));
+      const fy = Math.min(img.height - 1.001, Math.max(0, s.y));
       const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
-      const rgb = [0, 1, 2].map(c =>
-        px(x0, y0, c) * (1 - ax) * (1 - ay) + px(x0 + 1, y0, c) * ax * (1 - ay) +
-        px(x0, y0 + 1, c) * (1 - ax) * ay + px(x0 + 1, y0 + 1, c) * ax * ay
-      ).map((v, c) => Math.min(255, Math.round(v * gain[c])));
-      const background = !isSkin(rgb[0], rgb[1], rgb[2]) || rgb[1] <= 10;
-      for (let c = 0; c < 3; c++) tensor[c * N * N + j * N + i] = background ? 1 : rgb[c] / 255;
+      for (let c = 0; c < 3; c++) {
+        const v = px(x0, y0, c) * (1 - ax) * (1 - ay) + px(x0 + 1, y0, c) * ax * (1 - ay) +
+          px(x0, y0 + 1, c) * (1 - ax) * ay + px(x0 + 1, y0 + 1, c) * ax * ay;
+        tensor[c * N * N + j * N + i] = Math.min(255, v * gain[c]) / 255;
+      }
     }
   }
-  return { tensor, canonToFlipped };
+  return { tensor, canonToFlipped, pose: target };
+}
+
+/**
+ * Сводит карты сети, полученные на разных масштабах, в одну (масштаб
+ * MAP_ZOOM): в каждой точке берётся наибольшая вероятность. На обычном
+ * масштабе сеть лучше держит длинные линии, на крупном — видит тонкие
+ */
+export function fuseMaps(maps: Array<{ prob: Float32Array; zoom: number }>, zoom = MAP_ZOOM): Float32Array {
+  const out = new Float32Array(NET_SIZE * NET_SIZE);
+  const c = NET_SIZE / 2;
+  for (const { prob, zoom: z } of maps) {
+    const k = z / zoom;
+    for (let y = 0; y < NET_SIZE; y++) {
+      for (let x = 0; x < NET_SIZE; x++) {
+        const sx = c + (x + 0.5 - c) * k - 0.5, sy = c + (y + 0.5 - c) * k - 0.5;
+        if (sx < 0 || sy < 0 || sx > NET_SIZE - 1 || sy > NET_SIZE - 1) continue;
+        const x0 = Math.floor(sx), y0 = Math.floor(sy);
+        const x1 = Math.min(NET_SIZE - 1, x0 + 1), y1 = Math.min(NET_SIZE - 1, y0 + 1);
+        const ax = sx - x0, ay = sy - y0;
+        const v = prob[y0 * NET_SIZE + x0] * (1 - ax) * (1 - ay) + prob[y0 * NET_SIZE + x1] * ax * (1 - ay) +
+          prob[y1 * NET_SIZE + x0] * (1 - ax) * ay + prob[y1 * NET_SIZE + x1] * ax * ay;
+        const i = y * NET_SIZE + x;
+        if (v > out[i]) out[i] = v;
+      }
+    }
+  }
+  return out;
 }
 
 // ==================== ЛИНИИ ИЗ КАРТЫ СЕТИ ====================
 
 const N = NET_SIZE;
-/** Точки стандартной позы в пикселях карты 256×256 */
-const T = TARGET.map(([x, y]) => ({ x: x * N, y: y * N }));
 
 /** Утончение маски до линий толщиной в пиксель (Чжан — Суэнь) */
 export function thin(mask: Uint8Array): Uint8Array {
@@ -252,6 +338,49 @@ interface Seg {
   b: number; // узел в конце
   /** Перемычка через разрыв линии (не найдена сетью, а достроена) */
   gap?: boolean;
+}
+
+/**
+ * Убирает короткие «усики» скелета (ответвления в несколько пикселей у
+ * неровностей линии) и сливает отрезки через узлы, где осталось лишь два
+ * соседа, — иначе одна линия распадается на кусочки и не склеивается
+ */
+function pruneAndMerge(segs: Seg[], minSpur: number): Seg[] {
+  let cur = segs.filter(sg => sg.a !== sg.b);
+  for (let iter = 0; iter < 3; iter++) {
+    const deg = new Map<number, number>();
+    for (const sg of cur) for (const n of [sg.a, sg.b]) deg.set(n, (deg.get(n) ?? 0) + 1);
+    const before = cur.length;
+    cur = cur.filter(sg => {
+      const da = deg.get(sg.a) ?? 0, db = deg.get(sg.b) ?? 0;
+      const spur = (da === 1 && db >= 3) || (db === 1 && da >= 3);
+      return !(spur && pathLength(sg.pts) < minSpur);
+    });
+    // Слияние через узлы степени 2
+    let merged = true;
+    while (merged) {
+      merged = false;
+      const d2 = new Map<number, number[]>();
+      cur.forEach((sg, i) => { for (const n of [sg.a, sg.b]) d2.set(n, [...(d2.get(n) ?? []), i]); });
+      for (const [node, list] of d2) {
+        if (list.length !== 2 || list[0] === list[1]) continue;
+        const [i, j] = list;
+        const A = cur[i], B = cur[j];
+        const aPts = A.b === node ? A.pts : [...A.pts].reverse();
+        const bPts = B.a === node ? B.pts : [...B.pts].reverse();
+        const aFar = A.b === node ? A.a : A.b;
+        const bFar = B.a === node ? B.b : B.a;
+        if (aFar === bFar) continue;
+        const joined: Seg = { pts: [...aPts, ...bPts.slice(1)], a: aFar, b: bFar, gap: A.gap || B.gap };
+        cur = cur.filter((_, k) => k !== i && k !== j);
+        cur.push(joined);
+        merged = true;
+        break;
+      }
+    }
+    if (cur.length === before) break;
+  }
+  return cur;
 }
 
 /**
@@ -410,6 +539,26 @@ function candidatePaths(segs: Seg[], nodePos: Point[]): Candidate[] {
   return out.filter(c => c.pts.length >= 8);
 }
 
+/**
+ * Линия a ниже линии b там, где они идут над одним и тем же местом ладони
+ * (сравнение средних высот ошибается: линия ума идёт наискось)
+ */
+function belowAtSameX(a: Point[], b: Point[]): boolean {
+  const yAt = (pts: Point[], x: number) => {
+    let best: Point | null = null;
+    for (const p of pts) if (!best || Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
+    return best && Math.abs(best.x - x) <= 1.5 ? best.y : null;
+  };
+  let below = 0, above = 0;
+  for (const p of a) {
+    const yb = yAt(b, p.x);
+    if (yb === null) continue;
+    if (p.y > yb + 1) below++;
+    else above++;
+  }
+  return below >= above;
+}
+
 function pathLength(pts: Point[]): number {
   let l = 0;
   for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
@@ -449,8 +598,9 @@ export function analyzeLineMap(
   prob: Float32Array,
   img: RgbaImage,
   landmarks: Point[],
-  canonToFlipped: Homography
+  input: Pick<NetInput, 'canonToFlipped' | 'pose'>
 ): PalmAnalysis {
+  const { canonToFlipped, pose: T } = input;
   const { width: W, height: H } = img;
   const issues: PalmQualityIssue[] = [];
   const measurements = measureHand(landmarks);
@@ -468,7 +618,7 @@ export function analyzeLineMap(
   const mask = new Uint8Array(N * N);
   for (let i = 0; i < N * N; i++) mask[i] = prob[i] >= LINE_PROB ? 1 : 0;
   const graph = skeletonGraph(thin(mask));
-  const segs = bridgeGaps(graph.segs, 0.22 * palmW);
+  const segs = bridgeGaps(pruneAndMerge(graph.segs, 0.1 * palmW), 0.22 * palmW);
   const nodePos = graph.nodePos;
   const cands = candidatePaths(segs, nodePos).map(c => {
     const xs = c.pts.map(p => p.x), ys = c.pts.map(p => p.y);
@@ -489,14 +639,14 @@ export function analyzeLineMap(
 
   // Линия сердца: под основаниями пальцев, тянется к краю под мизинцем
   const heart = best(
-    c => c.dx > c.dy * 1.2 && c.maxX >= T[13].x && c.minY >= baseY(c.maxX) - 0.05 * palmH - 4 &&
+    c => c.dx > c.dy * 1.2 && c.maxX >= T[13].x && c.meanY >= baseY((c.minX + c.maxX) / 2) - 0.03 * palmH &&
       c.meanY <= baseY((c.minX + c.maxX) / 2) + 0.32 * palmH && c.fromWeb > 0.25 * palmW && c.len >= 0.35 * palmW,
     c => c.len - Math.abs(c.meanY - baseY((c.minX + c.maxX) / 2) - 0.12 * palmH)
   );
   // Линия ума: от промежутка между большим и указательным — поперёк ладони
   const head = best(
     c => c.fromWeb <= nearWeb && c.dx >= c.dy * 0.6 && c.maxX >= web.x + 0.35 * palmW &&
-      (!heart || c.meanY > heart.meanY + 2),
+      (!heart || (!c.segs.some(j => heart.segs.includes(j)) && belowAtSameX(c.pts, heart.pts))),
     c => c.len
   );
   // Линия жизни: от того же промежутка вниз, огибая большой палец
@@ -504,6 +654,11 @@ export function analyzeLineMap(
     c => c.fromWeb <= nearWeb && c.dy > c.dx && c.maxY >= web.y + 0.25 * palmH && c.maxX <= T[9].x + 0.25 * palmW,
     c => c.len
   );
+  // Линию жизни сеть часто видит лишь бледными кусками — тогда ведём её по
+  // «мягкой» карте вероятностей вдоль дуги вокруг большого пальца
+  const lifeSoft = !life || life.len < 0.35 * palmH ? traceLifeSoft(prob, T, web, palmW, palmH) : null;
+  const lifeChoice = lifeSoft && (!life || pathLength(lifeSoft.pts) > life.len * 1.3) ? lifeSoft : life;
+
   // Линия судьбы: вертикальная по центру ладони, не совпадающая с линией жизни
   const lifeSegs = new Set(life?.segs ?? []);
   const fate = best(
@@ -515,12 +670,16 @@ export function analyzeLineMap(
 
   // Из стандартной позы обратно на снимок
   const toImage = (p: Point): Point => {
-    const s = applyH(canonToFlipped, (p.x * W) / N, (p.y * H) / N);
+    const s = applyH(canonToFlipped, p.x, p.y);
     return { x: W - 1 - s.x, y: s.y };
   };
 
   const segLen = segs.map(sg => pathLength(sg.pts));
-  const finding = (id: PalmLineId, c: C | null, opts: { curve: boolean; forkAwayFromWeb: boolean }): LineFinding => {
+  const finding = (
+    id: PalmLineId,
+    c: { pts: Point[]; segs: number[]; nodes: number[]; broken?: boolean } | null,
+    opts: { curve: boolean; forkAwayFromWeb: boolean }
+  ): LineFinding => {
     if (!c) return { id, found: false, traits: id === 'fate_line' ? [] : ['shallow'], strength: 0, contrast: 0, path: [] };
     // Линия идёт от промежутка у большого пальца (если начинается там)
     const startAtWeb = Math.hypot(c.pts[0].x - web.x, c.pts[0].y - web.y) <= Math.hypot(c.pts[c.pts.length - 1].x - web.x, c.pts[c.pts.length - 1].y - web.y);
@@ -546,15 +705,21 @@ export function analyzeLineMap(
     const pAlong = pts.map(p => prob[Math.round(p.y) * N + Math.round(p.x)]);
     const traits: LineTrait[] = [contrast >= DEEP_CONTRAST ? 'deep' : 'shallow'];
     if (opts.curve) traits.push(isCurved(pts) ? 'curved' : 'straight');
-    const broken = c.segs.some(j => segs[j].gap);
+    const broken = c.broken || c.segs.some(j => segs[j].gap);
     if (broken) traits.push('broken');
     else if (isChainProfile(depths)) traits.push('chained');
-    // Раздвоение: на дальней половине линии от неё отходит ещё одна ветвь
-    const half = Math.floor(nodes.length / 2);
-    const forked = nodes.slice(half).some((n, k) => {
-      if (opts.forkAwayFromWeb === false && k === 0 && half === 0) return false;
-      return segs.some((sg, j) => !sg.gap && !c.segs.includes(j) && (sg.a === n || sg.b === n) && segLen[j] >= 0.12 * palmW);
+    // Раздвоение: в дальней трети линии от неё отходит заметная ветвь
+    const total = pathLength(pts);
+    const forked = nodes.some(n => {
+      const branch = segs.findIndex((sg, j) => !sg.gap && !c.segs.includes(j) && (sg.a === n || sg.b === n) && segLen[j] >= 0.2 * palmW);
+      if (branch < 0) return false;
+      const sg = segs[branch];
+      const at = sg.a === n ? sg.pts[0] : sg.pts[sg.pts.length - 1];
+      let k = 0, bestD = Infinity;
+      pts.forEach((p, i) => { const d = Math.hypot(p.x - at.x, p.y - at.y); if (d < bestD) { bestD = d; k = i; } });
+      return pathLength(pts.slice(0, k + 1)) >= 0.66 * total;
     });
+    void opts.forkAwayFromWeb;
     if (forked) traits.push('forked');
 
     const step = Math.max(1, Math.round(img_pts.length / 24));
@@ -572,7 +737,7 @@ export function analyzeLineMap(
   const lines: LineFinding[] = [
     finding('heart_line', heart, { curve: true, forkAwayFromWeb: true }),
     finding('head_line', head, { curve: true, forkAwayFromWeb: true }),
-    finding('life_line', life, { curve: false, forkAwayFromWeb: true }),
+    finding('life_line', lifeChoice, { curve: false, forkAwayFromWeb: true }),
     finding('fate_line', fate, { curve: false, forkAwayFromWeb: true }),
   ];
   if (!lines[0].found && !lines[1].found && !lines[2].found) issues.push('no_lines');
@@ -584,7 +749,78 @@ export function analyzeLineMap(
     life_line: lines[2].traits,
     fate_line: lines[3].found ? lines[3].traits : 'none',
   };
-  return { features, measurements, lines, issues, soft: false };
+  // Остальные заметные линии — второстепенные (сеть обучена на трёх
+  // главных, поэтому их она видит слабее; показываем то, что нашлось)
+  const usedSegs = new Set([heart, head, life, fate].flatMap(c => c?.segs ?? []));
+  const mainPts = [heart, head, lifeChoice, fate].flatMap(c => c?.pts ?? []);
+  const minorLines = segs
+    .filter((sg, j) => !sg.gap && !usedSegs.has(j) && segLen[j] >= 0.16 * palmW)
+    .filter(sg => {
+      // Не часть главной линии (куски рядом с ней не считаем)
+      const near = sg.pts.filter(p => mainPts.some(q => Math.abs(q.x - p.x) + Math.abs(q.y - p.y) < 5)).length;
+      return near < sg.pts.length * 0.4;
+    })
+    .map(sg => {
+      const img_pts = sg.pts.map(toImage);
+      const step = Math.max(1, Math.round(img_pts.length / 12));
+      return img_pts.filter((_, i) => i % step === 0 || i === img_pts.length - 1)
+        .map(p => ({ x: +(p.x / W).toFixed(4), y: +(p.y / H).toFixed(4) }));
+    });
+
+  return { features, measurements, lines, issues, soft: false, minorLines };
+}
+
+/**
+ * Линия жизни по «мягкой» карте: лучший плавный путь сверху вниз от
+ * промежутка между большим и указательным пальцами, огибающий основание
+ * большого пальца. Участки, где сеть почти не видит линии, — разрывы
+ */
+function traceLifeSoft(prob: Float32Array, T: Point[], web: Point, palmW: number, palmH: number):
+  { pts: Point[]; segs: number[]; nodes: number[]; broken: boolean } | null {
+  const y0 = Math.round(web.y + 2);
+  const y1 = Math.round(Math.min(N - 2, T[0].y - 0.12 * palmH));
+  if (y1 - y0 < 10) return null;
+  const xLo = (y: number) => Math.round(Math.max(1, Math.min(T[1].x, T[2].x) + 0.12 * palmW + (y - y0) * 0));
+  const xHi = (y: number) => Math.round(Math.min(N - 2, T[9].x + 0.05 * palmW));
+  const steps = y1 - y0 + 1;
+  const score = new Float32Array(steps * N).fill(-Infinity);
+  const back = new Int16Array(steps * N);
+  const val = (y: number, x: number) => Math.log(0.02 + prob[y * N + x]) - Math.log(0.08);
+  // Начало — рядом с промежутком у большого пальца
+  for (let x = xLo(y0); x <= xHi(y0); x++) score[x] = val(y0, x) - Math.abs(x - web.x) * 0.15;
+  for (let s = 1; s < steps; s++) {
+    const y = y0 + s;
+    for (let x = xLo(y); x <= xHi(y); x++) {
+      let best = -Infinity, arg = x;
+      for (let dx = -1; dx <= 1; dx++) {
+        const v = score[(s - 1) * N + x + dx];
+        const sc = v - (dx ? 0.03 : 0);
+        if (sc > best) { best = sc; arg = x + dx; }
+      }
+      score[s * N + x] = best + val(y, x);
+      back[s * N + x] = arg;
+    }
+  }
+  let end = xLo(y1);
+  for (let x = xLo(y1); x <= xHi(y1); x++) if (score[(steps - 1) * N + x] > score[(steps - 1) * N + end]) end = x;
+  const xs = new Array<number>(steps);
+  xs[steps - 1] = end;
+  for (let s = steps - 1; s > 0; s--) xs[s - 1] = back[s * N + xs[s]];
+  const p = xs.map((x, s) => Math.max(prob[(y0 + s) * N + x], prob[(y0 + s) * N + Math.max(0, x - 1)], prob[(y0 + s) * N + Math.min(N - 1, x + 1)]));
+  const on = p.map(v => v >= 0.12);
+  const first = on.indexOf(true), last = on.lastIndexOf(true);
+  if (first < 0) return null;
+  const span = last - first + 1;
+  const covered = on.slice(first, last + 1).filter(Boolean).length;
+  if (span < 0.3 * palmH || covered < 0.5 * span) return null;
+  // Разрыв — длинный участок без линии между уверенными кусками
+  let broken = false;
+  for (let i = first, run = 0; i <= last; i++) {
+    if (!on[i]) run++;
+    else { if (run >= Math.max(5, 0.12 * span)) broken = true; run = 0; }
+  }
+  const pts = xs.slice(first, last + 1).map((x, k) => ({ x, y: y0 + first + k }));
+  return { pts, segs: [], nodes: [], broken };
 }
 
 /** «Цепочка»: темнота вдоль линии регулярно проваливается между звеньями */

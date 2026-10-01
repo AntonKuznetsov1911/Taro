@@ -29,11 +29,14 @@ import {
 } from '../src/utils/palmReading';
 import type { PalmMeasurements, Point } from '../src/utils/palmVision';
 
-const LINE_COLORS: Record<PalmLineId, string> = {
+type DrawnLineId = PalmLineId | 'minor';
+
+const LINE_COLORS: Record<DrawnLineId, string> = {
   heart_line: '#FF6B9D',
   head_line: '#4ECDC4',
   life_line: '#2ECC71',
   fate_line: '#F1C40F',
+  minor: 'rgba(255, 255, 255, 0.85)',
 };
 
 const IMAGE_WIDTH = 300;
@@ -71,7 +74,7 @@ function palmFocus(lines: Array<{ path: Point[] }>, photoW: number, photoH: numb
 
 /** Отрезки для отрисовки найденных линий поверх снимка */
 function buildSegments(
-  lines: Array<{ id: PalmLineId; path: Point[] }>,
+  lines: Array<{ id: DrawnLineId; path: Point[] }>,
   width: number,
   height: number,
   offset: Point = { x: 0, y: 0 }
@@ -105,9 +108,10 @@ export default function PalmistryResultScreen() {
   const source: PalmSource = params.source === 'auto' ? 'auto' : 'manual';
 
   const features = useMemo(() => parseJson<Partial<PalmFeatures>>(params.features, {}), [params.features]);
-  const lines = useMemo(() => parseJson<Array<{ id: PalmLineId; path: Point[] }>>(params.lines, []), [params.lines]);
+  const lines = useMemo(() => parseJson<Array<{ id: DrawnLineId; path: Point[] }>>(params.lines, []), [params.lines]);
   const measurements = useMemo(() => parseJson<PalmMeasurements | null>(params.measurements, null), [params.measurements]);
   const complete = isPalmFeaturesComplete(features);
+  const minorCount = lines.filter(l => l.id === 'minor').length;
   const interpretation = useMemo(
     () => (complete ? generatePalmReading(features as PalmFeatures, source) : ''),
     [complete, features, source]
@@ -296,6 +300,15 @@ export default function PalmistryResultScreen() {
                     </View>
                   );
                 })}
+                {minorCount > 0 && (
+                  <View style={styles.detectLine}>
+                    <View style={[styles.dot, { backgroundColor: '#FFFFFF' }]} />
+                    <Text style={styles.detectRow}>
+                      <Text style={styles.detectLabel}>Другие линии: </Text>
+                      {minorCount} (показаны белым; сеть обучена на главных линиях, поэтому мелкие видит не все)
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity style={styles.editButton} onPress={editFeatures}>
                   <Ionicons name="create-outline" size={16} color="#BB6BD9" />
                   <Text style={styles.editText}>Не согласны? Поправить</Text>

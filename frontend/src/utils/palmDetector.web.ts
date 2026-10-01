@@ -7,7 +7,7 @@
 
 import type { HandLandmarker } from '@mediapipe/tasks-vision';
 import { analyzePalm, PalmAnalysis, Point } from './palmVision';
-import { analyzeLineMap, prepareNetInput } from './palmLineNet';
+import { analyzeLineMap, fuseMaps, MAP_ZOOM, NET_ZOOMS, prepareNetInput } from './palmLineNet';
 import { loadPalmLineNet, runPalmLineNet } from './palmLineRunner.web';
 
 export type PalmDetectError = 'unsupported' | 'load_failed' | 'no_hand' | 'back_of_hand' | 'image_failed';
@@ -130,9 +130,13 @@ export async function detectPalm(uri: string): Promise<PalmDetectResult> {
   let analysis: PalmAnalysis;
   let method: 'net' | 'classic' = 'net';
   try {
-    const { tensor, canonToFlipped } = prepareNetInput(rgba, landmarks);
-    const prob = await runPalmLineNet(tensor);
-    analysis = analyzeLineMap(prob, rgba, landmarks, canonToFlipped);
+    // Сеть смотрит на ладонь в двух масштабах, карты сводятся в одну
+    const maps: Array<{ prob: Float32Array; zoom: number }> = [];
+    for (const zoom of NET_ZOOMS) {
+      maps.push({ prob: await runPalmLineNet(prepareNetInput(rgba, landmarks, zoom).tensor), zoom });
+    }
+    const prob = fuseMaps(maps);
+    analysis = analyzeLineMap(prob, rgba, landmarks, prepareNetInput(rgba, landmarks, MAP_ZOOM));
   } catch (error) {
     console.warn('Palm line network unavailable, using classic detector', error);
     analysis = analyzePalm(rgba, landmarks);
