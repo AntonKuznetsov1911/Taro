@@ -48,8 +48,9 @@ keyPassword=YOUR_LOCAL_PASSWORD
 исключены из Git. Нативные изменения воспроизводит `frontend/plugins/with-taro-android.js`.
 GitHub CI проверяет сборку с одноразовым тестовым ключом и не распространяет установщики.
 
-Два теста нативного распознавания выполняются против release на подключённом
-эмуляторе: сначала `python scripts/prepare-native-tests.py`, повторите prebuild,
+Три инструментальных теста проверяют стартовый экран и нативное распознавание
+против release на подключённом эмуляторе: из `frontend` сначала выполните
+`python scripts/prepare-native-tests.py`, повторите prebuild,
 затем `./gradlew :app:connectedReleaseAndroidTest`. Тестовая фотография Google MediaPipe
 не входит в приложение и загружается только для проверки.
 

@@ -67,6 +67,9 @@ export default function SettingsScreen() {
           soundEnabled: current.soundEnabled,
           vibration: current.vibration,
           volume: current.effectsVolume,
+        }).catch((error) => {
+          console.warn('Taro: reminder scheduling failed', error);
+          showAlert('Не удалось включить напоминание', 'Попробуйте ещё раз. Если ошибка повторится, перезапустите приложение.');
         });
       },
     })

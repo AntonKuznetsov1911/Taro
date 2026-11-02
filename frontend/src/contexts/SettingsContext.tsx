@@ -75,7 +75,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       ...state,
       setLanguage: (language) => setState((s) => ({ ...s, language })),
       setNotifications: async (enabled) => {
-        const notifications = await updateDailyReminder(enabled, true).catch(() => false);
+        const notifications = await updateDailyReminder(enabled, true);
         setState((s) => ({ ...s, notifications }));
         return notifications;
       },

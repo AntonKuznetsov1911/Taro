@@ -214,14 +214,15 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
         </TouchableOpacity>
       </View>
 
-      {appActive && <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-        enableTorch={torch}
-        onCameraReady={() => setCameraReady(true)}
-        onMountError={() => setMountError(true)}
-      >
+      <View style={styles.camera}>
+        {appActive && <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={torch}
+          onCameraReady={() => setCameraReady(true)}
+          onMountError={() => setMountError(true)}
+        />}
         <LinearGradient
           colors={['rgba(0, 0, 0, 0.6)', 'transparent', 'transparent', 'rgba(0, 0, 0, 0.6)']}
           style={styles.cameraOverlay}
@@ -274,7 +275,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
 
           </View>
         </LinearGradient>
-      </CameraView>}
+      </View>
     </SafeAreaView>
   );
 }
