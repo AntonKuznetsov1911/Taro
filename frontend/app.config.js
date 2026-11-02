@@ -42,6 +42,7 @@ export default {
       basePath: GITHUB_PAGES_BASE,
     },
     plugins: [
+      './plugins/with-taro-android',
       'expo-router',
       ['expo-camera', { cameraPermission: 'Камера нужна, чтобы сфотографировать ладонь. Снимки обрабатываются на устройстве.', recordAudioAndroid: false, barcodeScannerEnabled: false }],
       ['expo-notifications', { color: '#BB6BD9' }],
@@ -55,7 +56,6 @@ export default {
           backgroundColor: '#000',
         },
       ],
-      './plugins/with-taro-android',
     ],
     experiments: {
       typedRoutes: true,

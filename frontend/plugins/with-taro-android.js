@@ -75,6 +75,13 @@ if (taroSigningFile.exists()) {
   config = withAndroidManifest(config, (mod) => {
     const app = mod.modResults.manifest.application[0].$;
     app['android:allowBackup'] = 'false';
+    const features = mod.modResults.manifest['uses-feature'] ?? [];
+    for (const name of ['android.hardware.camera', 'android.hardware.camera.autofocus']) {
+      const existing = features.find(feature => feature.$?.['android:name'] === name);
+      if (existing) existing.$['android:required'] = 'false';
+      else features.push({ $: { 'android:name': name, 'android:required': 'false' } });
+    }
+    mod.modResults.manifest['uses-feature'] = features;
     return mod;
   });
   return withDangerousMod(config, ['android', async (mod) => {
