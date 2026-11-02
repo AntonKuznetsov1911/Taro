@@ -15,6 +15,11 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import android.view.accessibility.AccessibilityNodeInfo
+import expo.modules.notifications.notifications.model.NotificationContent
+import expo.modules.notifications.notifications.model.NotificationRequest
+import expo.modules.notifications.notifications.triggers.DailyTrigger
+import expo.modules.notifications.service.delegates.ExpoSchedulingDelegate
+import org.json.JSONObject
 
 /** Tests the real release APK, JNI libraries, models, and native bridge on Android. */
 @RunWith(AndroidJUnit4::class)
@@ -88,5 +93,25 @@ class TaroVisionTest {
             Thread.sleep(200)
         }
         fail("The app did not display a user screen: $last")
+    }
+
+    @Test fun dailyReminderSurvivesReleaseSerializationWithoutDuplicates() {
+        val scheduler = ExpoSchedulingDelegate(context)
+        val id = "taro-instrumentation-reminder"
+        val content = NotificationContent.Builder()
+            .setTitle("Карта дня")
+            .setText("Проверка напоминания")
+            .setBody(JSONObject().put("screen", "/"))
+            .build()
+        val request = NotificationRequest(id, content, DailyTrigger("taro-daily-card", 9, 0))
+        try {
+            scheduler.scheduleNotification(request)
+            scheduler.scheduleNotification(request)
+            val stored = scheduler.getScheduledNotification(id)!!
+            assertEquals(id, stored.identifier)
+            assertEquals("/", (stored.content as NotificationContent).body!!.getString("screen"))
+            assertEquals(9, (stored.trigger as DailyTrigger).hour)
+            assertEquals(1, scheduler.getAllScheduledNotifications().count { it.identifier == id })
+        } finally { scheduler.removeScheduledNotifications(listOf(id)) }
     }
 }

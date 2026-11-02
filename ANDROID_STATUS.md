@@ -19,10 +19,11 @@ MediaPipe и линий ONNX с моделями внутри APK, звук, к�
 
 Подтверждено: TypeScript, проверка совместимости Expo, production web build,
 36 unit-тестов и 10 проверок общего интерфейса в production-сборке.
-`assembleRelease`, `bundleRelease`, `lintRelease` и три инструментальных теста
+`assembleRelease`, `bundleRelease`, `lintRelease` и четыре инструментальных теста
 release APK прошли на Android 11 x86_64 с отключённой сетью. Тесты проверили
 запуск настоящего пользовательского экрана, загрузку обеих моделей, ONNX-вывод
-и 21 точку руки с согласованными RGBA-пикселями на фотографии Google MediaPipe.
+и 21 точку руки с согласованными RGBA-пикселями на фотографии Google MediaPipe,
+сохранение/чтение ежедневного напоминания с JSON-данными без дубликатов.
 APK: apksigner и zipalign с 16 КБ; AAB: jarsigner и bundletool validate — успешно.
 Все 50 упакованных библиотек ARM64/x86_64 имеют выравнивание ELF LOAD не менее 16 КБ.
 
@@ -36,13 +37,15 @@ APK: apksigner и zipalign с 16 КБ; AAB: jarsigner и bundletool validate —
 
 Нативный звёздный фон не использует HTML/document. Наложения камеры находятся
 рядом с CameraView: Expo Camera 17 не поддерживает дочерние элементы.
-R8 сохраняет protobuf/MediaPipe/ONNX-классы, нужные моделям во время выполнения.
+R8 сохраняет protobuf/MediaPipe/ONNX-классы, нужные моделям во время выполнения,
+и сериализаторы Expo Notifications: иначе сохранение уведомления падало с
+NotSerializableException для JSONObject.
 Splash-ресурс API 33 отделён от базовых ресурсов; кастомный конфиг-плагин идёт
 первым, поскольку Expo выполняет resource mods в обратном порядке.
 
 Рабочая копия: `C:/Users/User/Documents/Codex/work/Taro`. На Windows нужны
 короткие физические пути к исходникам и Gradle-кешу; subst не подходит.
-Локальная одновременная сборка универсального APK/AAB использовала JVM 6 ГБ
+Локальная одновременная сборка универсального APK/AAB использовала JVM 4–6 ГБ
 и максимум два Gradle worker. Изменения опубликованы в ветке, черновик PR:
 https://github.com/AntonKuznetsov1911/Taro/pull/6. Main, сайт и магазин не обновлялись.
 
