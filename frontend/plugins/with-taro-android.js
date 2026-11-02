@@ -15,7 +15,7 @@ module.exports = function withTaroAndroid(config) {
     return mod;
   });
   config = withGradleProperties(config, (mod) => {
-    const properties = { reactNativeArchitectures: 'arm64-v8a,armeabi-v7a,x86_64', AsyncStorage_db_size_in_MB: '50' };
+    const properties = { reactNativeArchitectures: 'arm64-v8a,armeabi-v7a,x86_64', AsyncStorage_db_size_in_MB: '50', 'org.gradle.jvmargs': '-Xmx4g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8', 'org.gradle.parallel': 'false' };
     for (const [key, value] of Object.entries(properties)) {
       mod.modResults = mod.modResults.filter(p => p.key !== key);
       mod.modResults.push({ type: 'property', key, value });

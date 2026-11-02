@@ -32,7 +32,10 @@ export async function detectPalm(uri: string): Promise<PalmDetectResult> {
     if (photo.hand === 'Right' ? cross >= 0 : cross <= 0) return { ok: false, error: 'back_of_hand' };
   }
   const { width, height } = photo;
-  const pixels = toByteArray(photo.rgba);
+  if (typeof photo.rgba !== 'string' || !photo.rgba || !Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return { ok: false, error: 'image_failed' };
+  let pixels: Uint8Array;
+  try { pixels = toByteArray(photo.rgba); } catch { return { ok: false, error: 'image_failed' }; }
+  if (pixels.length !== width * height * 4) return { ok: false, error: 'image_failed' };
   const rgba: RgbaImage = { width, height, data: new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength) };
   const landmarks = hand.map(p => ({ x: p.x * width, y: p.y * height }));
   let analysis: PalmAnalysis;

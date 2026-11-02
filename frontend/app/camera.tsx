@@ -127,7 +127,7 @@ export default function CameraScreen() {
       setCaptured(photo);
       setNotice('');
       setPhase('analyzing');
-      const result = await detectPalm(photo.uri);
+      const result = await detectPalm(photo.uri).catch(() => ({ ok: false, error: 'image_failed' } as const));
       if (!mounted.current) return;
 
       if (!result.ok) {

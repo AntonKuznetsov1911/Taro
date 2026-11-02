@@ -65,7 +65,8 @@ class TaroVisionModule(private val context: ReactApplicationContext) : ReactCont
                 out.putInt("width", bitmap.width)
                 out.putInt("height", bitmap.height)
                 val points = Arguments.createArray()
-                result.landmarks().firstOrNull()?.forEach { point ->
+                val hand = result.landmarks().firstOrNull()
+                hand?.forEach { point ->
                     points.pushMap(Arguments.createMap().apply { putDouble("x", point.x().toDouble()); putDouble("y", point.y().toDouble()) })
                 }
                 out.putArray("landmarks", points)
@@ -73,7 +74,9 @@ class TaroVisionModule(private val context: ReactApplicationContext) : ReactCont
                     out.putString("hand", category.categoryName())
                     out.putDouble("confidence", category.score().toDouble())
                 }
-                if (points.size() == 21) {
+                // putArray transfers ownership to the map; do not inspect the
+                // consumed WritableNativeArray to decide whether to copy pixels.
+                if (hand?.size == 21) {
                     val pixels = IntArray(bitmap.width * bitmap.height)
                     bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
                     val bytes = ByteArray(pixels.size * 4)
