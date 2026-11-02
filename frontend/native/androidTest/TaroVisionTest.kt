@@ -14,6 +14,7 @@ import java.nio.ByteOrder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import android.view.accessibility.AccessibilityNodeInfo
 
 /** Tests the real release APK, JNI libraries, models, and native bridge on Android. */
 @RunWith(AndroidJUnit4::class)
@@ -70,5 +71,22 @@ class TaroVisionTest {
             assertEquals(width * height * 4, Base64.decode(result.getString("rgba"), Base64.DEFAULT).size)
             assertTrue(File(Uri.parse(result.getString("enhancedUri")).path!!).exists())
         } finally { module.invalidate(); file.delete() }
+    }
+
+    @Test fun nativeLaunchDisplaysAUserScreen() {
+        context // Start the real release activity and its React Native host.
+        fun labels(node: AccessibilityNodeInfo?): List<String> {
+            if (node == null) return emptyList()
+            return listOfNotNull(node.text?.toString(), node.contentDescription?.toString()) +
+                (0 until node.childCount).flatMap { labels(node.getChild(it)) }
+        }
+        var last = emptyList<String>()
+        for (attempt in 0 until 100) {
+            last = labels(instrumentation.uiAutomation.rootInActiveWindow)
+            assertFalse("The release app displayed its error screen", last.any { it.contains("Что-то пошло не так") })
+            if (last.any { it.contains("Добро пожаловать в Таро") || it.contains("Мистические практики") }) return
+            Thread.sleep(200)
+        }
+        fail("The app did not display a user screen: $last")
     }
 }

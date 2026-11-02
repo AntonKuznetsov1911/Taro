@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
   },
   orbWrap: {
     width: '100%',
-    maxWidth: 268,
+    maxWidth: Platform.OS === 'web' ? 268 : 204,
     aspectRatio: 300 / 372,
     marginBottom: 6,
   },
@@ -560,12 +560,12 @@ const styles = StyleSheet.create({
   // строки — «Добро пожаловать» / «в Таро» (текст при этом не меняется).
   welcomeTitleWrap: {
     marginBottom: 14,
-    maxWidth: 300,
+    maxWidth: Platform.OS === 'web' ? 300 : 340,
     ...titleGlow,
   },
   welcomeTitle: {
-    fontSize: 32,
-    lineHeight: 42,
+    fontSize: Platform.OS === 'web' ? 32 : 28,
+    lineHeight: Platform.OS === 'web' ? 42 : 36,
     fontWeight: '600',
     fontStyle: 'italic',
     letterSpacing: 0.5,

@@ -10,6 +10,7 @@ import { UpdateNotification } from '../components/UpdateNotification';
 import { InstallPWAPrompt } from '../components/InstallPWAPrompt';
 import { recoverBackupRestore } from '../src/utils/backup';
 import { onAppSessionRestart } from '../src/utils/appSession';
+import { configureSystemBars } from '../src/utils/systemBars';
 
 // Баннер установки прижат к низу экрана и перехватывает нажатия под собой:
 // на онбординге под ним оказывалась кнопка «Начать», на других экранах —
@@ -51,6 +52,7 @@ function StorageGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(configureSystemBars, []);
   const Frame = Platform.OS === 'android' ? SafeAreaView : View;
   return <SafeAreaProvider><Frame style={{ flex: 1, backgroundColor: '#000011' }}><ErrorBoundary><StorageGate><AppSession /></StorageGate></ErrorBoundary></Frame></SafeAreaProvider>;
 }
