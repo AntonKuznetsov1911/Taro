@@ -9,6 +9,7 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CardBack } from './CardBack';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -158,15 +159,14 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleReveal} activeOpacity={0.9}>
+        <TouchableOpacity onPress={handleReveal} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={revealed ? `Карта дня: ${dailyCard.card.name}` : 'Открыть карту дня'}>
           <View style={styles.cardContainer}>
             {/* Рубашка карты */}
             <Animated.View style={[styles.cardFace, styles.cardBack, backCardStyle]}>
               {cardBackImage ? (
-                <Image
-                  source={{ uri: cardBackImage }}
+                <CardBack
+                  uri={cardBackImage}
                   style={styles.cardBackImage}
-                  resizeMode="cover"
                 />
               ) : (
                 <LinearGradient

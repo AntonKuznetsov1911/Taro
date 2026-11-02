@@ -8,6 +8,8 @@ import {
   StatusBar,
   ActivityIndicator,
   ScrollView,
+  Linking,
+  AppState,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,11 +25,23 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
   // Ладонь снимают только задней камерой: фронтальная хуже и снимает зеркально.
   // Фонарик даёт ровный свет, при котором складки видны чётче
   const [torch, setTorch] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const [cameraReady, setCameraReady] = useState(false);
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mountError, setMountError] = useState(false);
   const [notice, setNotice] = useState('');
   const cameraRef = useRef<CameraView>(null);
+  const capturing = useRef(false);
+
+  React.useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      setAppActive(state === 'active');
+      if (state === 'active') void getPermission();
+      else { setTorch(false); setCameraReady(false); }
+    });
+    return () => listener.remove();
+  }, [getPermission]);
 
   const toggleTorch = useCallback(() => {
     setTorch((current) => !current);
@@ -44,12 +58,14 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
   );
 
   const takePicture = useCallback(async () => {
-    if (!cameraRef.current) {
+    if (capturing.current) return;
+    if (!cameraRef.current || !cameraReady) {
       setNotice('Камера недоступна. Попробуйте ещё раз.');
       return;
     }
 
     try {
+      capturing.current = true;
       setIsProcessing(true);
       setNotice('');
 
@@ -65,7 +81,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
 
       const manipResult = await ImageManipulator.manipulateAsync(
         photo.uri,
-        [{ resize: { width: 800, height: 1000 } }],
+        [{ resize: { width: 900 } }],
         {
           compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
@@ -76,14 +92,17 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
       onCaptured({
         uri: manipResult.uri || photo.uri,
         base64: manipResult.base64 || photo.base64 || '',
+        width: manipResult.width,
+        height: manipResult.height,
       });
     } catch (error) {
       console.error('PalmCamera: capture failed', error);
       setNotice('Не удалось сделать снимок. Попробуйте ещё раз.');
     } finally {
+      capturing.current = false;
       setIsProcessing(false);
     }
-  }, [onCaptured]);
+  }, [onCaptured, cameraReady]);
 
   if (!permission) {
     return (
@@ -125,13 +144,13 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
             </Text>
             <TouchableOpacity
               style={styles.primaryAction}
-              onPress={() => void requestPermission()}
+              onPress={() => void (permission.canAskAgain ? requestPermission() : Linking.openSettings())}
             >
               <LinearGradient
                 colors={['rgba(155, 89, 182, 0.9)', 'rgba(142, 68, 173, 1)']}
                 style={styles.primaryActionGradient}
               >
-                <Text style={styles.primaryActionText}>Разрешить камеру</Text>
+                <Text style={styles.primaryActionText}>{permission.canAskAgain ? 'Разрешить камеру' : 'Открыть настройки'}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tertiaryAction} onPress={onBack}>
@@ -195,11 +214,12 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
         </TouchableOpacity>
       </View>
 
-      <CameraView
+      {appActive && <CameraView
         ref={cameraRef}
         style={styles.camera}
         facing="back"
         enableTorch={torch}
+        onCameraReady={() => setCameraReady(true)}
         onMountError={() => setMountError(true)}
       >
         <LinearGradient
@@ -233,7 +253,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
             <TouchableOpacity
               style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
               onPress={() => void takePicture()}
-              disabled={isProcessing}
+              disabled={isProcessing || !cameraReady}
             >
               <LinearGradient
                 colors={
@@ -254,7 +274,7 @@ export function PalmCamera({ onCaptured, onBack }: PalmCameraProps) {
 
           </View>
         </LinearGradient>
-      </CameraView>
+      </CameraView>}
     </SafeAreaView>
   );
 }

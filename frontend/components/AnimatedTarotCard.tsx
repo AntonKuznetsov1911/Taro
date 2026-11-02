@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CardBack } from './CardBack';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -143,6 +144,8 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
   return (
     <Animated.View style={[styles.cardContainer, cardContainerStyle]}>
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={revealed ? `Карта ${index + 1}: ${card.name}` : `Открыть карту ${index + 1}`}
         onPress={!revealed ? onReveal : undefined}
         activeOpacity={revealed ? 1 : 0.8}
         disabled={revealed}
@@ -151,10 +154,9 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
           {/* Card Back (Face Down) */}
           <Animated.View style={[styles.cardFace, styles.cardBack, frontFaceStyle]}>
             {cardBackImage && cardBackImage.startsWith('data:image') ? (
-              <Image
-                source={{ uri: cardBackImage }}
+              <CardBack
+                uri={cardBackImage}
                 style={styles.cardBackImage}
-                resizeMode="cover"
               />
             ) : (
               <LinearGradient

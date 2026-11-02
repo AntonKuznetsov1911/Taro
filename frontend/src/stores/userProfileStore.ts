@@ -46,6 +46,7 @@ class UserProfileStore {
   private listeners: Set<() => void> = new Set();
 
   async init(): Promise<void> {
+    this.profile = null;
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {

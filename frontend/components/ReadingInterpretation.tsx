@@ -24,6 +24,7 @@ interface ReadingInterpretationProps {
   spreadType: string;
   /** Нужен, чтобы отметку «в избранном» можно было по-настоящему сохранить */
   readingId: string;
+  onBeforeFavorite?: () => Promise<void>;
 }
 
 export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
@@ -32,6 +33,7 @@ export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
   category,
   spreadType,
   readingId,
+  onBeforeFavorite,
 }) => {
   // По умолчанию все разделы раскрыты: в состоянии хранятся только свёрнутые.
   const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
@@ -95,6 +97,7 @@ ${stripMarkdown(interpretation)}
     if (isTogglingFavorite) return;
     setIsTogglingFavorite(true);
     try {
+      if (!isFavorite) await onBeforeFavorite?.();
       const nowFavorite = await favoritesStorage.toggleFavorite(readingId);
       setIsFavorite(nowFavorite);
     } catch (error) {

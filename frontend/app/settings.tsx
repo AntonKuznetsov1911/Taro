@@ -10,6 +10,8 @@ import {
   Switch,
   PanResponder,
   LayoutChangeEvent,
+  Platform,
+  Linking,
 } from 'react-native';
 import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +21,10 @@ import { CosmicBackground } from '../components/CosmicBackground';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playClick, playReveal } from '../src/utils/sound';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
+import * as Application from 'expo-application';
+import { exportBackup, pickBackup, restoreBackup } from '../src/utils/backup';
+import { backupReadingCount, type TaroBackup } from '../src/utils/backupFormat';
+import { restartAppSession } from '../src/utils/appSession';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -26,6 +32,8 @@ export default function SettingsScreen() {
   const { profile, clearProfile } = useUserProfile();
 
   const [trackWidth, setTrackWidth] = useState(1);
+  const trackWidthRef = useRef(1);
+  const [dataBusy, setDataBusy] = useState(false);
 
   // PanResponder создаётся один раз, поэтому актуальные настройки берём из ссылки
   const settingsRef = useRef(settings);
@@ -35,6 +43,7 @@ export default function SettingsScreen() {
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     setTrackWidth(e.nativeEvent.layout.width);
+    trackWidthRef.current = e.nativeEvent.layout.width;
   };
 
   const panResponder = useRef(
@@ -43,13 +52,13 @@ export default function SettingsScreen() {
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const x = evt.nativeEvent.locationX;
-        const v = Math.max(0, Math.min(1, x / trackWidth));
-        settings.setEffectsVolume(v);
+        const v = Math.max(0, Math.min(1, x / trackWidthRef.current));
+        settingsRef.current.setEffectsVolume(v);
       },
       onPanResponderMove: (evt) => {
         const x = evt.nativeEvent.locationX;
-        const v = Math.max(0, Math.min(1, x / trackWidth));
-        settings.setEffectsVolume(v);
+        const v = Math.max(0, Math.min(1, x / trackWidthRef.current));
+        settingsRef.current.setEffectsVolume(v);
       },
       onPanResponderRelease: () => {
         // Короткий пример звука на выбранной громкости
@@ -70,7 +79,11 @@ export default function SettingsScreen() {
   const toggle = (key: 'notifications' | 'soundEnabled' | 'autoSave' | 'vibration') => {
     switch (key) {
       case 'notifications':
-        settings.setNotifications(!settings.notifications);
+        void settings.setNotifications(!settings.notifications).then((enabled) => {
+          if (!settings.notifications && !enabled) showAlert('Уведомления отключены', 'Разрешите уведомления для Таро в настройках Android.', [
+            { text: 'Позже', style: 'cancel' }, { text: 'Настройки', onPress: () => { void Linking.openSettings(); } },
+          ]);
+        });
         break;
       case 'soundEnabled': {
         const next = !settings.soundEnabled;
@@ -109,7 +122,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             settings.setLanguage('russian');
-            settings.setNotifications(true);
+            void settings.setNotifications(false);
             settings.setSoundEnabled(true);
             settings.setAutoSave(true);
             settings.setVibration(true);
@@ -136,6 +149,35 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleExport = async () => {
+    if (dataBusy) return;
+    setDataBusy(true);
+    try { await exportBackup(); }
+    catch (error) { showAlert('Не удалось сохранить копию', error instanceof Error ? error.message : 'Попробуйте ещё раз.'); }
+    finally { setDataBusy(false); }
+  };
+  const performRestore = async (backup: TaroBackup) => {
+    setDataBusy(true);
+    try {
+      await restoreBackup(backup);
+      restartAppSession();
+      router.replace('/');
+      showAlert('Копия восстановлена', 'Профиль, настройки и история загружены.');
+    } catch (error) { showAlert('Не удалось восстановить копию', error instanceof Error ? error.message : 'Попробуйте ещё раз.'); }
+    finally { setDataBusy(false); }
+  };
+  const handleImport = async () => {
+    if (dataBusy) return;
+    setDataBusy(true);
+    try {
+      const backup = await pickBackup();
+      if (backup) showAlert('Восстановить копию?', `Копия от ${new Date(backup.createdAt).toLocaleDateString('ru-RU')}. Записей в истории: ${backupReadingCount(backup)}. Текущие профиль, история и настройки будут заменены данными из файла.`, [
+        { text: 'Отмена', style: 'cancel' }, { text: 'Восстановить', onPress: () => { void performRestore(backup); } },
+      ]);
+    } catch (error) { showAlert('Файл не подходит', error instanceof Error ? error.message : 'Выберите резервную копию Таро.'); }
+    finally { setDataBusy(false); }
   };
 
   const SettingRow = ({ icon, title, subtitle, value, onToggle, type = 'switch' }: {
@@ -272,7 +314,7 @@ export default function SettingsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🔔 Уведомления</Text>
               <View style={styles.sectionContent}>
-                <SettingRow icon="notifications" title="Уведомления" subtitle="Напоминания и новые предсказания" value={settings.notifications} onToggle={() => toggle('notifications')} />
+                {Platform.OS !== 'web' && <SettingRow icon="notifications" title="Карта дня" subtitle="Ежедневное напоминание в 09:00" value={settings.notifications} onToggle={() => toggle('notifications')} />}
                 <SettingRow icon="volume-high" title="Звуки" subtitle="Звуковые эффекты приложения" value={settings.soundEnabled} onToggle={() => toggle('soundEnabled')} />
                 <SettingRow icon="phone-portrait" title="Вибрация" subtitle="Тактильная обратная связь" value={settings.vibration} onToggle={() => toggle('vibration')} />
 
@@ -281,9 +323,9 @@ export default function SettingsScreen() {
                   <Text style={{ color: '#B8B8B8', marginBottom: 6 }}>Громкость эффектов</Text>
                   <View style={styles.sliderRow}>
                     <Ionicons name="volume-low" size={16} color="#B8B8B8" />
-                    <View style={styles.sliderTrack} onLayout={onTrackLayout} {...panResponder.panHandlers}>
-                      <View style={[styles.sliderFill, { width: fillWidth }]} />
-                      <View style={[styles.sliderThumb, { left: thumbLeft }]} />
+                    <View testID="effects-volume" style={styles.sliderTrack} onLayout={onTrackLayout} {...panResponder.panHandlers}>
+                      <View pointerEvents="none" style={[styles.sliderFill, { width: fillWidth }]} />
+                      <View pointerEvents="none" style={[styles.sliderThumb, { left: thumbLeft }]} />
                     </View>
                     <Ionicons name="volume-high" size={16} color="#B8B8B8" />
                     <Text style={styles.sliderValue}>{Math.round(settings.effectsVolume * 100)}%</Text>
@@ -296,6 +338,8 @@ export default function SettingsScreen() {
               <Text style={styles.sectionTitle}>💾 Данные</Text>
               <View style={styles.sectionContent}>
                 <SettingRow icon="save" title="Автосохранение" subtitle="Автоматически сохранять результаты гаданий" value={settings.autoSave} onToggle={() => toggle('autoSave')} />
+                <TouchableOpacity disabled={dataBusy} onPress={() => { void handleExport(); }} style={{ paddingVertical: 16, opacity: dataBusy ? 0.4 : 1 }}><Text style={styles.settingTitle}>Сохранить резервную копию</Text><Text style={styles.settingSubtitle}>{Platform.OS === 'web' ? 'Профиль, настройки и история' : 'Профиль, настройки, история и фотографии ладони'}</Text></TouchableOpacity>
+                <TouchableOpacity disabled={dataBusy} onPress={() => { void handleImport(); }} style={{ paddingVertical: 16, opacity: dataBusy ? 0.4 : 1 }}><Text style={styles.settingTitle}>Восстановить из файла</Text><Text style={styles.settingSubtitle}>Выбрать ранее сохранённую JSON-копию</Text></TouchableOpacity>
               </View>
             </View>
 
@@ -313,8 +357,8 @@ export default function SettingsScreen() {
 
             <View style={styles.appInfo}>
               <Text style={styles.appName}>TARO - Мистические предсказания</Text>
-              <Text style={styles.appVersion}>Версия 1.0.0</Text>
-              <Text style={styles.appDescription}>Древняя мудрость звезд в современном приложении</Text>
+              <Text style={styles.appVersion}>Версия {Application.nativeApplicationVersion || '1.3.0'}</Text>
+              <Text style={styles.appDescription}>Работает без интернета. Профиль и история хранятся на устройстве.</Text>
             </View>
 
             <View style={styles.bottomSpacing} />

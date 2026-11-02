@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { dataStore as AsyncStorage } from './dataStore';
+import { getTarotCardImageById } from './tarotCardAssets';
 
 /**
  * Storage utility for persistent data storage
@@ -42,6 +43,7 @@ export const storage = {
       return jsonValue != null ? JSON.parse(jsonValue) : null;
     } catch (error) {
       console.error(`Error reading ${key} from storage:`, error);
+      if (key === STORAGE_KEYS.READINGS) throw error;
       return null;
     }
   },
@@ -84,26 +86,41 @@ export const storage = {
 };
 
 // Specialized storage for readings
+let historyWrites: Promise<unknown> = Promise.resolve();
+function queueHistoryWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const next = historyWrites.then(operation, operation);
+  historyWrites = next.catch(() => undefined);
+  return next;
+}
+async function writeReadings(readings: any[]): Promise<void> {
+  // Metro asset handles can change in the next APK. Store stable card IDs.
+  const portable = readings.map(reading => ({ ...reading, cards: (reading.cards ?? []).map(({ image, ...card }: any) => card) }));
+  await storage.setItem(STORAGE_KEYS.READINGS, portable);
+  await storage.setItem(STORAGE_KEYS.CACHE_TIMESTAMP, Date.now());
+}
 export const readingsStorage = {
   async saveReadings(readings: any[]): Promise<void> {
-    await storage.setItem(STORAGE_KEYS.READINGS, readings);
-    await storage.setItem(STORAGE_KEYS.CACHE_TIMESTAMP, Date.now());
+    await queueHistoryWrite(() => writeReadings(readings));
   },
 
   async getReadings(): Promise<any[]> {
-    return (await storage.getItem(STORAGE_KEYS.READINGS)) || [];
+    const readings = await storage.getItem<any[]>(STORAGE_KEYS.READINGS) || [];
+    return readings.map(reading => ({ ...reading, cards: (reading.cards ?? []).map((card: any) => ({ ...card, image: getTarotCardImageById(card.id) })) }));
   },
 
   async addReading(reading: any): Promise<void> {
-    const readings = await this.getReadings();
-    readings.unshift(reading); // Add to beginning
-    await this.saveReadings(readings);
+    await queueHistoryWrite(async () => {
+      const readings = await this.getReadings();
+      if (!readings.some(r => r.id === reading.id)) readings.unshift(reading);
+      await writeReadings(readings);
+    });
   },
 
   async deleteReading(readingId: string): Promise<void> {
-    const readings = await this.getReadings();
-    const filtered = readings.filter((r) => r.id !== readingId);
-    await this.saveReadings(filtered);
+    await queueHistoryWrite(async () => {
+      const readings = await this.getReadings();
+      await writeReadings(readings.filter((r) => r.id !== readingId));
+    });
   },
 
   async isCacheValid(maxAgeMs: number = 3600000): Promise<boolean> {

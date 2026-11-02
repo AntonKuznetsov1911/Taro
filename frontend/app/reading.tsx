@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import {
   Text,
   View,
@@ -54,6 +55,8 @@ export default function ReadingScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
   const [cardBackImage, setCardBackImage] = useState<string>('');
+  const [isSaved, setIsSaved] = useState(false);
+  const saving = useRef(false);
 
   const settings = useSettings();
 
@@ -101,9 +104,10 @@ export default function ReadingScreen() {
 
       // Единственное место, где гадание попадает в историю
       try {
-        await readingsStorage.addReading(data);
+        if (settings.autoSave) { await readingsStorage.addReading(data); setIsSaved(true); }
       } catch (storageError) {
         console.error('Error saving reading to history:', storageError);
+        showAlert('Не удалось сохранить расклад', 'Расклад готов. Освободите место на устройстве и нажмите «Сохранить расклад».');
       }
     } catch (error) {
       console.error('Error creating reading:', error);
@@ -133,6 +137,19 @@ export default function ReadingScreen() {
     setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
     await playFlip(soundOptions());
     setTimeout(() => { void playReveal(soundOptions()); }, 380);
+  };
+
+  const persistReading = async () => {
+    if (!reading || isSaved) return;
+    await readingsStorage.addReading(reading);
+    setIsSaved(true);
+  };
+  const handleSave = async () => {
+    if (saving.current) return;
+    saving.current = true;
+    try { await persistReading(); }
+    catch { showAlert('Не удалось сохранить', 'Проверьте свободное место на устройстве и попробуйте ещё раз.'); }
+    finally { saving.current = false; }
   };
 
   if (isLoading) {
@@ -192,16 +209,20 @@ export default function ReadingScreen() {
           </View>
 
           {cardsRevealed.every(revealed => revealed) && (
+            <Animated.View entering={FadeIn.duration(550).delay(500)}>
             <ReadingInterpretation
               interpretation={reading.interpretation}
               question={reading.question}
               category={reading.category}
               spreadType={reading.spread_type}
               readingId={reading.id}
+              onBeforeFavorite={persistReading}
             />
+            </Animated.View>
           )}
 
           <View style={styles.actionsContainer}>
+            {!isSaved && <TouchableOpacity style={styles.actionButton} onPress={() => { void handleSave(); }}><LinearGradient colors={['#9B59B6', '#8E44AD']} style={styles.actionButtonGradient}><Ionicons name="save-outline" size={20} color="#FFF" /><Text style={styles.actionButtonText}>Сохранить расклад</Text></LinearGradient></TouchableOpacity>}
             <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/') }>
               <LinearGradient colors={['#4ECDC4', '#26A0B4']} style={styles.actionButtonGradient}>
                 <Ionicons name="home" size={20} color="#FFF" />
