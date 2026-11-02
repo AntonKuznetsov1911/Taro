@@ -7,6 +7,7 @@ jest.mock('expo-file-system/legacy', () => {
     getInfoAsync: jest.fn(async (uri: string) => ({ exists: files.has(uri) })),
     readAsStringAsync: jest.fn(async (uri: string) => files.get(uri)),
     writeAsStringAsync: jest.fn(async (uri: string, value: string) => { files.set(uri, value); }),
+    moveAsync: jest.fn(async ({ from, to }: any) => { files.set(to, files.get(from)!); files.delete(from); }),
     deleteAsync: jest.fn(async (uri: string) => { files.delete(uri); }), makeDirectoryAsync: jest.fn(),
   };
 });
@@ -60,6 +61,20 @@ test('next launch recovers the snapshot after a process interruption', async () 
   values.set('@taro_readings', JSON.stringify([reading]));
   await recoverBackupRestore();
   expect(Object.fromEntries(values)).toEqual(before);
+  expect(files.has('file:///documents/restore-journal.json')).toBe(false);
+});
+test('a failed journal write leaves the original data readable on next launch', async () => {
+  values.set('@taro_notes', '{"old":"keep"}');
+  const write = FS.writeAsStringAsync as jest.Mock;
+  const original = write.getMockImplementation()!;
+  write.mockImplementation(async (uri: string, text: string) => {
+    if (uri.endsWith('restore-journal.json.pending')) { files.set(uri, '{'); throw new Error('storage full'); }
+    return original(uri, text);
+  });
+  try { await expect(restoreBackup(makeBackup({}))).rejects.toThrow('storage full'); }
+  finally { write.mockImplementation(original); }
+  await recoverBackupRestore();
+  expect(values.get('@taro_notes')).toBe('{"old":"keep"}');
   expect(files.has('file:///documents/restore-journal.json')).toBe(false);
 });
 test('embedded photos become private app files on the destination phone', async () => {

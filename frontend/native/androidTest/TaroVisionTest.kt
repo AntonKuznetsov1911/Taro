@@ -19,7 +19,18 @@ import java.util.concurrent.atomic.AtomicReference
 @RunWith(AndroidJUnit4::class)
 class TaroVisionTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
-    private val context = ReactApplicationContext(instrumentation.targetContext)
+    private val context: ReactApplicationContext by lazy {
+        val launch = instrumentation.targetContext.packageManager.getLaunchIntentForPackage(instrumentation.targetContext.packageName)!!
+        instrumentation.startActivitySync(launch)
+        val app = instrumentation.targetContext.applicationContext as com.antonkuznetsov.taro.MainApplication
+        var found: ReactApplicationContext? = null
+        for (attempt in 0 until 300) {
+            found = app.reactHost.currentReactContext as? ReactApplicationContext
+            if (found != null) break
+            Thread.sleep(100)
+        }
+        found ?: throw AssertionError("React Native did not start")
+    }
 
     private fun awaitResult(call: (Promise) -> Unit): Any? {
         val result = AtomicReference<Any?>()

@@ -1,8 +1,19 @@
-const { withAppBuildGradle, withMainApplication, withDangerousMod, withAndroidManifest, withGradleProperties } = require('expo/config-plugins');
+const { withAppBuildGradle, withMainApplication, withDangerousMod, withAndroidManifest, withGradleProperties, withAndroidStyles, XML } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
 module.exports = function withTaroAndroid(config) {
+  config = withAndroidStyles(config, async (mod) => {
+    for (const style of mod.modResults.resources.style ?? []) {
+      if (!style.item?.some(item => item.$?.name === 'android:windowSplashScreenBehavior')) continue;
+      const modern = JSON.parse(JSON.stringify(style));
+      style.item = style.item.filter(item => item.$?.name !== 'android:windowSplashScreenBehavior');
+      const dir = path.join(mod.modRequest.platformProjectRoot, 'app/src/main/res/values-v33');
+      fs.mkdirSync(dir, { recursive: true });
+      await XML.writeXMLAsync({ path: path.join(dir, 'styles.xml'), xml: { resources: { $: { 'xmlns:tools': 'http://schemas.android.com/tools' }, style: [modern] } } });
+    }
+    return mod;
+  });
   config = withGradleProperties(config, (mod) => {
     const properties = { reactNativeArchitectures: 'arm64-v8a,armeabi-v7a,x86_64', AsyncStorage_db_size_in_MB: '50' };
     for (const [key, value] of Object.entries(properties)) {
@@ -19,6 +30,13 @@ module.exports = function withTaroAndroid(config) {
     implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.24.3'
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+`);
+    }
+    if (!mod.modResults.contents.includes('androidTestImplementation')) {
+      mod.modResults.contents = mod.modResults.contents.replace('dependencies {', `dependencies {
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'junit:junit:4.13.2'
 `);
     }
     if (!mod.modResults.contents.includes('testInstrumentationRunner')) {

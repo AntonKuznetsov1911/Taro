@@ -62,7 +62,9 @@ export async function restoreBackup(input: TaroBackup): Promise<void> {
   const b = parseBackup(JSON.stringify(input));
   const before = await snapshotData();
   await FS.writeAsStringAsync(`${FS.documentDirectory}before-restore.json`, JSON.stringify(before));
-  await FS.writeAsStringAsync(JOURNAL, JSON.stringify(before));
+  // A partial journal must never prevent startup before any data was changed.
+  await FS.writeAsStringAsync(`${JOURNAL}.pending`, JSON.stringify(before));
+  await FS.moveAsync({ from: `${JOURNAL}.pending`, to: JOURNAL });
   try {
     const uris: Record<string, string> = {};
     await FS.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });

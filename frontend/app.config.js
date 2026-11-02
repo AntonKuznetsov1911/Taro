@@ -45,8 +45,7 @@ export default {
       'expo-router',
       ['expo-camera', { cameraPermission: 'Камера нужна, чтобы сфотографировать ладонь. Снимки обрабатываются на устройстве.', recordAudioAndroid: false, barcodeScannerEnabled: false }],
       ['expo-notifications', { color: '#BB6BD9' }],
-      ['expo-build-properties', { android: { minSdkVersion: 24, compileSdkVersion: 36, targetSdkVersion: 36, buildToolsVersion: '36.0.0', enableMinifyInReleaseBuilds: true, enableShrinkResourcesInReleaseBuilds: true, extraProguardRules: '-keep class com.google.mediapipe.** { *; }\n-keep class ai.onnxruntime.** { *; }\n-keep class com.antonkuznetsov.taro.vision.** { *; }\n# Optional MediaPipe profiling/template APIs; HandLandmarker does not use them.\n-dontwarn com.google.mediapipe.proto.CalculatorProfileProto$CalculatorProfile\n-dontwarn com.google.mediapipe.proto.GraphTemplateProto$CalculatorGraphTemplate' } }],
-      './plugins/with-taro-android',
+      ['expo-build-properties', { android: { minSdkVersion: 24, compileSdkVersion: 36, targetSdkVersion: 36, buildToolsVersion: '36.0.0', enableMinifyInReleaseBuilds: true, enableShrinkResourcesInReleaseBuilds: true, extraProguardRules: '-keep class com.google.mediapipe.** { *; }\n-keep class ai.onnxruntime.** { *; }\n-keep class com.antonkuznetsov.taro.vision.** { *; }\n-keep class com.antonkuznetsov.taro.MainApplication { *; }\n-keep interface com.facebook.react.ReactHost { *; }\n# Optional MediaPipe profiling/template APIs; HandLandmarker does not use them.\n-dontwarn com.google.mediapipe.proto.CalculatorProfileProto$CalculatorProfile\n-dontwarn com.google.mediapipe.proto.GraphTemplateProto$CalculatorGraphTemplate' } }],
       [
         'expo-splash-screen',
         {
@@ -56,6 +55,7 @@ export default {
           backgroundColor: '#000',
         },
       ],
+      './plugins/with-taro-android',
     ],
     experiments: {
       typedRoutes: true,
