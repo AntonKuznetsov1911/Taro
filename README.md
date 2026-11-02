@@ -31,7 +31,7 @@ CMake 3.22.1. На Windows используйте короткие физиче�
 cd frontend
 npx expo prebuild --platform android --no-install
 cd android
-./gradlew assembleRelease bundleRelease lintRelease
+./gradlew :app:assembleRelease :app:bundleRelease :app:lintRelease
 ```
 
 Перед сборкой положите **локальный** файл `frontend/signing.properties`:
@@ -50,7 +50,7 @@ GitHub CI проверяет сборку с одноразовым тестов
 
 Два теста нативного распознавания выполняются против release на подключённом
 эмуляторе: сначала `python scripts/prepare-native-tests.py`, повторите prebuild,
-затем `./gradlew connectedReleaseAndroidTest`. Тестовая фотография Google MediaPipe
+затем `./gradlew :app:connectedReleaseAndroidTest`. Тестовая фотография Google MediaPipe
 не входит в приложение и загружается только для проверки.
 
 Данные хранятся локально. Резервная копия в настройках переносит профиль,

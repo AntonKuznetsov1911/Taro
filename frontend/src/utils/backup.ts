@@ -1,12 +1,13 @@
 import { parseBackup, MAX_BACKUP_BYTES, type TaroBackup } from './backupFormat';
 import { snapshotData, replaceData, makeBackup } from './backupCore';
 
-export async function exportBackup(): Promise<void> {
+export async function exportBackup(): Promise<boolean> {
   const b = makeBackup(await snapshotData());
   if (b.data['@taro_readings']) b.data['@taro_readings'] = JSON.stringify(JSON.parse(b.data['@taro_readings']).map(({ image_uri, ...reading }: any) => reading));
   const uri = URL.createObjectURL(new Blob([JSON.stringify(parseBackup(JSON.stringify(b)))], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = uri; a.download = `Taro-${new Date().toISOString().slice(0, 10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(uri), 1000);
+  return true;
 }
 export async function pickBackup(): Promise<TaroBackup | null> {
   return new Promise((resolve, reject) => {

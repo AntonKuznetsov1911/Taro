@@ -1,6 +1,7 @@
 import * as FS from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+import { Platform } from 'react-native';
 import { PHOTO_DIR } from './palmPhoto.native';
 import { parseBackup, BACKUP_KEYS, MAX_BACKUP_BYTES, type TaroBackup } from './backupFormat';
 import { snapshotData, replaceData, makeBackup } from './backupCore';
@@ -24,12 +25,20 @@ async function portableBackup(): Promise<TaroBackup> {
   return parseBackup(JSON.stringify(b));
 }
 
-export async function exportBackup(): Promise<void> {
+export async function exportBackup(): Promise<boolean> {
   const backup = await portableBackup();
+  if (Platform.OS === 'android') {
+    const access = await FS.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (!access.granted) return false;
+    const uri = await FS.StorageAccessFramework.createFileAsync(access.directoryUri, `Taro-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+    await FS.writeAsStringAsync(uri, JSON.stringify(backup));
+    return true;
+  }
   const uri = `${FS.cacheDirectory}Taro-${new Date().toISOString().slice(0, 10)}.json`;
   await FS.writeAsStringAsync(uri, JSON.stringify(backup));
   if (!(await Sharing.isAvailableAsync())) throw new Error('Не удалось открыть меню сохранения');
   await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Сохранить копию Таро', UTI: 'public.json' });
+  return true;
 }
 
 export async function pickBackup(): Promise<TaroBackup | null> {

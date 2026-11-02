@@ -3,6 +3,7 @@ jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('expo-file-system/legacy', () => {
   const files = new Map<string, string>();
   return { documentDirectory: 'file:///documents/', cacheDirectory: 'file:///cache/', EncodingType: { Base64: 'base64' }, files,
+    StorageAccessFramework: { requestDirectoryPermissionsAsync: jest.fn(), createFileAsync: jest.fn() },
     getInfoAsync: jest.fn(async (uri: string) => ({ exists: files.has(uri) })),
     readAsStringAsync: jest.fn(async (uri: string) => files.get(uri)),
     writeAsStringAsync: jest.fn(async (uri: string, value: string) => { files.set(uri, value); }),
@@ -15,13 +16,28 @@ jest.mock('../src/utils/dataStore', () => {
 });
 import * as FS from 'expo-file-system/legacy';
 import { dataStore } from '../src/utils/dataStore';
-import { restoreBackup, recoverBackupRestore } from '../src/utils/backup.native';
+import { restoreBackup, recoverBackupRestore, exportBackup } from '../src/utils/backup.native';
+import { Platform } from 'react-native';
 import { makeBackup } from '../src/utils/backupCore';
 const files: Map<string, string> = (FS as any).files;
 const values: Map<string, string> = (dataStore as any).values;
 const reading = { id: 'new', question: 'Вопрос', category: 'general', spread_type: 'palmistry', cards: [], interpretation: 'Текст', created_at: '2026-11-02T12:00:00Z' };
 
 beforeEach(() => { files.clear(); values.clear(); jest.clearAllMocks(); });
+test('Android saves a JSON file in the directory selected by the user', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  (FS.StorageAccessFramework.requestDirectoryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true, directoryUri: 'content://folder' });
+  (FS.StorageAccessFramework.createFileAsync as jest.Mock).mockResolvedValue('content://folder/backup.json');
+  values.set('@taro_readings', JSON.stringify([reading]));
+  expect(await exportBackup()).toBe(true);
+  expect(JSON.parse(files.get('content://folder/backup.json')!).format).toBe('taro-backup');
+});
+test('canceling the Android folder picker does not create a file', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  (FS.StorageAccessFramework.requestDirectoryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false });
+  expect(await exportBackup()).toBe(false);
+  expect(FS.StorageAccessFramework.createFileAsync).not.toHaveBeenCalled();
+});
 test('successful restore replaces the snapshot and removes the journal', async () => {
   values.set('@taro_notes', '{"old":"note"}');
   await restoreBackup(makeBackup({ '@taro_readings': JSON.stringify([reading]) }));

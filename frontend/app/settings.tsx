@@ -154,7 +154,7 @@ export default function SettingsScreen() {
   const handleExport = async () => {
     if (dataBusy) return;
     setDataBusy(true);
-    try { await exportBackup(); }
+    try { if (await exportBackup()) showAlert('Копия сохранена', 'Файл резервной копии сохранён. Его можно перенести на другое устройство.'); }
     catch (error) { showAlert('Не удалось сохранить копию', error instanceof Error ? error.message : 'Попробуйте ещё раз.'); }
     finally { setDataBusy(false); }
   };

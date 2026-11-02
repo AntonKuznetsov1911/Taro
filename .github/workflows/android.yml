@@ -72,7 +72,7 @@ jobs:
           Path('signing.properties').write_text(f'storeFile={key}\nstorePassword=ci-validation-only\nkeyAlias=ci-test\nkeyPassword=ci-validation-only\n')
           PY
       - name: Compile and validate release
-        run: ./gradlew assembleRelease bundleRelease lintRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --max-workers=2
+        run: ./gradlew :app:assembleRelease :app:bundleRelease :app:lintRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --max-workers=2
         working-directory: frontend/android
         env:
           NODE_ENV: production
