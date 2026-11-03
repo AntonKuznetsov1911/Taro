@@ -82,7 +82,8 @@ export default function JournalScreen() {
   };
 
   return (
-    <TaroPage title="Дневник" subtitle="Карты дня, заметки и сохранённые расклады">
+    <TaroPage title="Дневник" subtitle="Карты дня, заметки и сохранённые расклады"
+      onBack={() => router.canGoBack() ? router.back() : router.replace('/')}>
       <Pressable accessibilityRole="button" accessibilityLabel="История раскладов" style={styles.history} onPress={() => router.navigate('/history')}>
         <Ionicons name="time-outline" size={21} color={taro.gold} />
         <Text style={styles.historyLabel}>История раскладов</Text>

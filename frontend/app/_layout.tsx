@@ -11,7 +11,6 @@ import { InstallPWAPrompt } from '../components/InstallPWAPrompt';
 import { recoverBackupRestore } from '../src/utils/backup';
 import { onAppSessionRestart } from '../src/utils/appSession';
 import { configureSystemBars } from '../src/utils/systemBars';
-import { MainTabBar } from '../components/MainTabBar';
 
 // Баннер установки прижат к низу экрана и перехватывает нажатия под собой:
 // на онбординге под ним оказывалась кнопка «Начать», на других экранах —
@@ -31,13 +30,8 @@ function AppSession() {
         <SettingsProvider>
           <UserProfileProvider>
             <UpdateNotification />
-            <View style={{ flex: 1 }}>
-              <View style={{ flex: 1 }}>
-                <Stack screenOptions={{ headerShown: false }} />
-                <InstallPrompt />
-              </View>
-              <MainTabBar />
-            </View>
+            <Stack screenOptions={{ headerShown: false }} />
+            <InstallPrompt />
           </UserProfileProvider>
         </SettingsProvider>
       </AppProvider>;

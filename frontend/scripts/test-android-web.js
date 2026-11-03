@@ -23,12 +23,11 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
   const visit = async (page, route = '/') => { await page.goto(BASE + route); await page.waitForTimeout(350); };
   async function drawThree(page, question) {
     await visit(page);
-    await page.getByRole('tab', { name: 'Расклады' }).click();
     await page.getByText('Любовь', { exact: true }).click();
     await page.getByText('Три карты', { exact: true }).click();
     await page.getByText('Начать гадание', { exact: true }).filter({ visible: true }).click();
     await page.locator('textarea').fill(question);
-    await page.getByText('Начать гадание', { exact: true }).filter({ visible: true }).click();
+    await page.getByRole('button', { name: /Начать гадание/ }).click();
     await page.getByRole('button', { name: 'Выбрать карту 1', exact: true }).waitFor();
   }
   async function openAll(page) {
@@ -36,6 +35,18 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
     await page.getByText('Короткий вывод', { exact: true }).waitFor();
   }
   try {
+    await check('the original home menu opens settings and the daily journal', async page => {
+      await visit(page);
+      await page.getByText('TARO', { exact: true }).waitFor();
+      await page.getByText('Выберите область гадания', { exact: true }).waitFor();
+      await page.getByText('Мистические практики', { exact: true }).waitFor();
+      assert.equal(await page.getByRole('tablist').count(), 0);
+      await page.getByRole('button', { name: 'Дневник карты дня', exact: true }).click();
+      await page.getByRole('heading', { name: 'Дневник', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Назад', exact: true }).click();
+      await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+      await page.getByTestId('effects-volume').waitFor();
+    });
     await check('onboarding can be skipped and does not loop after restart', async page => {
       await visit(page); await page.getByText('Начать', { exact: true }).click();
       await page.getByText('Пропустить', { exact: true }).click();
@@ -214,7 +225,7 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
       await (await choosing).setFiles(file);
       await page.getByRole('button', { name: /^Карта дня:/ }).waitFor();
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('@taro_readings')).length), 1);
-      await page.getByRole('tab', { name: 'Дневник' }).click();
+      await page.getByRole('button', { name: 'Дневник карты дня', exact: true }).click();
       await page.getByRole('button', { name: 'История раскладов', exact: true }).click();
       await page.getByTestId('reading-history').getByText('«Запись для резервной копии»', { exact: true }).waitFor();
     });

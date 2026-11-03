@@ -360,7 +360,7 @@ export default function SettingsScreen() {
 
             <View style={styles.appInfo}>
               <Text style={styles.appName}>TARO - Мистические предсказания</Text>
-              <Text style={styles.appVersion}>Версия {Application.nativeApplicationVersion || '1.4.0'}</Text>
+              <Text style={styles.appVersion}>Версия {Application.nativeApplicationVersion || '1.4.1'}</Text>
               <Text style={styles.appDescription}>Работает без интернета. Профиль и история хранятся на устройстве.</Text>
             </View>
 

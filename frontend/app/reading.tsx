@@ -131,7 +131,7 @@ function ReadingSession({ spreadId, category, question }: { spreadId: string; ca
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={() => router.canGoBack() ? router.back() : router.replace('/spreads')} style={styles.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.back}>
           <Ionicons name="chevron-back" size={25} color={taro.gold} />
         </Pressable>
         <View style={styles.heading}>
