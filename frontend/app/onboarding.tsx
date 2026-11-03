@@ -5,9 +5,11 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Pressable,
   SafeAreaView,
   ScrollView,
   Platform,
+  Keyboard,
   KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -111,13 +113,22 @@ export default function OnboardingScreen() {
     setStep('name');
   }, [profileLoading, profile]);
 
+  const advanceFromName = (value: string) => {
+    const trimmedName = value.trim();
+    if (!trimmedName) return;
+
+    setName(trimmedName);
+    Keyboard.dismiss();
+    setStep('gender');
+  };
+
   const handleNext = async () => {
     switch (step) {
       case 'welcome':
         setStep('name');
         break;
       case 'name':
-        if (name.trim()) setStep('gender');
+        advanceFromName(name);
         break;
       case 'gender':
         if (gender) setStep('birthdate');
@@ -250,6 +261,9 @@ export default function OnboardingScreen() {
               placeholder="Введите ваше имя"
               placeholderTextColor="#666"
               autoFocus
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={({ nativeEvent }) => advanceFromName(nativeEvent.text)}
             />
           </View>
         );
@@ -508,11 +522,12 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={[
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
                 styles.nextButton,
                 isWelcome && styles.nextButtonWelcome,
-                !canProceed() && styles.nextButtonDisabled,
+                !canProceed() ? styles.nextButtonDisabled : pressed && styles.nextButtonPressed,
               ]}
               onPress={handleNext}
               disabled={!canProceed()}
@@ -524,7 +539,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.nextButtonText}>{getButtonText()}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" />
               </LinearGradient>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </KeyboardAvoidingView>
       </LinearGradient>
@@ -552,7 +567,7 @@ const styles = StyleSheet.create({
   },
   orbWrap: {
     width: '100%',
-    maxWidth: 268,
+    maxWidth: Platform.OS === 'web' ? 268 : 204,
     aspectRatio: 300 / 372,
     marginBottom: 6,
   },
@@ -560,12 +575,12 @@ const styles = StyleSheet.create({
   // строки — «Добро пожаловать» / «в Таро» (текст при этом не меняется).
   welcomeTitleWrap: {
     marginBottom: 14,
-    maxWidth: 300,
+    maxWidth: Platform.OS === 'web' ? 300 : 340,
     ...titleGlow,
   },
   welcomeTitle: {
-    fontSize: 32,
-    lineHeight: 42,
+    fontSize: Platform.OS === 'web' ? 32 : 28,
+    lineHeight: Platform.OS === 'web' ? 42 : 36,
     fontWeight: '600',
     fontStyle: 'italic',
     letterSpacing: 0.5,
@@ -720,7 +735,7 @@ const styles = StyleSheet.create({
   bottomContainer: { padding: 20, gap: 10 },
   skipButton: { alignItems: 'center', padding: 10 },
   skipText: { fontSize: 14, color: '#888' },
-  nextButton: { borderRadius: 25, overflow: 'hidden' },
+  nextButton: { borderRadius: 25, backgroundColor: '#8E44AD' },
   nextButtonWelcome: {
     borderWidth: 1,
     borderColor: 'rgba(231,194,113,0.55)',
@@ -728,8 +743,10 @@ const styles = StyleSheet.create({
       ? ({ boxShadow: '0 6px 22px rgba(120,50,190,0.45), 0 0 16px rgba(231,194,113,0.18)' } as any)
       : null),
   },
-  nextButtonDisabled: { opacity: 0.5 },
+  nextButtonDisabled: { backgroundColor: '#333', opacity: 0.5 },
+  nextButtonPressed: { opacity: 0.8 },
   nextButtonGradient: {
+    borderRadius: 25,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

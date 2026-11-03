@@ -7,8 +7,11 @@ import {
   ActivityIndicator,
   Image,
   ImageSourcePropType,
+  AppState,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CardBack } from './CardBack';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -19,9 +22,12 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { getOfflineDailyCard, generateTarotCardSVG, getOfflineCardBack, DailyAstrology } from '../src/utils/offlineApi';
-import { TarotCard } from '../src/data/tarotCards';
+import { getCardById, type TarotCard } from '../src/data/tarotCards';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playFlip, playReveal } from '../src/utils/sound';
+import { dailyJournal } from '../src/utils/dailyJournal';
+import { dateFromKey, localDateKey } from '../src/utils/dailyJournalFormat';
+import { showAlert } from '../src/utils/alert';
 
 interface DailyCardData {
   card: TarotCard;
@@ -40,6 +46,12 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   const [revealed, setRevealed] = useState(false);
   const [cardBackImage, setCardBackImage] = useState<string>('');
   const [cardFrontImage, setCardFrontImage] = useState<ImageSourcePropType | undefined>(undefined);
+  const [dateKey, setDateKey] = useState(localDateKey);
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const opening = useRef(false);
+  const currentDate = useRef(dateKey);
+  currentDate.current = dateKey;
   const settings = useSettings();
 
   const scale = useSharedValue(0);
@@ -49,8 +61,12 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
   const revealChimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadDailyCard();
+    const refresh = () => setDateKey(localDateKey());
+    const timer = setInterval(refresh, 15000);
+    const appState = AppState.addEventListener('change', state => { if (state === 'active') refresh(); });
     return () => {
+      clearInterval(timer);
+      appState.remove();
       if (revealChimeTimer.current) clearTimeout(revealChimeTimer.current);
     };
   }, []);
@@ -60,25 +76,40 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
     containerOpacity.value = withTiming(1, { duration: 500 });
   }, []);
 
-  const loadDailyCard = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError(false);
+    setDailyCard(null);
+    void (async () => {
+      try {
+        const [entries, back] = await Promise.all([dailyJournal.list(), getOfflineCardBack()]);
+        const entry = entries.find(item => item.date === dateKey);
+        const savedCard = entry && getCardById(entry.cardId);
+        const data = await getOfflineDailyCard(dateFromKey(dateKey), entry && savedCard ? { card: savedCard, isReversed: entry.reversed } : undefined);
+        if (cancelled) return;
+        setCardBackImage(back);
+        setDailyCard(data);
+        setCardFrontImage(generateTarotCardSVG(data.card, data.is_reversed));
+        setRevealed(!!entry);
+        flipProgress.value = entry ? 1 : 0;
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dateKey, attempt, flipProgress]);
+
+  const handleReveal = async () => {
+    const today = localDateKey();
+    if (today !== dateKey) { setDateKey(today); return; }
+    if (!dailyCard || revealed || opening.current) return;
+    opening.current = true;
     try {
-      const cardBack = await getOfflineCardBack();
-      setCardBackImage(cardBack);
-
-      const data = await getOfflineDailyCard();
-      setDailyCard(data);
-
-      const cardImage = generateTarotCardSVG(data.card, data.is_reversed);
-      setCardFrontImage(cardImage);
-    } catch (error) {
-      console.error('Ошибка загрузки карты дня:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReveal = () => {
-    if (!revealed) {
+      await dailyJournal.open(dateKey, dailyCard.card.id, dailyCard.is_reversed);
+      if (currentDate.current !== dateKey) return;
       setRevealed(true);
       flipProgress.value = withTiming(1, { duration: 600 });
 
@@ -92,6 +123,10 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
       revealChimeTimer.current = setTimeout(() => {
         void playReveal(soundOptions);
       }, 420);
+    } catch {
+      showAlert('Карта дня', 'Не удалось сохранить карту. Попробуйте ещё раз.');
+    } finally {
+      opening.current = false;
     }
   };
 
@@ -131,9 +166,11 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
     );
   }
 
-  if (!dailyCard) {
-    return null;
-  }
+  if (!dailyCard) return loadError ? (
+    <Pressable accessibilityRole="button" onPress={() => setAttempt(value => value + 1)} style={styles.loadingContainer}>
+      <Text style={styles.loadingText}>Карта дня недоступна. Повторить</Text>
+    </Pressable>
+  ) : null;
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
@@ -151,22 +188,21 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
               {dailyCard.astrology?.moon.phaseNameRu || ''}
               {dailyCard.astrology?.moon.lunarDay ? ` · ${dailyCard.astrology.moon.lunarDay}-е лунные сутки` : ''}
             </Text>
-            <Text style={styles.date}>{new Date().toLocaleDateString('ru-RU', {
+            <Text style={styles.date}>{dateFromKey(dateKey).toLocaleDateString('ru-RU', {
               day: 'numeric',
               month: 'long',
             })}</Text>
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleReveal} activeOpacity={0.9}>
+        <TouchableOpacity onPress={handleReveal} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel={revealed ? `Карта дня: ${dailyCard.card.name}` : 'Открыть карту дня'}>
           <View style={styles.cardContainer}>
             {/* Рубашка карты */}
             <Animated.View style={[styles.cardFace, styles.cardBack, backCardStyle]}>
               {cardBackImage ? (
-                <Image
-                  source={{ uri: cardBackImage }}
+                <CardBack
+                  uri={cardBackImage}
                   style={styles.cardBackImage}
-                  resizeMode="cover"
                 />
               ) : (
                 <LinearGradient
@@ -224,6 +260,12 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
             </Animated.View>
           </View>
         </TouchableOpacity>
+        {revealed && onViewDetails && (
+          <Pressable accessibilityRole="button" accessibilityLabel="Добавить заметку о дне" onPress={onViewDetails} style={styles.journalLink}>
+            <Text style={styles.journalLabel}>Добавить заметку о дне</Text>
+            <Ionicons name="chevron-forward" size={16} color="#EAC98B" />
+          </Pressable>
+        )}
       </LinearGradient>
     </Animated.View>
   );
@@ -231,8 +273,6 @@ export const DailyCardWidget: React.FC<DailyCardWidgetProps> = ({ onViewDetails 
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 20,
-    marginVertical: 12,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -242,6 +282,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(155, 89, 182, 0.15)',
     borderRadius: 14,
   },
+  journalLink: { minHeight: 45, paddingTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  journalLabel: { color: '#EAC98B', fontWeight: '600', fontSize: 14 },
   loadingContainer: {
     padding: 20,
     alignItems: 'center',

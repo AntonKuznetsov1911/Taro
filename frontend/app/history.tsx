@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Text,
   View,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { EnhancedHistoryCard } from '../components/EnhancedHistoryCard';
 import { HistoryFilters } from '../components/HistoryFilters';
 import { readingsStorage, favoritesStorage, notesStorage, tagsStorage } from '../src/utils/storage';
@@ -72,38 +72,21 @@ export default function HistoryScreen() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'category'>('date');
 
-  useEffect(() => {
-    fetchReadings();
-    loadEnhancedData();
-  }, []);
-
-  const fetchReadings = async () => {
-    try {
-      // Load readings from local storage
-      const storedReadings = await readingsStorage.getReadings();
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void Promise.all([
+      readingsStorage.getReadings(), favoritesStorage.getFavorites(), notesStorage.getNotes(), tagsStorage.getTags(),
+    ]).then(([storedReadings, storedFavorites, storedNotes, storedTags]) => {
+      if (!active) return;
       setReadings(storedReadings);
-    } catch (error) {
-      console.error('Error fetching readings:', error);
-      // Don't show error alert for empty history
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadEnhancedData = async () => {
-    try {
-      const [storedFavorites, storedNotes, storedTags] = await Promise.all([
-        favoritesStorage.getFavorites(),
-        notesStorage.getNotes(),
-        tagsStorage.getTags()
-      ]);
       setFavorites(storedFavorites);
       setNotes(storedNotes);
       setTags(storedTags);
-    } catch (error) {
-      console.error('Error loading enhanced data:', error);
-    }
-  };
+    }).catch(error => console.error('Error loading history:', error)).finally(() => {
+      if (active) setIsLoading(false);
+    });
+    return () => { active = false; };
+  }, []));
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -202,7 +185,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="reading-history">
       <LinearGradient
         colors={['#0a0a0a', '#1a1a2e', '#16213e']}
         style={styles.background}

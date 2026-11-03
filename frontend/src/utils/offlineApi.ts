@@ -30,20 +30,22 @@ const REVERSAL_PROBABILITY = 0.5;
 /**
  * Генерация офлайн гадания на картах Таро
  */
-export async function generateOfflineTarotReading(
+export function shuffleReadingCards(count: number): DrawnCard[] {
+  return getRandomCards(count).map(card => ({ ...card, is_reversed: Math.random() < REVERSAL_PROBABILITY }));
+}
+
+export function generateOfflineTarotReading(
+  cards: DrawnCard[],
   question?: string,
   spreadId?: string,
   categoryId?: string,
   context?: PersonalizationContext
-): Promise<OfflineReadingResult> {
-  await new Promise(resolve => setTimeout(resolve, 500));
-
+): OfflineReadingResult {
   const spread = resolveSpread(spreadId);
   const category = resolveCategory(categoryId);
-  const cards: DrawnCard[] = getRandomCards(spread.cards).map(card => ({
-    ...card,
-    is_reversed: Math.random() < REVERSAL_PROBABILITY,
-  }));
+  if (cards.length !== spread.cards || new Set(cards.map(card => card.id)).size !== cards.length) {
+    throw new Error('Расклад содержит неправильное количество карт или повтор');
+  }
   const interpretation = generateDetailedInterpretation(cards, spread, category, question, context?.profile);
 
   return {
@@ -58,6 +60,30 @@ export async function generateOfflineTarotReading(
 /** Первая фраза значения — для коротких ссылок на карту в выводе */
 function firstClause(text: string): string {
   return text.split(/[.,;]/)[0].trim().toLowerCase();
+}
+
+export function readingHighlights(cards: DrawnCard[], spreadId: string) {
+  const positions = resolveSpread(spreadId).positions;
+  const topic = (card: DrawnCard) => firstClause(card.is_reversed ? card.reversed_meaning : card.upright_meaning);
+  const first = cards[0];
+  const last = cards[cards.length - 1];
+  const firstSentence = `Карта «${first.name}» в позиции «${positions[0].title}» выделяет тему «${topic(first)}».`;
+  if (cards.length === 1) {
+    return { summary: `${firstSentence} Подумайте, как эта тема связана с вашим вопросом и какой шаг вам сейчас доступен.`, connection: '' };
+  }
+  const lastPosition = positions[cards.length - 1]?.title ?? 'Итог';
+  const middle = cards[1];
+  const sharedSuit = first.type !== 'major' && first.suit === middle.suit ? SUIT_THEMES[first.suit] : undefined;
+  const bridge = sharedSuit
+    ? `«${first.name}» и «${middle.name}» относятся к одной масти. Их общая линия — ${sharedSuit.theme}.`
+    : `От темы «${topic(first)}» у карты «${first.name}» расклад переходит к теме «${topic(middle)}» у карты «${middle.name}».`;
+  const direction = spreadId === 'celtic_cross'
+    ? `Вторая карта показывает препятствие на пути первой, а «${last.name}» помогает взглянуть на возможный итог этой связки.`
+    : `«${middle.name}» описывает текущую точку, а «${last.name}» переносит внимание на «${topic(last)}» как возможное продолжение.`;
+  return {
+    summary: `${firstSentence} Карта «${last.name}» в позиции «${lastPosition}» добавляет ориентир «${topic(last)}».`,
+    connection: `${bridge} ${direction}`,
+  };
 }
 
 /**
@@ -185,7 +211,7 @@ export function getDailyCard(date: Date = new Date()): { card: TarotCard; isReve
 /**
  * Получить карту дня с астрологическим контекстом
  */
-export async function getOfflineDailyCard(): Promise<{
+export async function getOfflineDailyCard(today = new Date(), saved?: { card: TarotCard; isReversed: boolean }): Promise<{
   card: TarotCard;
   message: string;
   is_reversed: boolean;
@@ -193,10 +219,9 @@ export async function getOfflineDailyCard(): Promise<{
 }> {
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  const today = new Date();
   const astrology = getDailyAstrology(today);
 
-  const { card, isReversed } = getDailyCard(today);
+  const { card, isReversed } = saved ?? getDailyCard(today);
 
   const moonContext = astrology.moon.isWaxing
     ? 'Растущая луна усиливает энергию карты'

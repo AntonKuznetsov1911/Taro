@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,6 +69,8 @@ function parseFeatures(raw: unknown): Partial<PalmFeatures> {
 }
 
 export default function CameraScreen() {
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const router = useRouter();
   const params = useLocalSearchParams();
   // С экрана результата можно вернуться поправить распознанное
@@ -124,13 +127,16 @@ export default function CameraScreen() {
       setCaptured(photo);
       setNotice('');
       setPhase('analyzing');
-      const result = await detectPalm(photo.uri);
+      const result = await detectPalm(photo.uri).catch(() => ({ ok: false, error: 'image_failed' } as const));
+      if (!mounted.current) return;
 
       if (!result.ok) {
         if (result.error === 'unsupported' || result.error === 'load_failed') {
           setNotice(
             result.error === 'load_failed'
-              ? 'Не удалось загрузить распознавание руки (нужен интернет при первом запуске). Опишите ладонь сами — это займёт минуту.'
+              ? Platform.OS === 'web'
+                ? 'Не удалось загрузить распознавание руки. Подключитесь к интернету или опишите ладонь сами.'
+                : 'Не удалось запустить распознавание. Попробуйте ещё раз или опишите ладонь сами.'
               : 'На этом устройстве автоматическое распознавание недоступно. Опишите ладонь сами — это займёт минуту.'
           );
           setPhase('manual');

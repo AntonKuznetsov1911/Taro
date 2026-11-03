@@ -19,7 +19,7 @@ import { DailyCardWidget } from '../components/DailyCardWidget';
 import { CosmicBackground } from '../components/CosmicBackground';
 import { useUserProfile } from '../src/contexts/UserProfileContext';
 import { useSettings } from '../src/contexts/SettingsContext';
-import { playSelect, playShuffle } from '../src/utils/sound';
+import { playSelect } from '../src/utils/sound';
 import { wasOnboardingSeen } from '../src/utils/onboarding';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -71,6 +71,7 @@ const MYSTIC_FEATURES: MysticFeature[] = [
   { id: 'numerology', name: 'Нумерология', icon: '🔢', description: 'Число судьбы', route: '/numerology', color: '#2ECC71' },
   { id: 'deck', name: 'Каталог колоды', icon: '🃏', description: 'Все 78 карт', route: '/deck', color: '#9B59B6' },
   { id: 'history', name: 'История', icon: '📜', description: 'Сохранённые гадания', route: '/history', color: '#E67E22' },
+  { id: 'journal', name: 'Дневник карты дня', icon: '📅', description: 'Календарь и заметки', route: '/journal', color: '#9B59B6' },
   { id: 'settings', name: 'Настройки', icon: '⚙️', description: 'Звук и уведомления', route: '/settings', color: '#7F8C8D' },
 ];
 
@@ -206,6 +207,8 @@ const FeatureButton = ({ feature, index }: { feature: MysticFeature; index: numb
     >
       <TouchableOpacity
         style={styles.featureButton}
+        accessibilityRole="button"
+        accessibilityLabel={feature.name}
         onPress={() => router.push(feature.route as any)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -297,8 +300,6 @@ export default function CosmicIndex() {
 
   const startReading = () => {
     if (selectedCategory && selectedSpread) {
-      // Перед раскладом слышно, как тасуется колода
-      void playShuffle(soundOptions());
       router.push({
         pathname: '/question',
         params: { category: selectedCategory, spread: selectedSpread }
@@ -358,7 +359,7 @@ export default function CosmicIndex() {
 
           {/* Daily Card Widget */}
           <View style={styles.widgetContainer}>
-            <DailyCardWidget />
+            <DailyCardWidget onViewDetails={() => router.push('/journal')} />
           </View>
 
           {/* Category Selection */}

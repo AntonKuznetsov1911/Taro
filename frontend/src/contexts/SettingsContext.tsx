@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { updateDailyReminder } from '../utils/reminders';
 
 const SETTINGS_KEY = '@taro_settings';
 
@@ -14,7 +16,7 @@ export type Settings = {
 
 const defaultSettings: Settings = {
   language: 'russian',
-  notifications: true,
+  notifications: false,
   soundEnabled: true,
   autoSave: true,
   vibration: true,
@@ -23,7 +25,7 @@ const defaultSettings: Settings = {
 
 export type SettingsContextType = Settings & {
   setLanguage: (val: Settings['language']) => void;
-  setNotifications: (val: boolean) => void;
+  setNotifications: (val: boolean) => Promise<boolean>;
   setSoundEnabled: (val: boolean) => void;
   setAutoSave: (val: boolean) => void;
   setVibration: (val: boolean) => void;
@@ -45,7 +47,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled && stored) {
           const parsed = JSON.parse(stored);
           // Мержим с дефолтами, чтобы новые поля не оказались undefined
-          setState((s) => ({ ...s, ...parsed }));
+          const notifications = Platform.OS !== 'web' && parsed.notifications === true
+            ? await updateDailyReminder(true).catch(() => false) : false;
+          if (!cancelled) setState((s) => ({ ...s, ...parsed, notifications }));
         }
       } catch {
         // Остаёмся на значениях по умолчанию
@@ -70,7 +74,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...state,
       setLanguage: (language) => setState((s) => ({ ...s, language })),
-      setNotifications: (notifications) => setState((s) => ({ ...s, notifications })),
+      setNotifications: async (enabled) => {
+        const notifications = await updateDailyReminder(enabled, true);
+        setState((s) => ({ ...s, notifications }));
+        return notifications;
+      },
       setSoundEnabled: (soundEnabled) => setState((s) => ({ ...s, soundEnabled })),
       setAutoSave: (autoSave) => setState((s) => ({ ...s, autoSave })),
       setVibration: (vibration) => setState((s) => ({ ...s, vibration })),

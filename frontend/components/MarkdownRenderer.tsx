@@ -8,7 +8,7 @@ interface MarkdownRendererProps {
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   const renderContent = () => {
     const lines = (content ?? '').split('\n');
-    const elements: JSX.Element[] = [];
+  const elements: React.JSX.Element[] = [];
     let key = 0;
 
     for (let i = 0; i < lines.length; i++) {

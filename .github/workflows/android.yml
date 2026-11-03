@@ -1,0 +1,80 @@
+name: Android and application checks
+
+on:
+  push:
+    branches: [codex/android-app]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck && npm run test:unit && npm run build:web
+        working-directory: frontend
+        env:
+          EXPO_NO_TELEMETRY: '1'
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          python frontend/scripts/serve-export.py > /tmp/taro-server.log 2>&1 &
+          node frontend/scripts/test-android-web.js
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: application-test-details
+          path: ../taro-test-artifacts
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+        working-directory: frontend
+      - name: Generate native project
+        run: npx expo prebuild --platform android --no-install
+        working-directory: frontend
+      - name: Create a disposable CI signing key
+        working-directory: frontend
+        run: |
+          keytool -genkeypair -keystore ci-test.jks -alias ci-test -keyalg RSA -keysize 2048 -validity 2 -dname "CN=CI validation only" -storepass ci-validation-only -keypass ci-validation-only
+          python - <<'PY'
+          from pathlib import Path
+          key = Path('ci-test.jks').resolve()
+          Path('signing.properties').write_text(f'storeFile={key}\nstorePassword=ci-validation-only\nkeyAlias=ci-test\nkeyPassword=ci-validation-only\n')
+          PY
+      - name: Compile and validate release
+        run: ./gradlew :app:assembleRelease :app:bundleRelease :app:lintRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --max-workers=2
+        working-directory: frontend/android
+        env:
+          NODE_ENV: production
+          EXPO_NO_TELEMETRY: '1'
+      # CI packages use the disposable key and are intentionally not distributed.

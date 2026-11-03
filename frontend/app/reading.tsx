@@ -1,273 +1,215 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Text,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  ActivityIndicator,
-  Image,
-  ImageSourcePropType,
-} from 'react-native';
-import { showAlert } from '../src/utils/alert';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSettings } from '../src/contexts/SettingsContext';
-import { playFlip, playReveal } from '../src/utils/sound';
-import { ReadingInterpretation } from '../components/ReadingInterpretation';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AnimatedTarotCard } from '../components/AnimatedTarotCard';
-import { getOfflineCardBack, generateOfflineTarotReading, generateTarotCardSVG } from '../src/utils/offlineApi';
+import { CardFan } from '../components/CardFan';
+import { ReadingInterpretation } from '../components/ReadingInterpretation';
+import { taro } from '../components/TaroPage';
+import { useSettings } from '../src/contexts/SettingsContext';
+import { useUserProfile } from '../src/contexts/UserProfileContext';
+import { resolveCategory, resolveSpread } from '../src/data/spreads';
+import { generateOfflineTarotReading, generateTarotCardSVG, getOfflineCardBack, shuffleReadingCards, type DrawnCard } from '../src/utils/offlineApi';
+import { showAlert } from '../src/utils/alert';
+import { playFlip, playReveal, playSelect } from '../src/utils/sound';
 import { readingsStorage } from '../src/utils/storage';
-import { resolveSpread, resolveCategory } from '../src/data/spreads';
-
-interface TarotCard {
-  id: number;
-  name: string;
-  name_en: string;
-  type: string;
-  image?: ImageSourcePropType;
-  keywords: string[];
-  upright_meaning: string;
-  reversed_meaning: string;
-  is_reversed: boolean;
-}
-
-interface TarotReading {
-  id: string;
-  question: string;
-  category: string;
-  spread_type: string;
-  cards: TarotCard[];
-  positions: string[];
-  interpretation: string;
-  created_at: string;
-}
 
 export default function ReadingScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams();
-  const { category, spread, question } = params as { category: string; spread: string; question: string };
-  
-  const [reading, setReading] = useState<TarotReading | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [cardsRevealed, setCardsRevealed] = useState<boolean[]>([]);
-  const [cardBackImage, setCardBackImage] = useState<string>('');
+  const spread = resolveSpread(typeof params.spread === 'string' ? params.spread : undefined);
+  const category = resolveCategory(typeof params.category === 'string' ? params.category : undefined);
+  const question = typeof params.question === 'string' ? params.question.trim().slice(0, 500) : '';
+  return <ReadingSession key={spread.id + category + question} spreadId={spread.id} category={category} question={question} />;
+}
 
+function ReadingSession({ spreadId, category, question }: { spreadId: string; category: string; question: string }) {
+  const router = useRouter();
   const settings = useSettings();
+  const { profile } = useUserProfile();
+  const { width } = useWindowDimensions();
+  const spread = resolveSpread(spreadId);
+  const [id] = useState(() => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9));
+  const [deck] = useState(() => shuffleReadingCards(Math.max(14, spread.cards + 4)));
+  const [back, setBack] = useState('');
+  const [drawn, setDrawn] = useState<DrawnCard[]>([]);
+  const [revealed, setRevealed] = useState(0);
+  const [lifted, setLifted] = useState<number | null>(null);
+  const [reading, setReading] = useState<ReturnType<typeof makeReading> | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
+  const mounted = useRef(true);
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chime = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stored = useRef(false);
+  const saveInFlight = useRef<Promise<void> | null>(null);
+  const compactWidth = spread.cards === 1 ? 190 : Math.min(140, Math.floor((width - 62) / 3));
 
   useEffect(() => {
-    loadCardBack();
-    createReading();
+    mounted.current = true;
+    void getOfflineCardBack().then(uri => { if (mounted.current) setBack(uri); }).catch(() => undefined);
+    return () => {
+      mounted.current = false;
+      if (pending.current) clearTimeout(pending.current);
+      if (chime.current) clearTimeout(chime.current);
+    };
   }, []);
 
-  const loadCardBack = async () => {
-    try {
-      const cardBack = await getOfflineCardBack();
-      setCardBackImage(cardBack);
-    } catch (error) {
-      console.error('Error loading card back:', error);
-      setCardBackImage("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMDA0MCIgcng9IjE1Ii8+PHRleHQgeD0iMTAwIiB5PSIxNjAiIGZvbnQtc2l6ZT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfjK48L3RleHQ+PC9zdmc+");
-    }
-  };
+  const sound = { soundEnabled: settings.soundEnabled, vibration: settings.vibration, volume: settings.effectsVolume };
 
-  const createReading = async () => {
-    try {
-      // Расклад, тема и ориентация каждой карты решаются в одном месте —
-      // в генераторе; картинка и текст толкования берут их оттуда
-      const spreadDef = resolveSpread(spread);
-      const offlineResult = await generateOfflineTarotReading(question, spreadDef.id, category);
-
-      const cardsWithImages = offlineResult.cards.map(card => ({
-        ...card,
-        name_en: card.name_en || card.name,
-        image: generateTarotCardSVG(card, card.is_reversed),
-      }));
-
-      const data: TarotReading = {
-        id: Date.now().toString(),
-        question: question || 'Общий расклад',
-        category: resolveCategory(category),
-        spread_type: spreadDef.id,
-        cards: cardsWithImages,
-        positions: offlineResult.positions,
-        interpretation: offlineResult.interpretation,
-        created_at: new Date().toISOString()
-      };
-
-      setReading(data);
-      setCardsRevealed(new Array(data.cards.length).fill(false));
-
-      // Единственное место, где гадание попадает в историю
-      try {
-        await readingsStorage.addReading(data);
-      } catch (storageError) {
-        console.error('Error saving reading to history:', storageError);
-      }
-    } catch (error) {
-      console.error('Error creating reading:', error);
-      showAlert('Ошибка', 'Не удалось создать гадание. Попробуйте еще раз.');
-      router.back();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const soundOptions = () => ({
-    soundEnabled: settings.soundEnabled,
-    vibration: settings.vibration,
-    volume: settings.effectsVolume,
-  });
-
-  const revealCard = async (index: number) => {
-    const newRevealed = [...cardsRevealed];
-    newRevealed[index] = true;
-    setCardsRevealed(newRevealed);
-    // Шорох переворота, а следом — тёплый тон раскрытия
-    await playFlip(soundOptions());
-    setTimeout(() => { void playReveal(soundOptions()); }, 420);
-  };
-
-  const revealAllCards = async () => {
-    setCardsRevealed(new Array(reading?.cards.length || 0).fill(true));
-    await playFlip(soundOptions());
-    setTimeout(() => { void playReveal(soundOptions()); }, 380);
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.background}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#9B59B6" />
-            <Text style={styles.loadingText}>Карты перемешиваются...</Text>
-            <Text style={styles.loadingSubtext}>Ваше гадание готовится</Text>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
-    );
+  function makeReading(cards: DrawnCard[]) {
+    const value = generateOfflineTarotReading(cards, question, spread.id, category, { profile });
+    return {
+      id, question: question || 'Общий расклад', category, spread_type: spread.id,
+      cards: value.cards.map(card => ({ ...card, image: generateTarotCardSVG(card) })),
+      positions: value.positions, interpretation: value.interpretation, created_at: value.timestamp,
+    };
   }
 
-  if (!reading) return null;
+  const save = (value = reading): Promise<void> => {
+    if (!value || stored.current) return Promise.resolve();
+    if (!saveInFlight.current) {
+      setSaving(true);
+      saveInFlight.current = readingsStorage.addReading(value).then(() => {
+        stored.current = true;
+        if (mounted.current) setSaved(true);
+      }).finally(() => {
+        saveInFlight.current = null;
+        if (mounted.current) setSaving(false);
+      });
+    }
+    return saveInFlight.current;
+  };
+
+  const saveFailed = () => {
+    if (mounted.current) showAlert('Не удалось сохранить расклад', 'Проверьте свободное место и попробуйте ещё раз.');
+  };
+
+  const finish = (cards: DrawnCard[]) => {
+    if (cards.length !== spread.cards) return;
+    const result = makeReading(cards);
+    setReading(result);
+    if (settings.autoSave) void save(result).catch(saveFailed);
+  };
+
+  const flip = (count: number, final: boolean) => {
+    setRevealed(count);
+    void playFlip(sound);
+    if (final) chime.current = setTimeout(() => { void playReveal(sound); }, 420);
+    busy.current = false;
+    setLifted(null);
+  };
+
+  const pick = (card: DrawnCard) => {
+    if (busy.current || drawn.length >= spread.cards || drawn.some(item => item.id === card.id)) return;
+    busy.current = true;
+    setLifted(card.id);
+    void playSelect(sound);
+    const next = [...drawn, card];
+    pending.current = setTimeout(() => {
+      setDrawn(next);
+      pending.current = setTimeout(() => {
+        finish(next);
+        flip(next.length, next.length === spread.cards);
+      }, 210);
+    }, 185);
+  };
+
+  const openAll = () => {
+    if (busy.current || drawn.length >= spread.cards) return;
+    busy.current = true;
+    const ids = new Set(drawn.map(card => card.id));
+    const next = [...drawn, ...deck.filter(card => !ids.has(card.id)).slice(0, spread.cards - drawn.length)];
+    setDrawn(next);
+    pending.current = setTimeout(() => {
+      finish(next);
+      flip(next.length, true);
+    }, 225);
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.background}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#E8E8E8" />
-            </TouchableOpacity>
-            <Text style={styles.title}>Ваше гадание</Text>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.back}>
+          <Ionicons name="chevron-back" size={25} color={taro.gold} />
+        </Pressable>
+        <View style={styles.heading}>
+          <Text style={styles.eyebrow}>ВАШ РАСКЛАД</Text>
+          <Text style={styles.title}>{spread.name}</Text>
+        </View>
+      </View>
+      {question ? <Text style={styles.question}>«{question}»</Text> : null}
+      {drawn.length < spread.cards && (
+        <View style={styles.stage}>
+          <View style={styles.stageHeader}>
+            <Text style={styles.stageTitle}>Выберите карту</Text>
+            <Text accessibilityLiveRegion="polite" style={styles.counter}>{drawn.length} / {spread.cards}</Text>
           </View>
-
-          <View style={styles.questionContainer}>
-            <Text style={styles.questionLabel}>Ваш вопрос:</Text>
-            <Text style={styles.questionText}>&quot;{reading.question}&quot;</Text>
-          </View>
-
-          <View style={styles.cardsSection}>
-            <View style={styles.cardsSectionHeader}>
-              <Text style={styles.cardsSectionTitle}>Выпавшие карты</Text>
-              {cardsRevealed.some(revealed => !revealed) && (
-                <TouchableOpacity onPress={revealAllCards} style={styles.revealAllButton}>
-                  <Text style={styles.revealAllText}>Открыть все</Text>
-                </TouchableOpacity>
-              )}
+          <Text style={styles.hint}>Следующая позиция — {spread.positions[drawn.length].title.toLowerCase()}</Text>
+          <CardFan cards={deck} chosen={drawn} lifted={lifted} back={back} onPick={pick} />
+          <Pressable accessibilityRole="button" onPress={openAll} disabled={lifted !== null} style={styles.secondary}>
+            <Text style={styles.secondaryLabel}>Открыть все</Text>
+          </Pressable>
+        </View>
+      )}
+      <View style={styles.slots}>
+        {spread.positions.map((position, index) => {
+          const card = drawn[index];
+          return card ? (
+            <AnimatedTarotCard key={position.title} card={{ ...card, image: generateTarotCardSVG(card) }}
+              position={position.title} index={index} revealed={index < revealed} cardBackImage={back}
+              width={compactWidth} entranceDelay={0} />
+          ) : (
+            <View key={position.title} style={[styles.slot, { width: compactWidth }]}>
+              <View style={[styles.slotCard, { height: compactWidth * 1.5 }]}><Text style={styles.slotNumber}>{index + 1}</Text></View>
+              <Text style={styles.slotTitle}>{position.title}</Text>
             </View>
-            <View style={styles.cardsContainer}>
-              {reading.cards.map((card, index) => (
-                <AnimatedTarotCard
-                  key={index}
-                  card={card}
-                  position={reading.positions[index]}
-                  index={index}
-                  revealed={cardsRevealed[index]}
-                  cardBackImage={cardBackImage}
-                  onReveal={() => revealCard(index)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {cardsRevealed.every(revealed => revealed) && (
-            <ReadingInterpretation
-              interpretation={reading.interpretation}
-              question={reading.question}
-              category={reading.category}
-              spreadType={reading.spread_type}
-              readingId={reading.id}
-            />
+          );
+        })}
+      </View>
+      {reading && revealed === spread.cards && (
+        <Animated.View entering={FadeIn.duration(400).delay(490)} style={styles.stage}>
+          <ReadingInterpretation reading={reading} onBeforeFavorite={save} />
+          {!saved && (
+            <Pressable accessibilityRole="button" disabled={saving} style={styles.secondary} onPress={() => { void save().catch(saveFailed); }}>
+              {saving ? <ActivityIndicator color={taro.gold} /> : <Text style={styles.secondaryLabel}>Сохранить расклад</Text>}
+            </Pressable>
           )}
-
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/') }>
-              <LinearGradient colors={['#4ECDC4', '#26A0B4']} style={styles.actionButtonGradient}>
-                <Ionicons name="home" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>На главную</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/history')}>
-              <LinearGradient colors={['#FF6B9D', '#C44569']} style={styles.actionButtonGradient}>
-                <Ionicons name="time" size={20} color="#FFF" />
-                <Text style={styles.actionButtonText}>История</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+          <Pressable accessibilityRole="button" style={styles.secondary} onPress={async () => {
+            await saveInFlight.current?.catch(() => undefined);
+            if (mounted.current) router.navigate('/history');
+          }}>
+            <Text style={styles.secondaryLabel}>История</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" style={styles.secondary} onPress={() => router.navigate('/')}>
+            <Text style={styles.secondaryLabel}>На главную</Text>
+          </Pressable>
+        </Animated.View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  background: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: 18, color: '#E8E8E8', marginTop: 20, fontWeight: '600' },
-  loadingSubtext: { fontSize: 14, color: '#B8B8B8', marginTop: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
-  backButton: { marginRight: 15, padding: 8 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#E8E8E8' },
-  questionContainer: { marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1e1e1e', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#9B59B633' },
-  questionLabel: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginBottom: 8 },
-  questionText: { fontSize: 16, color: '#E8E8E8', lineHeight: 24, fontStyle: 'italic' },
-  cardsSection: { paddingHorizontal: 20, marginBottom: 20 },
-  cardsSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  cardsSectionTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8' },
-  revealAllButton: { backgroundColor: '#9B59B633', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
-  revealAllText: { fontSize: 12, color: '#9B59B6', fontWeight: '600' },
-  cardsContainer: { gap: 15 },
-  cardContainer: { alignItems: 'center' },
-  card: { width: 200, height: 300, borderRadius: 15, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, position: 'relative' },
-  cardContent: { flex: 1, position: 'relative' },
-  cardInner: { flex: 1, position: 'relative' },
-  cardReversed: { transform: [{ rotate: '180deg' }] },
-  cardImage: { width: '100%', height: '100%', borderRadius: 15 },
-  cardImageFallback: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)', padding: 10, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
-  cardNameOverlay: { fontSize: 14, fontWeight: 'bold', color: '#FFF', textAlign: 'center' },
-  reversedIndicatorOverlay: { fontSize: 10, color: '#FFD700', textAlign: 'center', marginTop: 2 },
-  cardName: { fontSize: 18, fontWeight: 'bold', color: '#FFF', textAlign: 'center', marginBottom: 10 },
-  cardType: { fontSize: 12, color: '#E8E8E8', opacity: 0.8, marginBottom: 15 },
-  reversedIndicator: { fontSize: 12, color: '#FFD700', marginBottom: 10, fontWeight: '600' },
-  keywordsContainer: { alignItems: 'center', gap: 5 },
-  keyword: { fontSize: 12, color: '#E8E8E8', backgroundColor: '#FFFFFF33', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  cardBack: { flex: 1, position: 'relative' },
-  cardBackImage: { width: '100%', height: '100%', borderRadius: 15 },
-  cardBackFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  cardBackText: { fontSize: 48, marginBottom: 10 },
-  tapToReveal: { fontSize: 12, color: '#B8B8B8', textAlign: 'center' },
-  positionText: { fontSize: 14, color: '#9B59B6', fontWeight: '600', marginTop: 10, textAlign: 'center' },
-  interpretationContainer: { marginHorizontal: 20, marginBottom: 20 },
-  interpretationTitle: { fontSize: 20, fontWeight: '600', color: '#E8E8E8', marginBottom: 15, textAlign: 'center' },
-  interpretationContent: { backgroundColor: '#1e1e1e', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#9B59B633', maxHeight: 400 },
-  interpretationScroll: { maxHeight: 360 },
-  interpretationText: { fontSize: 16, color: '#E8E8E8', lineHeight: 24 },
-  actionsContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 30, gap: 15 },
-  actionButton: { flex: 1, borderRadius: 15, overflow: 'hidden' },
-  actionButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
-  actionButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+  page: { flex: 1, backgroundColor: taro.background },
+  content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 16, paddingBottom: 35, gap: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  back: { minWidth: 42, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  heading: { flex: 1, gap: 3 },
+  eyebrow: { color: taro.gold, fontSize: 10, letterSpacing: 2, fontWeight: '700' },
+  title: { color: taro.text, fontSize: 28, fontWeight: '700' },
+  question: { color: taro.muted, paddingHorizontal: 5, fontSize: 15, lineHeight: 22 },
+  stage: { gap: 10 },
+  stageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stageTitle: { color: taro.gold, fontSize: 20, fontWeight: '600' },
+  counter: { color: taro.gold, fontSize: 13, backgroundColor: '#2D1A3B', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  hint: { color: taro.muted, fontSize: 13, lineHeight: 18 },
+  secondary: { minHeight: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: taro.border, borderRadius: 12, backgroundColor: taro.panel, padding: 9 },
+  secondaryLabel: { color: taro.gold, fontSize: 15, fontWeight: '600' },
+  slots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-start', gap: 9 },
+  slot: { alignItems: 'center', gap: 7, marginVertical: 8 },
+  slotCard: { width: '100%', borderRadius: 10, borderWidth: 1, borderColor: taro.border, borderStyle: 'dashed', backgroundColor: '#140D21', justifyContent: 'center', alignItems: 'center' },
+  slotNumber: { color: '#846793', fontSize: 19 },
+  slotTitle: { textAlign: 'center', fontSize: 12, lineHeight: 17, color: taro.muted },
 });

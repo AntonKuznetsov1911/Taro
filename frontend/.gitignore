@@ -37,3 +37,12 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Generated native projects and local release credentials
+/android/
+/ios/
+/signing.properties
+*.keystore
+*.apk
+*.aab
+/native/androidTest/assets/

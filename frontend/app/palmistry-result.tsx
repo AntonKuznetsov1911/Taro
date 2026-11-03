@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { readingsStorage } from '../src/utils/storage';
+import { persistPalmPhoto } from '../src/utils/palmPhoto';
 import { stripMarkdown } from '../src/utils/stripMarkdown';
 import {
   HAND_SHAPE_OPTIONS,
@@ -172,7 +173,7 @@ export default function PalmistryResultScreen() {
         cards: [],
         positions: [],
         palm_features: features,
-        image_uri: imageUri,
+        image_uri: await persistPalmPhoto(imageUri),
         interpretation,
         created_at: new Date().toISOString(),
       });
