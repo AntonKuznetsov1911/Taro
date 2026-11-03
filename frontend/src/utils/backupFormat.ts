@@ -1,7 +1,10 @@
+import { DAILY_JOURNAL_KEY, validDailyEntries } from './dailyJournalFormat';
+
 export const BACKUP_KEYS = [
   '@taro_readings', '@taro_favorites', '@taro_notes', '@taro_tags', '@taro_daily_card',
   '@taro_preferences', '@taro_cache_timestamp', '@taro_app_version', '@taro_onboarding',
   '@taro_settings', '@taro_user_profile', '@taro_onboarding_seen', '@taro_horoscope_sign',
+  DAILY_JOURNAL_KEY,
 ] as const;
 export type BackupData = Record<string, string>;
 export type TaroBackup = { format: 'taro-backup'; version: 1; appVersion: string; createdAt: string; data: BackupData; photos: Record<string, string> };
@@ -31,7 +34,8 @@ export function parseBackup(text: string): TaroBackup {
         for (const c of r.cards) requireValid(object(c) && Number.isInteger(c.id) && c.id >= 0 && c.id < 78 && typeof c.name === 'string' && strings(c.keywords));
         if (r.image_uri) requireValid(typeof r.image_uri === 'string' && /^taro-photo:photo-\d+$/.test(r.image_uri));
       }
-    } else if (key === '@taro_favorites') requireValid(strings(value));
+    } else if (key === DAILY_JOURNAL_KEY) requireValid(validDailyEntries(value));
+    else if (key === '@taro_favorites') requireValid(strings(value));
     else if (key === '@taro_notes') requireValid(object(value) && Object.values(value).every(v => typeof v === 'string'));
     else if (key === '@taro_tags') requireValid(object(value) && Object.values(value).every(strings));
     else if (key === '@taro_settings') {

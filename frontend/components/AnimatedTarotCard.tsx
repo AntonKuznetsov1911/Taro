@@ -28,7 +28,9 @@ interface AnimatedTarotCardProps {
   index: number;
   revealed: boolean;
   cardBackImage: string;
-  onReveal: () => void;
+  onReveal?: () => void;
+  width?: number;
+  entranceDelay?: number;
 }
 
 export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
@@ -38,17 +40,19 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
   revealed,
   cardBackImage,
   onReveal,
+  width = 200,
+  entranceDelay = index * 150,
 }) => {
   // Animation values
   const scale = useSharedValue(0);
-  const rotateY = useSharedValue(revealed ? 180 : 0);
+  const rotateY = useSharedValue(0);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
 
   // Card entrance animation
   useEffect(() => {
     scale.value = withDelay(
-      index * 150,
+      entranceDelay,
       withSpring(1, {
         damping: 12,
         stiffness: 100,
@@ -56,14 +60,14 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
     );
 
     opacity.value = withDelay(
-      index * 150,
+      entranceDelay,
       withTiming(1, {
         duration: 400,
       })
     );
 
     translateY.value = withDelay(
-      index * 150,
+      entranceDelay,
       withSpring(0, {
         damping: 10,
         stiffness: 80,
@@ -142,15 +146,15 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
   });
 
   return (
-    <Animated.View style={[styles.cardContainer, cardContainerStyle]}>
+    <Animated.View style={[styles.cardContainer, { width }, cardContainerStyle]}>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={revealed ? `Карта ${index + 1}: ${card.name}` : `Открыть карту ${index + 1}`}
+        accessibilityLabel={revealed ? `Карта ${index + 1}: ${card.name}` : onReveal ? `Открыть карту ${index + 1}` : `Карта ${index + 1} открывается`}
         onPress={!revealed ? onReveal : undefined}
         activeOpacity={revealed ? 1 : 0.8}
-        disabled={revealed}
+        disabled={revealed || !onReveal}
       >
-        <Animated.View style={[styles.card, cardStyle]}>
+        <Animated.View style={[styles.card, { width, height: width * 1.5 }, cardStyle]}>
           {/* Card Back (Face Down) */}
           <Animated.View style={[styles.cardFace, styles.cardBack, frontFaceStyle]}>
             {cardBackImage && cardBackImage.startsWith('data:image') ? (
@@ -179,8 +183,8 @@ export const AnimatedTarotCard: React.FC<AnimatedTarotCardProps> = ({
                   style={[styles.cardImage, card.is_reversed && styles.cardImageReversed]}
                   resizeMode="cover"
                 />
-                <View style={styles.cardOverlay}>
-                  <Text style={styles.cardName}>{card.name}</Text>
+                <View style={[styles.cardOverlay, width < 130 && { padding: 4 }]}>
+                  <Text numberOfLines={2} style={[styles.cardName, width < 130 && { fontSize: 11 }]}>{card.name}</Text>
                   {card.is_reversed && (
                     <Text style={styles.reversedIndicator}>⚌ Перевёрнутая</Text>
                   )}

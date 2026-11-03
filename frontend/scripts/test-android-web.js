@@ -23,19 +23,24 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
   const visit = async (page, route = '/') => { await page.goto(BASE + route); await page.waitForTimeout(350); };
   async function drawThree(page, question) {
     await visit(page);
+    await page.getByRole('tab', { name: 'Расклады' }).click();
     await page.getByText('Любовь', { exact: true }).click();
     await page.getByText('Три карты', { exact: true }).click();
     await page.getByText('Начать гадание', { exact: true }).filter({ visible: true }).click();
     await page.locator('textarea').fill(question);
     await page.getByText('Начать гадание', { exact: true }).filter({ visible: true }).click();
-    await page.getByRole('button', { name: 'Открыть карту 1', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Выбрать карту 1', exact: true }).waitFor();
+  }
+  async function openAll(page) {
+    await page.getByRole('button', { name: 'Открыть все', exact: true }).click();
+    await page.getByText('Короткий вывод', { exact: true }).waitFor();
   }
   try {
     await check('onboarding can be skipped and does not loop after restart', async page => {
       await visit(page); await page.getByText('Начать', { exact: true }).click();
       await page.getByText('Пропустить', { exact: true }).click();
-      await page.getByText('Мистические практики', { exact: true }).waitFor();
-      await page.reload(); await page.getByText('Мистические практики', { exact: true }).waitFor();
+      await page.getByText('Карта дня', { exact: true }).waitFor();
+      await page.reload(); await page.getByText('Карта дня', { exact: true }).waitFor();
     }, false);
     await check('complete profile persists after restarting the app', async page => {
       await visit(page); await page.getByText('Начать', { exact: true }).click();
@@ -54,35 +59,97 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
       await page.getByText('Не знаю', { exact: true }).click();
       await page.getByText('Далее', { exact: true }).click();
       await page.getByText('Открыть приложение', { exact: true }).click();
-      await page.getByText('Мистические практики', { exact: true }).waitFor();
-      await page.reload(); await page.getByText('Мистические практики', { exact: true }).waitFor();
+      await page.getByText('Карта дня', { exact: true }).waitFor();
+      await page.reload(); await page.getByText('Карта дня', { exact: true }).waitFor();
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('@taro_user_profile')).name), 'Тестовый');
     }, false);
-    await check('three cards, interpretation after the last flip, and one saved result', async page => {
+    await check('fan selection fills three different positions and saves one result', async page => {
       await drawThree(page, 'Как лучше провести эту неделю?');
+      await page.screenshot({ path: path.join(ARTIFACTS, 'web-fan.png') });
       assert.equal(await page.getByText('✨ Толкование', { exact: true }).count(), 0);
-      await page.getByRole('button', { name: 'Открыть карту 1', exact: true }).click();
+      await page.getByRole('button', { name: 'Выбрать карту 2', exact: true }).click();
+      await page.getByRole('button', { name: /^Карта 1:/ }).waitFor();
+      assert(await page.getByRole('button', { name: 'Выбрать карту 2', exact: true }).isDisabled());
       assert.equal(await page.getByText('✨ Толкование', { exact: true }).count(), 0);
-      await page.getByRole('button', { name: 'Открыть карту 2', exact: true }).click();
+      await page.getByRole('button', { name: 'Выбрать карту 1', exact: true }).click();
+      await page.getByRole('button', { name: /^Карта 2:/ }).waitFor();
       assert.equal(await page.getByText('✨ Толкование', { exact: true }).count(), 0);
-      await page.getByRole('button', { name: 'Открыть карту 3', exact: true }).click();
-      await page.getByText('✨ Толкование', { exact: true }).waitFor();
-      await page.waitForTimeout(1200);
+      await page.getByRole('button', { name: 'Выбрать карту 3', exact: true }).click();
+      await page.getByText('Как связаны карты', { exact: true }).waitFor();
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('@taro_readings') || '[]').length === 1);
       const rows = await page.evaluate(() => JSON.parse(localStorage.getItem('@taro_readings') || '[]'));
       assert.equal(rows.length, 1); assert.equal(rows[0].cards.length, 3);
       assert.equal(new Set(rows[0].cards.map(c => c.id)).size, 3);
+      for (const [i, card] of rows[0].cards.entries()) await page.getByRole('button', { name: 'Карта ' + (i + 1) + ': ' + card.name, exact: true }).waitFor();
       assert(rows[0].cards.every(c => !('image' in c)), 'Asset handles should not enter backups');
       await page.screenshot({ path: path.join(ARTIFACTS, 'web-reading.png') });
       await page.getByText('История', { exact: true }).filter({ visible: true }).click();
-      await page.getByText('«Как лучше провести эту неделю?»', { exact: true }).waitFor();
+      await page.getByTestId('reading-history').getByText('«Как лучше провести эту неделю?»', { exact: true }).waitFor();
     });
     await check('disabled autosave supports explicit saving without duplicates', async page => {
       await page.addInitScript(() => localStorage.setItem('@taro_settings', JSON.stringify({ language: 'russian', notifications: false, soundEnabled: false, autoSave: false, vibration: false, effectsVolume: .7 })));
       await drawThree(page, 'Проверка ручного сохранения');
+      await page.getByRole('button', { name: 'Выбрать карту 3', exact: true }).click();
+      const first = page.getByRole('button', { name: /^Карта 1:/ });
+      await first.waitFor();
+      const picked = await first.getAttribute('aria-label');
+      await openAll(page);
+      assert.equal(await first.getAttribute('aria-label'), picked);
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('@taro_readings') || '[]').length), 0);
       await page.getByText('Сохранить расклад', { exact: true }).click();
       await page.waitForFunction(() => JSON.parse(localStorage.getItem('@taro_readings') || '[]').length === 1);
       assert.equal(await page.getByText('Сохранить расклад', { exact: true }).count(), 0);
+    });
+    await check('share image hides the question until the user enables it', async page => {
+      const question = 'Личный вопрос для проверки';
+      await drawThree(page, question);
+      await openAll(page);
+      await page.getByRole('button', { name: 'Поделиться карточкой', exact: true }).click();
+      const preview = page.getByTestId('reading-share-preview');
+      await preview.waitFor();
+      assert(!(await preview.innerText()).includes(question));
+      const toggle = page.getByRole('switch', { name: 'Показывать мой вопрос' });
+      await toggle.click();
+      await preview.getByText('«' + question + '»', { exact: true }).waitFor();
+      await toggle.click();
+      await preview.getByText('«' + question + '»', { exact: true }).waitFor({ state: 'detached' });
+      const downloading = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Сохранить изображение', exact: true }).click();
+      const file = path.join(ARTIFACTS, 'reading-share.png');
+      await (await downloading).saveAs(file);
+      const png = await fs.readFile(file);
+      assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+      assert.equal(png.readUInt32BE(16), 1080);
+      assert(png.length > 20000);
+    });
+    await check('daily card and note persist, and the calendar can open a previous month', async page => {
+      await visit(page);
+      await page.getByRole('button', { name: 'Открыть карту дня', exact: true }).click();
+      const revealed = page.getByRole('button', { name: /^Карта дня:/ });
+      await revealed.waitFor();
+      const dailyName = await revealed.getAttribute('aria-label');
+      await page.reload();
+      await page.getByRole('button', { name: dailyName, exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Добавить заметку о дне', exact: true }).click();
+      const note = page.getByLabel('Заметка о дне');
+      await note.fill('Вечерняя запись');
+      await page.getByRole('button', { name: 'Сохранить заметку', exact: true }).click();
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('@taro_daily_journal') || '[]')[0]?.note === 'Вечерняя запись');
+      await page.reload();
+      await note.waitFor();
+      assert.equal(await note.inputValue(), 'Вечерняя запись');
+      await page.evaluate(() => {
+        const date = new Date();
+        const previous = new Date(date.getFullYear(), date.getMonth() - 1, 12);
+        const key = [previous.getFullYear(), previous.getMonth() + 1, previous.getDate()].map(p => String(p).padStart(2, '0')).join('-');
+        const entries = JSON.parse(localStorage.getItem('@taro_daily_journal'));
+        localStorage.setItem('@taro_daily_journal', JSON.stringify([...entries, { date: key, cardId: 0, reversed: false, note: 'Запись прошлого месяца' }]));
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Предыдущий месяц', exact: true }).click();
+      await note.waitFor();
+      assert.equal(await note.inputValue(), 'Запись прошлого месяца');
+      await page.screenshot({ path: path.join(ARTIFACTS, 'web-journal.png') });
     });
     await check('all cards have local illustrations and the catalog search works', async page => {
       await visit(page, '/deck');
@@ -126,6 +193,11 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
     });
     await check('backup export and restore update both storage and the live app', async page => {
       await drawThree(page, 'Запись для резервной копии');
+      await openAll(page);
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('@taro_readings') || '[]').length === 1);
+      await visit(page);
+      await page.getByRole('button', { name: 'Открыть карту дня', exact: true }).click();
+      await page.getByRole('button', { name: /^Карта дня:/ }).waitFor();
       await visit(page, '/settings');
       const downloading = page.waitForEvent('download');
       await page.getByText('Сохранить резервную копию', { exact: true }).click();
@@ -134,15 +206,17 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
       const backup = JSON.parse(await fs.readFile(file, 'utf8'));
       assert.equal(backup.format, 'taro-backup');
       assert.equal(JSON.parse(backup.data['@taro_readings']).length, 1);
-      await page.evaluate(() => localStorage.setItem('@taro_readings', '[]'));
+      assert.equal(JSON.parse(backup.data['@taro_daily_journal']).length, 1);
+      await page.evaluate(() => { localStorage.setItem('@taro_readings', '[]'); localStorage.removeItem('@taro_daily_journal'); });
       page.on('dialog', dialog => dialog.accept());
       const choosing = page.waitForEvent('filechooser');
       await page.getByText('Восстановить из файла', { exact: true }).click();
       await (await choosing).setFiles(file);
-      await page.getByText('Мистические практики', { exact: true }).waitFor();
+      await page.getByRole('button', { name: /^Карта дня:/ }).waitFor();
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('@taro_readings')).length), 1);
-      await page.getByText('История', { exact: true }).click();
-      await page.getByText('«Запись для резервной копии»', { exact: true }).waitFor();
+      await page.getByRole('tab', { name: 'Дневник' }).click();
+      await page.getByRole('button', { name: 'История раскладов', exact: true }).click();
+      await page.getByTestId('reading-history').getByText('«Запись для резервной копии»', { exact: true }).waitFor();
     });
     console.log(`${count} production UI checks passed.`);
   } finally { await browser.close(); }

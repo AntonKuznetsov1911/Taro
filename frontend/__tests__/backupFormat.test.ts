@@ -19,3 +19,12 @@ test('requires embedded photos and rejects arbitrary file paths', () => {
 test('rejects path traversal in photo names', () => {
   expect(() => parseBackup(backup({}, { '../file': '/9j/AA==' }))).toThrow();
 });
+
+test('imports calendar notes and rejects duplicate or impossible dates', () => {
+  const day = { date: '2026-11-02', cardId: 12, reversed: true, note: 'Заметка' };
+  const journal = (days: unknown[]) => backup({ '@taro_daily_journal': JSON.stringify(days) });
+  expect(JSON.parse(parseBackup(journal([day])).data['@taro_daily_journal'])).toEqual([day]);
+  expect(() => parseBackup(journal([day, day]))).toThrow();
+  expect(() => parseBackup(journal([{ ...day, date: '2026-02-31' }]))).toThrow();
+  expect(() => parseBackup(journal([{ ...day, cardId: 78 }]))).toThrow();
+});

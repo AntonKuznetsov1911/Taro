@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Text,
   View,
@@ -9,11 +9,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  Keyboard,
 } from 'react-native';
 import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { useSettings } from '../src/contexts/SettingsContext';
 import { playShuffle } from '../src/utils/sound';
 import { resolveSpread, pluralCards } from '../src/data/spreads';
@@ -36,7 +38,9 @@ export default function QuestionScreen() {
   
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const submitting = useRef(false);
   const settings = useSettings();
+  useFocusEffect(useCallback(() => { submitting.current = false; setIsLoading(false); }, []));
 
   const categoryKey = (category && category in CATEGORIES
     ? category
@@ -47,12 +51,15 @@ export default function QuestionScreen() {
   const categoryInfo = CATEGORIES[categoryKey];
 
   const handleSubmit = async () => {
+    if (submitting.current) return;
     if (!question.trim()) {
       showAlert('Внимание', 'Пожалуйста, введите ваш вопрос');
       return;
     }
 
+    submitting.current = true;
     setIsLoading(true);
+    Keyboard.dismiss();
 
     // Колода тасуется — звук запускается внутри жеста пользователя
     void playShuffle({
@@ -68,7 +75,7 @@ export default function QuestionScreen() {
       });
     } catch (error) {
       showAlert('Ошибка', 'Произошла ошибка при создании гадания');
-    } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   };
@@ -149,7 +156,7 @@ export default function QuestionScreen() {
 
           {/* Submit Button */}
           <View style={styles.bottomContainer}>
-            <TouchableOpacity 
+            <Pressable accessibilityRole="button"
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
               onPress={handleSubmit}
               disabled={isLoading}
@@ -169,7 +176,7 @@ export default function QuestionScreen() {
                   </>
                 )}
               </LinearGradient>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </KeyboardAvoidingView>
       </LinearGradient>

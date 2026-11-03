@@ -61,11 +61,11 @@ export const DEFAULT_SPREAD_ID: SpreadId = 'three_cards';
 export const DEFAULT_CATEGORY_ID: CategoryId = 'general';
 
 export function resolveSpread(id?: string | null): SpreadDef {
-  return id && id in SPREADS ? SPREADS[id as SpreadId] : SPREADS[DEFAULT_SPREAD_ID];
+  return id && Object.prototype.hasOwnProperty.call(SPREADS, id) ? SPREADS[id as SpreadId] : SPREADS[DEFAULT_SPREAD_ID];
 }
 
 export function resolveCategory(id?: string | null): CategoryId {
-  return id && id in CATEGORY_LENS ? (id as CategoryId) : DEFAULT_CATEGORY_ID;
+  return id && Object.prototype.hasOwnProperty.call(CATEGORY_LENS, id) ? (id as CategoryId) : DEFAULT_CATEGORY_ID;
 }
 
 /** «1 карта», «3 карты», «10 карт» */

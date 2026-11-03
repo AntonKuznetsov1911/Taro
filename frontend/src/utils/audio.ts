@@ -420,32 +420,18 @@ export function playCue(name: CueName, volume?: number): void {
         break;
       }
 
-      // Перемешивание колоды: слои коротких шелестящих всплесков
+      // Два коротких каскада бумажных карт и мягкое касание стола.
       case 'shuffle': {
-        const bursts = 7;
-        for (let i = 0; i < bursts; i++) {
-          const delay = i * 0.085 + Math.random() * 0.04;
-          noise(bus, {
-            delay,
-            duration: 0.15 + Math.random() * 0.09,
-            peak: (0.075 + Math.random() * 0.04) * v,
-            from: 2200 + Math.random() * 1600,
-            to: 500 + Math.random() * 300,
-            q: 0.8,
-            attack: 0.012,
-            reverb: 0.2,
-          });
+        for (const start of [0.025, 0.365]) {
+          for (let i = 0; i < 11; i++) {
+            noise(bus, {
+              delay: start + i * 0.022 + Math.random() * 0.009,
+              duration: 0.065, peak: (0.105 - i * 0.005) * v,
+              from: 4100, to: 850, q: 0.65, attack: 0.002, reverb: 0.04,
+            });
+          }
         }
-        voice(bus, {
-          freq: 146.83,
-          delay: 0.12,
-          duration: 1.1,
-          peak: 0.05 * v,
-          type: 'sine',
-          attack: 0.12,
-          lowpass: 500,
-          reverb: 0.35,
-        });
+        noise(bus, { delay: 0.691, duration: 0.11, peak: 0.1 * v, from: 680, to: 240, q: 0.6, attack: 0.004 });
         break;
       }
 

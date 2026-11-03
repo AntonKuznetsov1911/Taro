@@ -89,7 +89,7 @@ class TaroVisionTest {
         for (attempt in 0 until 100) {
             last = labels(instrumentation.uiAutomation.rootInActiveWindow)
             assertFalse("The release app displayed its error screen", last.any { it.contains("Что-то пошло не так") })
-            if (last.any { it.contains("Добро пожаловать в Таро") || it.contains("Мистические практики") }) return
+            if (last.any { it.contains("Добро пожаловать в Таро") || it.contains("Карта дня") }) return
             Thread.sleep(200)
         }
         fail("The app did not display a user screen: $last")

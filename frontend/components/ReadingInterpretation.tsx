@@ -5,8 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
-  Platform,
+  Pressable,
 } from 'react-native';
 import { showAlert } from '../src/utils/alert';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,77 +14,41 @@ import * as Clipboard from 'expo-clipboard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { stripMarkdown } from '../src/utils/stripMarkdown';
 import { favoritesStorage } from '../src/utils/storage';
-import { resolveSpread } from '../src/data/spreads';
+import { readingHighlights } from '../src/utils/offlineApi';
+import { ReadingShare, type ShareReading } from './ReadingShare';
+import { taro } from './TaroPage';
 
 interface ReadingInterpretationProps {
-  interpretation: string;
-  question: string;
-  category: string;
-  spreadType: string;
-  /** Нужен, чтобы отметку «в избранном» можно было по-настоящему сохранить */
-  readingId: string;
+  reading: ShareReading;
   onBeforeFavorite?: () => Promise<void>;
 }
 
 export const ReadingInterpretation: React.FC<ReadingInterpretationProps> = ({
-  interpretation,
-  question,
-  category,
-  spreadType,
-  readingId,
+  reading,
   onBeforeFavorite,
 }) => {
-  // По умолчанию все разделы раскрыты: в состоянии хранятся только свёрнутые.
-  const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({});
+  const [sharing, setSharing] = useState(false);
   // Компонент используется только для только что созданного расклада,
   // поэтому на входе он никогда ещё не может быть в избранном
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
-  const sections = parseInterpretationSections(interpretation);
+  const sections = parseInterpretationSections(reading.interpretation);
+  const { summary, connection } = readingHighlights(reading.cards, reading.spread_type);
 
-  const isExpanded = (sectionKey: string) => !collapsedSections[sectionKey];
+  const isExpanded = (sectionKey: string) => !!expandedSections[sectionKey];
 
   const toggleSection = (sectionKey: string) => {
-    setCollapsedSections((prev) => ({
+    setExpandedSections((prev) => ({
       ...prev,
       [sectionKey]: !prev[sectionKey],
     }));
   };
 
-  const handleShare = async () => {
-    try {
-      const shareContent = `🔮 Гадание Таро
-
-Вопрос: "${question}"
-Расклад: ${resolveSpread(spreadType).name}
-
-${stripMarkdown(interpretation)}
-
-Приложение Taro - мистические гадания
-`;
-
-      const result = await Share.share({
-        message: shareContent,
-        title: 'Моё гадание Таро',
-      });
-
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          console.log('Shared with activity type:', result.activityType);
-        } else {
-          console.log('Shared successfully');
-        }
-      }
-    } catch (error) {
-      showAlert('Ошибка', 'Не удалось поделиться гаданием');
-      console.error('Share error:', error);
-    }
-  };
-
   const handleCopy = async () => {
     try {
-      await Clipboard.setStringAsync(stripMarkdown(interpretation));
+      await Clipboard.setStringAsync(stripMarkdown(reading.interpretation));
       showAlert('✅ Скопировано', 'Толкование скопировано в буфер обмена');
     } catch (error) {
       showAlert('Ошибка', 'Не удалось скопировать текст');
@@ -98,7 +61,7 @@ ${stripMarkdown(interpretation)}
     setIsTogglingFavorite(true);
     try {
       if (!isFavorite) await onBeforeFavorite?.();
-      const nowFavorite = await favoritesStorage.toggleFavorite(readingId);
+      const nowFavorite = await favoritesStorage.toggleFavorite(reading.id);
       setIsFavorite(nowFavorite);
     } catch (error) {
       console.error('Toggle favorite error:', error);
@@ -113,13 +76,13 @@ ${stripMarkdown(interpretation)}
       <View style={styles.header}>
         <Text style={styles.title}>✨ Толкование</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleCopy} style={styles.actionIcon}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Скопировать толкование" onPress={handleCopy} style={styles.actionIcon}>
             <Ionicons name="copy-outline" size={22} color="#9B59B6" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.actionIcon}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Поделиться раскладом" onPress={() => setSharing(true)} style={styles.actionIcon}>
             <Ionicons name="share-outline" size={22} color="#9B59B6" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleToggleFavorite} style={styles.actionIcon} disabled={isTogglingFavorite}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'} onPress={handleToggleFavorite} style={styles.actionIcon} disabled={isTogglingFavorite}>
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
               size={22}
@@ -127,6 +90,18 @@ ${stripMarkdown(interpretation)}
             />
           </TouchableOpacity>
         </View>
+      </View>
+      <View style={styles.highlights}>
+        <Text style={styles.highlightTitle}>Короткий вывод</Text>
+        <Text style={styles.highlightBody}>{summary}</Text>
+        {!!connection && <>
+          <Text style={styles.highlightTitle}>Как связаны карты</Text>
+          <Text style={styles.highlightBody}>{connection}</Text>
+        </>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Поделиться карточкой" onPress={() => setSharing(true)} style={styles.shareButton}>
+          <Ionicons name="image-outline" size={19} color={taro.gold} />
+          <Text style={styles.shareLabel}>Поделиться карточкой</Text>
+        </Pressable>
       </View>
 
       {/* Quick Navigation */}
@@ -159,11 +134,7 @@ ${stripMarkdown(interpretation)}
         </ScrollView>
       )}
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={true}
-        persistentScrollbar={true}
-      >
+      <View style={styles.content}>
         {sections.map((section, index) => (
           <View key={index} style={styles.section}>
             <TouchableOpacity
@@ -206,7 +177,8 @@ ${stripMarkdown(interpretation)}
             </Text>
           </LinearGradient>
         </View>
-      </ScrollView>
+      </View>
+      {sharing && <ReadingShare reading={reading} summary={summary} connection={connection} onClose={() => setSharing(false)} />}
     </View>
   );
 };
@@ -350,6 +322,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(155, 89, 182, 0.3)',
   },
+  highlights: { gap: 9, padding: 13, marginBottom: 12, borderWidth: 1, borderColor: taro.border, backgroundColor: taro.panel, borderRadius: 14 },
+  highlightTitle: { color: taro.gold, fontSize: 15, fontWeight: '700' },
+  highlightBody: { color: taro.text, fontSize: 15, lineHeight: 23 },
+  shareButton: { minHeight: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: '#836147', borderRadius: 11, marginTop: 3, padding: 8 },
+  shareLabel: { color: taro.gold, fontWeight: '600' },
   section: {
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a2a',
