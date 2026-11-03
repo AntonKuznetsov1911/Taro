@@ -1,7 +1,7 @@
 {
   "name": "taro-tarot-app",
   "main": "expo-router/entry",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "homepage": "https://antonkuznetsov1911.github.io/Taro",
   "scripts": {
     "start": "expo start",

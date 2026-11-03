@@ -39,8 +39,12 @@ const ARTIFACTS = process.env.TARO_TEST_ARTIFACTS || path.resolve(__dirname, '..
     }, false);
     await check('complete profile persists after restarting the app', async page => {
       await visit(page); await page.getByText('Начать', { exact: true }).click();
-      await page.getByPlaceholder('Введите ваше имя').fill('Тестовый');
-      await page.getByText('Далее', { exact: true }).click();
+      const nameInput = page.getByPlaceholder('Введите ваше имя');
+      await nameInput.fill('   ');
+      await nameInput.press('Enter');
+      await page.getByText('Как вас зовут?', { exact: true }).waitFor();
+      await nameInput.fill('  Тестовый  ');
+      await nameInput.press('Enter');
       await page.getByText('Мужской', { exact: true }).click();
       await page.getByText('Далее', { exact: true }).click();
       await page.getByPlaceholder('ДД', { exact: true }).fill('19');
