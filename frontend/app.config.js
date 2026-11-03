@@ -5,7 +5,7 @@ export default {
   expo: {
     name: 'Таро',
     slug: 'Taro',
-    version: '1.3.1',
+    version: '1.3.2',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'taro',
@@ -24,7 +24,7 @@ export default {
     },
     android: {
       package: 'com.antonkuznetsov.taro',
-      versionCode: 2,
+      versionCode: 3,
       permissions: ['android.permission.CAMERA', 'android.permission.VIBRATE'],
       blockedPermissions: ['android.permission.RECORD_AUDIO', 'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO', 'android.permission.READ_MEDIA_AUDIO', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.SYSTEM_ALERT_WINDOW'],
       adaptiveIcon: {
@@ -50,10 +50,10 @@ export default {
       [
         'expo-splash-screen',
         {
-          image: './assets/images/splash-icon.png',
-          imageWidth: 200,
+          image: './assets/images/icon.png',
+          imageWidth: 160,
           resizeMode: 'contain',
-          backgroundColor: '#000',
+          backgroundColor: '#000011',
         },
       ],
     ],
